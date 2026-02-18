@@ -6,6 +6,8 @@
 import { createLogger, defineConfig, Plugin } from 'vite';
 import path, { join } from 'path';
 import { componentExplorer } from '@vscode/component-explorer-vite-plugin';
+// For local development:
+//import { componentExplorer } from 'D:\\dev\\microsoft\\vscode-packages\\js-component-explorer\\packages\\vite-plugin\\dist\\index';
 import { statSync } from 'fs';
 import { pathToFileURL } from 'url';
 import { rollupEsmUrlPlugin } from '@vscode/rollup-plugin-esm-url';
@@ -170,13 +172,16 @@ export default defineConfig({
 		createHotClassSupport(),
 		componentExplorer({
 			logLevel: 'verbose',
-			include: 'build/vite/**/*.fixture.ts',
+			include: join(__dirname, './**/*.fixture.ts'),
 		}),
 	],
 	customLogger: logger,
 	resolve: {
 		alias: {
 			'~@vscode/codicons': '/node_modules/@vscode/codicons',
+			// For local development:
+			// '@vscode/component-explorer/styles.css': 'D:/dev/microsoft/vscode-packages/js-component-explorer/packages/explorer/src/styles.css',
+			// '@vscode/component-explorer': 'D:/dev/microsoft/vscode-packages/js-component-explorer/packages/explorer/src/index.ts',
 		}
 	},
 	esbuild: {
@@ -198,7 +203,8 @@ export default defineConfig({
 	server: {
 		cors: true,
 		port: 5199,
-		origin: 'http://localhost:5199',
+		// TODO: origin breaks for different ports. Figure out what origin is used for.
+		// origin: 'http://localhost:5199',
 		fs: {
 			allow: [
 				// To allow loading from sources, not needed when loading monaco-editor from npm package
