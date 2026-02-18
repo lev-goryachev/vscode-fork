@@ -11,9 +11,9 @@
   "devDependencies": {
     "@vscode/rollup-plugin-esm-url": "^1.0.1-1",
     "vite": "npm:rolldown-vite@latest",
-    "@vscode/component-explorer": "file:deps/vscode-component-explorer-0.1.0.tgz",
-    "@vscode/component-explorer-vite-plugin": "file:deps/vscode-component-explorer-vite-plugin-0.1.0.tgz",
-    "@vscode/component-explorer-cli": "file:deps/vscode-component-explorer-cli-0.1.0.tgz"
+    "@vscode/component-explorer": "file:npm-deps/vscode-component-explorer-0.1.0.tgz",
+    "@vscode/component-explorer-vite-plugin": "file:npm-deps/vscode-component-explorer-vite-plugin-0.1.0.tgz",
+    "@vscode/component-explorer-cli": "file:npm-deps/vscode-component-explorer-cli-0.1.0.tgz"
   },
   "overrides": {
     "@vscode/component-explorer-vite-plugin": {
