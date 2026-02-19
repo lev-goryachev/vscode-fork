@@ -174,8 +174,8 @@ export class TalemoAuthOverlay extends Disposable {
 			}
 
 			const data = await response.json();
-			this.storageService.store(AUTH_TOKEN_KEY, data.access_token, StorageScope.APPLICATION, StorageTarget.MACHINE);
 			this.storageService.store(AUTH_USER_KEY, JSON.stringify(data.user), StorageScope.APPLICATION, StorageTarget.MACHINE);
+			this.storageService.store(AUTH_TOKEN_KEY, data.access_token, StorageScope.APPLICATION, StorageTarget.MACHINE);
 
 			this.hide();
 			this.onAuthenticated();

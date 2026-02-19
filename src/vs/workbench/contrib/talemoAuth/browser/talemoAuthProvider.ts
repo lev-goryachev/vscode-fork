@@ -48,7 +48,16 @@ export class TalemoAuthenticationProvider extends Disposable implements IAuthent
 	) {
 		super();
 		this._register(this.storageService.onDidChangeValue(StorageScope.APPLICATION, AUTH_TOKEN_KEY, this._store)(() => {
-			this._onDidChangeSessions.fire({ added: undefined, removed: undefined, changed: undefined });
+			try {
+				const session = this.readSession();
+				if (session) {
+					this._onDidChangeSessions.fire({ added: [session], removed: undefined, changed: undefined });
+				} else {
+					this._onDidChangeSessions.fire({ added: undefined, removed: undefined, changed: undefined });
+				}
+			} catch (error: unknown) {
+				console.error('[TalemoAuth] Session change event failed:', error);
+			}
 		}));
 	}
 
@@ -84,15 +93,18 @@ export class TalemoAuthenticationProvider extends Disposable implements IAuthent
 		}
 	}
 
-	async removeSession(_sessionId: string): Promise<void> {
+	async removeSession(sessionId: string): Promise<void> {
 		try {
+			const existing = this.readSession();
 			this.storageService.remove(AUTH_TOKEN_KEY, StorageScope.APPLICATION);
 			this.storageService.remove(AUTH_USER_KEY, StorageScope.APPLICATION);
-			this._onDidChangeSessions.fire({
-				added: undefined,
-				removed: undefined,
-				changed: undefined,
-			});
+			if (existing) {
+				this._onDidChangeSessions.fire({
+					added: undefined,
+					removed: [existing],
+					changed: undefined,
+				});
+			}
 		} catch (error: unknown) {
 			console.error('[TalemoAuth] removeSession failed:', error);
 		}

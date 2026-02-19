@@ -8,7 +8,7 @@
  *    1. Check IStorageService for a persisted access token.
  *    2. If absent, render the blocking TalemoAuthOverlay.
  *    3. On successful login the overlay removes itself.
- *    4. A "Talemo: Sign Out" command clears the token and shows the overlay immediately.
+ *    4. Gate watches storage — overlay reappears instantly on sign-out.
  *--------------------------------------------------------------------------------------------*/
 
 import { Disposable } from '../../../../base/common/lifecycle.js';
@@ -40,6 +40,20 @@ class TalemoAuthGate extends Disposable {
 	) {
 		super();
 		this.checkAuth();
+		this._register(
+			this.storageService.onDidChangeValue(
+				StorageScope.APPLICATION, AUTH_TOKEN_KEY, this._store,
+			)(() => {
+				try {
+					const token = this.storageService.get(AUTH_TOKEN_KEY, StorageScope.APPLICATION);
+					if (!token) {
+						this.showLoginOverlay();
+					}
+				} catch (error: unknown) {
+					console.error('[TalemoAuth] Storage change handler failed:', error);
+				}
+			}),
+		);
 	}
 
 	private checkAuth(): void {
@@ -108,27 +122,12 @@ registerWorkbenchContribution2(
 );
 
 // -- Sign Out command ----------------------------------------------------------
-// Clears the session and immediately shows the blocking login overlay —
-// no window reload needed, which means instant feedback.
 
 CommandsRegistry.registerCommand('talemo.auth.signOut', async (accessor: ServicesAccessor) => {
 	try {
 		const storageService = accessor.get(IStorageService);
-		storageService.remove(AUTH_TOKEN_KEY, StorageScope.APPLICATION);
 		storageService.remove('talemo.auth.user', StorageScope.APPLICATION);
-
-		const layoutService = accessor.get(ILayoutService);
-		const productService = accessor.get(IProductService);
-
-		const overlay = new TalemoAuthOverlay(
-			layoutService.mainContainer,
-			storageService,
-			productService,
-			() => {
-				console.log('[TalemoAuth] Re-authenticated after sign out.');
-			},
-		);
-		overlay.show();
+		storageService.remove(AUTH_TOKEN_KEY, StorageScope.APPLICATION);
 	} catch (error: unknown) {
 		console.error('[TalemoAuth] Sign out failed:', error);
 	}
