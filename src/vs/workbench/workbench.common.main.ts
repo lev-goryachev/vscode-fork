@@ -402,6 +402,9 @@ import './contrib/localHistory/browser/localHistory.contribution.js';
 // Workspace
 import './contrib/workspace/browser/workspace.contribution.js';
 
+// Talemo Auth Gate
+import './contrib/talemoAuth/browser/talemoAuth.contribution.js';
+
 // Workspaces
 import './contrib/workspaces/browser/workspaces.contribution.js';
 

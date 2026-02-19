@@ -1,0 +1,116 @@
+/*---------------------------------------------------------------------------------------------
+ *  Talemo Auth Gate — Blocking Login Overlay
+ *  Rendered on top of the workbench when no valid session exists.
+ *  Uses VSCode's native CSS variables for full theme parity.
+ *--------------------------------------------------------------------------------------------*/
+
+.talemo-auth-backdrop {
+	position: fixed;
+	top: 0;
+	left: 0;
+	width: 100%;
+	height: 100%;
+	z-index: 2600; /* above dialog modal (2575) */
+	display: flex;
+	justify-content: center;
+	align-items: center;
+	background: rgba(0, 0, 0, 0.6);
+}
+
+.talemo-auth-card {
+	width: 380px;
+	max-width: 90vw;
+	padding: 32px;
+	border-radius: 8px;
+	background-color: var(--vscode-editorWidget-background);
+	color: var(--vscode-editorWidget-foreground);
+	border: 1px solid var(--vscode-editorWidget-border);
+	box-shadow: 0 8px 32px var(--vscode-widget-shadow, rgba(0,0,0,0.36));
+}
+
+.talemo-auth-title {
+	font-size: 20px;
+	font-weight: 600;
+	margin: 0 0 4px 0;
+	text-align: center;
+	color: var(--vscode-foreground);
+}
+
+.talemo-auth-subtitle {
+	font-size: 13px;
+	margin: 0 0 24px 0;
+	text-align: center;
+	color: var(--vscode-descriptionForeground);
+}
+
+.talemo-auth-field {
+	margin-bottom: 16px;
+}
+
+.talemo-auth-label {
+	display: block;
+	font-size: 12px;
+	font-weight: 500;
+	margin-bottom: 4px;
+	color: var(--vscode-foreground);
+}
+
+.talemo-auth-input {
+	box-sizing: border-box;
+	width: 100%;
+	padding: 6px 8px;
+	font-size: 13px;
+	font-family: inherit;
+	border-radius: 4px;
+	outline: none;
+	color: var(--vscode-input-foreground);
+	background-color: var(--vscode-input-background);
+	border: 1px solid var(--vscode-input-border, transparent);
+}
+
+.talemo-auth-input:focus {
+	border-color: var(--vscode-focusBorder);
+}
+
+.talemo-auth-input::placeholder {
+	color: var(--vscode-input-placeholderForeground);
+}
+
+.talemo-auth-button {
+	box-sizing: border-box;
+	width: 100%;
+	padding: 8px 16px;
+	margin-top: 8px;
+	font-size: 13px;
+	font-weight: 500;
+	font-family: inherit;
+	cursor: pointer;
+	border-radius: 4px;
+	border: 1px solid var(--vscode-button-border, transparent);
+	color: var(--vscode-button-foreground);
+	background-color: var(--vscode-button-background);
+}
+
+.talemo-auth-button:hover:not(:disabled) {
+	background-color: var(--vscode-button-hoverBackground);
+}
+
+.talemo-auth-button:disabled {
+	opacity: 0.5;
+	cursor: default;
+}
+
+.talemo-auth-error {
+	margin-top: 12px;
+	padding: 8px;
+	font-size: 12px;
+	border-radius: 4px;
+	display: none;
+	color: var(--vscode-inputValidation-errorForeground, var(--vscode-errorForeground));
+	background-color: var(--vscode-inputValidation-errorBackground);
+	border: 1px solid var(--vscode-inputValidation-errorBorder);
+}
+
+.talemo-auth-error.visible {
+	display: block;
+}
