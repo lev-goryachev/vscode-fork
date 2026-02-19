@@ -8,7 +8,7 @@
  *    1. Check IStorageService for a persisted access token.
  *    2. If absent, render the blocking TalemoAuthOverlay.
  *    3. On successful login the overlay removes itself.
- *    4. A "Talemo: Sign Out" command clears the token and reloads.
+ *    4. A "Talemo: Sign Out" command clears the token and shows the overlay immediately.
  *--------------------------------------------------------------------------------------------*/
 
 import { Disposable } from '../../../../base/common/lifecycle.js';
@@ -20,7 +20,6 @@ import { TalemoAuthOverlay } from './talemoAuthOverlay.js';
 import { registerTalemoAuthProvider } from './talemoAuthProvider.js';
 import { CommandsRegistry } from '../../../../platform/commands/common/commands.js';
 import { MenuId, MenuRegistry } from '../../../../platform/actions/common/actions.js';
-import { IHostService } from '../../../services/host/browser/host.js';
 import { ServicesAccessor } from '../../../../platform/instantiation/common/instantiation.js';
 import { IAuthenticationService } from '../../../services/authentication/common/authentication.js';
 
@@ -109,6 +108,8 @@ registerWorkbenchContribution2(
 );
 
 // -- Sign Out command ----------------------------------------------------------
+// Clears the session and immediately shows the blocking login overlay —
+// no window reload needed, which means instant feedback.
 
 CommandsRegistry.registerCommand('talemo.auth.signOut', async (accessor: ServicesAccessor) => {
 	try {
@@ -116,8 +117,18 @@ CommandsRegistry.registerCommand('talemo.auth.signOut', async (accessor: Service
 		storageService.remove(AUTH_TOKEN_KEY, StorageScope.APPLICATION);
 		storageService.remove('talemo.auth.user', StorageScope.APPLICATION);
 
-		const hostService = accessor.get(IHostService);
-		hostService.reload();
+		const layoutService = accessor.get(ILayoutService);
+		const productService = accessor.get(IProductService);
+
+		const overlay = new TalemoAuthOverlay(
+			layoutService.mainContainer,
+			storageService,
+			productService,
+			() => {
+				console.log('[TalemoAuth] Re-authenticated after sign out.');
+			},
+		);
+		overlay.show();
 	} catch (error: unknown) {
 		console.error('[TalemoAuth] Sign out failed:', error);
 	}
