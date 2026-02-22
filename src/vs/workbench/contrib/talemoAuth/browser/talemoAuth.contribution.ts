@@ -1,14 +1,6 @@
 /*---------------------------------------------------------------------------------------------
- *  Talemo Auth Gate — Workbench Contribution
- *
- *  Registered at WorkbenchPhase.BlockRestore so the overlay appears
- *  before the editor layout is fully visible.
- *
- *  Flow:
- *    1. Check IStorageService for a persisted access token.
- *    2. If absent, render the blocking TalemoAuthOverlay.
- *    3. On successful login the overlay removes itself.
- *    4. Gate watches storage — overlay reappears instantly on sign-out.
+ *  Copyright (c) Microsoft Corporation. All rights reserved.
+ *  Licensed under the MIT License. See License.txt in the project root for license information.
  *--------------------------------------------------------------------------------------------*/
 
 import { Disposable } from '../../../../base/common/lifecycle.js';

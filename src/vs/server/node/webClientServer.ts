@@ -96,6 +96,24 @@ const STATIC_PATH = `/static`;
 const CALLBACK_PATH = `/callback`;
 const WEB_EXTENSION_PATH = `/web-extension-resource`;
 
+function resolveTalemoBackendUrl(productService: IProductService): string {
+	try {
+		const productBackendUrl = (productService as IProductService & { talemoBackendUrl?: string }).talemoBackendUrl?.trim();
+		if (productBackendUrl) {
+			return productBackendUrl;
+		}
+
+		const envBackendUrl = process.env['TALEMO_BACKEND_URL']?.trim();
+		if (envBackendUrl) {
+			return envBackendUrl;
+		}
+
+		return 'http://localhost:61010';
+	} catch {
+		return 'http://localhost:61010';
+	}
+}
+
 export class WebClientServer {
 
 	private readonly _webExtensionResourceUrlTemplate: URI | undefined;
@@ -343,6 +361,7 @@ export class WebClientServer {
 				}).toString(true)
 			} : undefined
 		};
+		(productConfiguration as Mutable<IProductConfiguration> & { talemoBackendUrl?: string }).talemoBackendUrl = resolveTalemoBackendUrl(this._productService);
 
 		const proposedApi = this._environmentService.args['enable-proposed-api'];
 		if (proposedApi?.length) {
@@ -428,7 +447,7 @@ export class WebClientServer {
 			`frame-src 'self' https://*.vscode-cdn.net data:;`,
 			'worker-src \'self\' data: blob:;',
 			'style-src \'self\' \'unsafe-inline\';',
-			`connect-src 'self' ws: wss: https: ${(this._productService as IProductService & { talemoBackendUrl?: string }).talemoBackendUrl ?? 'http://localhost:61010'};`,
+			`connect-src 'self' ws: wss: https: ${resolveTalemoBackendUrl(this._productService)};`,
 			'font-src \'self\' blob:;',
 			'manifest-src \'self\';'
 		].join(' ');

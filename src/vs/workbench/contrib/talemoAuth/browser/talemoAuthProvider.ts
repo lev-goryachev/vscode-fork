@@ -1,11 +1,6 @@
 /*---------------------------------------------------------------------------------------------
- *  Talemo Authentication Provider
- *
- *  Implements IAuthenticationProvider so the logged-in Talemo account
- *  appears in the built-in Accounts dropdown (bottom-left activity bar).
- *
- *  Session data is read from / written to IStorageService by the
- *  TalemoAuthOverlay (login) and the Sign Out command.
+ *  Copyright (c) Microsoft Corporation. All rights reserved.
+ *  Licensed under the MIT License. See License.txt in the project root for license information.
  *--------------------------------------------------------------------------------------------*/
 
 import { Emitter, Event } from '../../../../base/common/event.js';
