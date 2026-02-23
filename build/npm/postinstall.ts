@@ -175,6 +175,10 @@ for (const dir of dirs) {
 		if (process.env['CXX']) { opts.env!['CXX'] = 'g++'; }
 		if (process.env['CXXFLAGS']) { opts.env!['CXXFLAGS'] = ''; }
 		if (process.env['LDFLAGS']) { opts.env!['LDFLAGS'] = ''; }
+		// Build toolchain requires its optional deps (e.g. vscode-gulp-watch) even when
+		// root install uses --omit=optional for runtime footprint.
+		delete opts.env!['npm_config_omit'];
+		delete opts.env!['NPM_CONFIG_OMIT'];
 
 		setNpmrcConfig('build', opts.env!);
 		npmInstall('build', opts);
@@ -216,5 +220,15 @@ for (const dir of dirs) {
 	npmInstall(dir, { env });
 }
 
-child_process.execSync('git config pull.rebase merges');
-child_process.execSync('git config blame.ignoreRevsFile .git-blame-ignore-revs');
+try {
+	const isGitRepo = child_process.execSync('git rev-parse --is-inside-work-tree', { stdio: 'pipe' }).toString().trim() === 'true';
+
+	if (isGitRepo) {
+		child_process.execSync('git config pull.rebase merges');
+		child_process.execSync('git config blame.ignoreRevsFile .git-blame-ignore-revs');
+	} else {
+		log('postinstall', 'Skipping git config: current directory is not a git repository.');
+	}
+} catch {
+	log('postinstall', 'Skipping git config: git metadata is not available in this environment.');
+}

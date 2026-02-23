@@ -1,0 +1,17 @@
+.git
+.gitmodules
+.gitattributes
+.github/
+.devcontainer/
+.cursor/
+
+**/node_modules/
+.npm/
+
+.build/
+out/
+out-*/
+test-results/
+coverage/
+*.log
+
