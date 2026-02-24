@@ -12,12 +12,26 @@ import { IProductService } from '../../../../platform/product/common/productServ
 const AUTH_TOKEN_KEY = 'talemo.auth.accessToken';
 const AUTH_USER_KEY = 'talemo.auth.user';
 
-/** Backend URL resolution: product.json property > environment default. */
+/** Backend URL resolution: explicit product value > Cloud Run derived host > local dev fallback. */
 function resolveBackendUrl(productService: IProductService): string {
 	try {
 		const product = productService as IProductService & { talemoBackendUrl?: string };
-		if (product.talemoBackendUrl) {
-			return product.talemoBackendUrl;
+		const explicitBackendUrl = product.talemoBackendUrl?.trim();
+		if (explicitBackendUrl) {
+			return explicitBackendUrl.replace(/\/+$/, '');
+		}
+
+		// Cloud Run web shell host and control-plane host share the same suffix.
+		// Example:
+		//   talemo-vscode-web-shell-<suffix>.a.run.app
+		//   shared-control-plane-<suffix>.a.run.app
+		if (typeof window !== 'undefined' && window.location?.hostname) {
+			const host = window.location.hostname;
+			if (host.startsWith('talemo-vscode-web-shell-') && host.includes('.a.run.app')) {
+				const backendHost = host.replace('talemo-vscode-web-shell-', 'shared-control-plane-');
+				const protocol = window.location.protocol === 'https:' ? 'https' : 'http';
+				return `${protocol}://${backendHost}`;
+			}
 		}
 		return 'http://localhost:61010';
 	} catch {

@@ -187,6 +187,53 @@ export class WebClientServer {
 	}
 
 	/**
+	 * Resolve the external request scheme behind reverse proxies (Cloud Run, ingress).
+	 */
+	private _resolveExternalScheme(req: http.IncomingMessage): 'http' | 'https' {
+		try {
+			const forwardedProto = req.headers['x-forwarded-proto'];
+			const firstForwardedProto = Array.isArray(forwardedProto) ? forwardedProto[0] : forwardedProto;
+			const normalized = firstForwardedProto?.split(',')[0]?.trim().toLowerCase();
+			if (normalized === 'https' || normalized === 'http') {
+				return normalized;
+			}
+		} catch {
+			// Fall through to defaults.
+		}
+
+		try {
+			return (req.socket as { encrypted?: boolean }).encrypted ? 'https' : 'http';
+		} catch {
+			return 'http';
+		}
+	}
+
+	/**
+	 * Reverse proxies may send either a path (/foo) or an absolute URL in x-forwarded-prefix.
+	 */
+	private _resolveBasePath(forwardedPrefix: string | undefined): string {
+		try {
+			if (!forwardedPrefix) {
+				return this._basePath;
+			}
+
+			const trimmed = forwardedPrefix.trim();
+			if (!trimmed) {
+				return this._basePath;
+			}
+
+			if (/^https?:\/\//i.test(trimmed)) {
+				const parsed = new URL(trimmed);
+				return parsed.pathname || '/';
+			}
+
+			return trimmed.startsWith('/') ? trimmed : `/${trimmed}`;
+		} catch {
+			return this._basePath;
+		}
+	}
+
+	/**
 	 * Handle extension resources
 	 * @param resourcePath The path after /web-extension-resource/
 	 */
@@ -262,8 +309,10 @@ export class WebClientServer {
 			return Array.isArray(val) ? val[0] : val;
 		};
 
-		// Prefix routes with basePath for clients
-		const basePath = getFirstHeader('x-forwarded-prefix') || this._basePath;
+		// Prefix routes with basePath for clients.
+		// Some reverse proxies may send an absolute URL in x-forwarded-prefix.
+		const basePath = this._resolveBasePath(getFirstHeader('x-forwarded-prefix'));
+		const externalScheme = this._resolveExternalScheme(req);
 
 		const queryConnectionToken = parsedUrl.query[connectionTokenQueryName];
 		if (typeof queryConnectionToken === 'string') {
@@ -355,7 +404,7 @@ export class WebClientServer {
 			extensionsGallery: this._webExtensionResourceUrlTemplate && this._productService.extensionsGallery ? {
 				...this._productService.extensionsGallery,
 				resourceUrlTemplate: this._webExtensionResourceUrlTemplate.with({
-					scheme: 'http',
+					scheme: externalScheme,
 					authority: remoteAuthority,
 					path: `${webExtensionRoute}/${this._webExtensionResourceUrlTemplate.authority}${this._webExtensionResourceUrlTemplate.path}`
 				}).toString(true)
@@ -442,7 +491,7 @@ export class WebClientServer {
 			'default-src \'self\';',
 			'img-src \'self\' https: data: blob:;',
 			'media-src \'self\';',
-			`script-src 'self' 'unsafe-eval' ${WORKBENCH_NLS_BASE_URL ?? ''} blob: 'nonce-1nline-m4p' ${this._getScriptCspHashes(data).join(' ')} '${webWorkerExtensionHostIframeScriptSHA}' 'sha256-/r7rqQ+yrxt57sxLuQ6AMYcy/lUpvAIzHjIJt/OeLWU=' ${useTestResolver ? '' : `http://${remoteAuthority}`};`,  // the sha is the same as in src/vs/workbench/services/extensions/worker/webWorkerExtensionHostIframe.html
+			`script-src 'self' 'unsafe-eval' ${WORKBENCH_NLS_BASE_URL ?? ''} blob: 'nonce-1nline-m4p' ${this._getScriptCspHashes(data).join(' ')} '${webWorkerExtensionHostIframeScriptSHA}' 'sha256-/r7rqQ+yrxt57sxLuQ6AMYcy/lUpvAIzHjIJt/OeLWU=' ${useTestResolver ? '' : `${externalScheme}://${remoteAuthority}`};`,  // the sha is the same as in src/vs/workbench/services/extensions/worker/webWorkerExtensionHostIframe.html
 			'child-src \'self\';',
 			`frame-src 'self' https://*.vscode-cdn.net data:;`,
 			'worker-src \'self\' data: blob:;',
