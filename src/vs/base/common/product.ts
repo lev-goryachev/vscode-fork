@@ -228,6 +228,7 @@ export interface IProductConfiguration {
 	readonly emergencyAlertUrl?: string;
 
 	readonly remoteDefaultExtensionsIfInstalledLocally?: string[];
+	readonly talemoBackendUrl?: string;
 
 	readonly extensionConfigurationPolicy?: IStringDictionary<IPolicy>;
 }

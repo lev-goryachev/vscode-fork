@@ -187,7 +187,8 @@ export class DesktopMain extends Disposable {
 		serviceCollection.set(IMainProcessService, mainProcessService);
 
 		// Product
-		const productService: IProductService = { _serviceBrand: undefined, ...product };
+		const talemoBackendUrl = this.resolveTalemoBackendUrlFromEnvironment();
+		const productService: IProductService = { _serviceBrand: undefined, ...product, talemoBackendUrl };
 		serviceCollection.set(IProductService, productService);
 
 		// Environment
@@ -345,6 +346,24 @@ export class DesktopMain extends Disposable {
 
 
 		return { serviceCollection, logService, storageService, configurationService };
+	}
+
+	private resolveTalemoBackendUrlFromEnvironment(): string | undefined {
+		try {
+			const rawValue = process.env['TALEMO_BACKEND_URL'] ?? this.configuration.userEnv?.TALEMO_BACKEND_URL;
+			if (typeof rawValue !== 'string') {
+				return undefined;
+			}
+
+			const trimmedValue = rawValue.trim();
+			if (!trimmedValue) {
+				return undefined;
+			}
+
+			return trimmedValue.replace(/\/+$/, '');
+		} catch {
+			return undefined;
+		}
 	}
 
 	private resolveWorkspaceIdentifier(environmentService: INativeWorkbenchEnvironmentService): IAnyWorkspaceIdentifier {

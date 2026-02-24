@@ -7,35 +7,66 @@ import './media/talemoAuthOverlay.css';
 import { Disposable } from '../../../../base/common/lifecycle.js';
 import { IStorageService, StorageScope, StorageTarget } from '../../../../platform/storage/common/storage.js';
 import { IProductService } from '../../../../platform/product/common/productService.js';
+import { env as processEnv } from '../../../../base/common/process.js';
 
 /** Storage keys for persisted auth state. */
 const AUTH_TOKEN_KEY = 'talemo.auth.accessToken';
 const AUTH_USER_KEY = 'talemo.auth.user';
 
-/** Backend URL resolution: explicit product value > Cloud Run derived host > local dev fallback. */
-function resolveBackendUrl(productService: IProductService): string {
+function normalizeBackendUrl(rawValue: string | undefined): string | undefined {
+	try {
+		if (typeof rawValue !== 'string') {
+			return undefined;
+		}
+		const trimmed = rawValue.trim();
+		if (trimmed === '') {
+			return undefined;
+		}
+		return trimmed.replace(/\/+$/, '');
+	} catch {
+		return undefined;
+	}
+}
+
+function readBackendUrlFromSandboxUserEnv(): string | undefined {
+	try {
+		const vscodeGlobal = globalThis as {
+			vscode?: {
+				context?: {
+					configuration?: () => { userEnv?: Record<string, string | undefined> } | undefined;
+				};
+			};
+		};
+		const sandboxUserEnvValue = vscodeGlobal.vscode?.context?.configuration?.()?.userEnv?.TALEMO_BACKEND_URL;
+		return normalizeBackendUrl(sandboxUserEnvValue);
+	} catch {
+		return undefined;
+	}
+}
+
+/** Backend URL resolution: explicit product value only (fail fast when missing). */
+function resolveBackendUrl(productService: IProductService): { backendUrl?: string; errorMessage?: string } {
 	try {
 		const product = productService as IProductService & { talemoBackendUrl?: string };
-		const explicitBackendUrl = product.talemoBackendUrl?.trim();
+		const explicitBackendUrl = normalizeBackendUrl(product.talemoBackendUrl);
 		if (explicitBackendUrl) {
-			return explicitBackendUrl.replace(/\/+$/, '');
+			return { backendUrl: explicitBackendUrl };
 		}
 
-		// Cloud Run web shell host and control-plane host share the same suffix.
-		// Example:
-		//   talemo-vscode-web-shell-<suffix>.a.run.app
-		//   shared-control-plane-<suffix>.a.run.app
-		if (typeof window !== 'undefined' && window.location?.hostname) {
-			const host = window.location.hostname;
-			if (host.startsWith('talemo-vscode-web-shell-') && host.includes('.a.run.app')) {
-				const backendHost = host.replace('talemo-vscode-web-shell-', 'shared-control-plane-');
-				const protocol = window.location.protocol === 'https:' ? 'https' : 'http';
-				return `${protocol}://${backendHost}`;
-			}
+		const envBackendUrl = normalizeBackendUrl(processEnv['TALEMO_BACKEND_URL']);
+		if (envBackendUrl) {
+			return { backendUrl: envBackendUrl };
 		}
-		return 'http://localhost:61010';
-	} catch {
-		return 'http://localhost:61010';
+
+		const sandboxEnvBackendUrl = readBackendUrlFromSandboxUserEnv();
+		if (sandboxEnvBackendUrl) {
+			return { backendUrl: sandboxEnvBackendUrl };
+		}
+
+		return { errorMessage: 'TALEMO_BACKEND_URL is not configured. Set it in environment before sign-in.' };
+	} catch (error: unknown) {
+		const message = error instanceof Error ? error.message : 'Unknown backend URL resolution error';
+		return { errorMessage: `Failed to resolve TALEMO_BACKEND_URL: ${message}` };
 	}
 }
 
@@ -45,7 +76,8 @@ function resolveBackendUrl(productService: IProductService): string {
  */
 export class TalemoAuthOverlay extends Disposable {
 	private backdrop: HTMLElement | undefined;
-	private readonly backendUrl: string;
+	private readonly backendUrl?: string;
+	private readonly backendUrlError?: string;
 
 	constructor(
 		private readonly container: HTMLElement,
@@ -54,7 +86,9 @@ export class TalemoAuthOverlay extends Disposable {
 		private readonly onAuthenticated: () => void,
 	) {
 		super();
-		this.backendUrl = resolveBackendUrl(productService);
+		const backendResolution = resolveBackendUrl(productService);
+		this.backendUrl = backendResolution.backendUrl;
+		this.backendUrlError = backendResolution.errorMessage;
 	}
 
 	/** Renders the overlay and attaches it to the container. */
@@ -167,6 +201,11 @@ export class TalemoAuthOverlay extends Disposable {
 		this.hideError(errorBox);
 
 		try {
+			if (!this.backendUrl) {
+				this.showError(errorBox, this.backendUrlError || 'TALEMO_BACKEND_URL is not configured.');
+				return;
+			}
+
 			const response = await fetch(`${this.backendUrl}/auth/login`, {
 				method: 'POST',
 				headers: {
