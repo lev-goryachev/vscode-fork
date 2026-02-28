@@ -1,8 +1,3 @@
-/*---------------------------------------------------------------------------------------------
- *  Copyright (c) Microsoft Corporation. All rights reserved.
- *  Licensed under the MIT License. See License.txt in the project root for license information.
- *--------------------------------------------------------------------------------------------*/
-
 import { AutorunObserver } from '../reactions/autorunImpl.js';
 import { IObservable } from '../base.js';
 import { TransactionImpl } from '../transaction.js';

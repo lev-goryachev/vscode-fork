@@ -1,8 +1,3 @@
-/*---------------------------------------------------------------------------------------------
- *  Copyright (c) Microsoft Corporation. All rights reserved.
- *  Licensed under the MIT License. See License.txt in the project root for license information.
- *--------------------------------------------------------------------------------------------*/
-
 import { IFileService } from '../../../../platform/files/common/files.js';
 import { IRemoteAgentService } from '../../remote/common/remoteAgentService.js';
 import { IWorkbenchEnvironmentService } from '../../environment/common/environmentService.js';

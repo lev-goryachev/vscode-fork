@@ -1,8 +1,3 @@
-/*---------------------------------------------------------------------------------------------
- *  Copyright (c) Microsoft Corporation. All rights reserved.
- *  Licensed under the MIT License. See License.txt in the project root for license information.
- *--------------------------------------------------------------------------------------------*/
-
 import { toFormattedString } from '../../../../../base/common/jsonFormatter.js';
 import { INotebookDocumentMetadataTextModel, INotebookTextModel, NotebookCellMetadata, NotebookCellsChangeType, NotebookDocumentMetadata, NotebookMetadataUri, TransientDocumentMetadata } from '../notebookCommon.js';
 import { StringSHA1 } from '../../../../../base/common/hash.js';

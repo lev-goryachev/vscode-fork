@@ -1,7 +1,3 @@
-/*---------------------------------------------------------------------------------------------
- *  Copyright (c) Microsoft Corporation. All rights reserved.
- *  Licensed under the MIT License. See License.txt in the project root for license information.
- *--------------------------------------------------------------------------------------------*/
 use super::socket_signal::{ClientMessageDecoder, ServerMessageSink};
 use crate::{
 	async_pipe::{get_socket_rw_stream, socket_stream_split, AsyncPipeWriteHalf},

@@ -1,8 +1,3 @@
-/*---------------------------------------------------------------------------------------------
- *  Copyright (c) Microsoft Corporation. All rights reserved.
- *  Licensed under the MIT License. See License.txt in the project root for license information.
- *--------------------------------------------------------------------------------------------*/
-
 import { RunOnceScheduler } from '../../../../base/common/async.js';
 import { Disposable, dispose, IDisposable, toDisposable } from '../../../../base/common/lifecycle.js';
 import { isLinux, isMacintosh, isNative } from '../../../../base/common/platform.js';

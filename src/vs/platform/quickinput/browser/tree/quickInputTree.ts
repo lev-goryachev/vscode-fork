@@ -1,8 +1,3 @@
-/*---------------------------------------------------------------------------------------------
- *  Copyright (c) Microsoft Corporation. All rights reserved.
- *  Licensed under the MIT License. See License.txt in the project root for license information.
- *--------------------------------------------------------------------------------------------*/
-
 import { IMatch } from '../../../../base/common/filters.js';
 import { IQuickTreeItem } from '../../common/quickInput.js';
 import { IObjectTreeElement, ITreeNode } from '../../../../base/browser/ui/tree/tree.js';

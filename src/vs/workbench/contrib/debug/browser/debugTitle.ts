@@ -1,8 +1,3 @@
-/*---------------------------------------------------------------------------------------------
- *  Copyright (c) Microsoft Corporation. All rights reserved.
- *  Licensed under the MIT License. See License.txt in the project root for license information.
- *--------------------------------------------------------------------------------------------*/
-
 import { IWorkbenchContribution } from '../../../common/contributions.js';
 import { IDebugService, State } from '../common/debug.js';
 import { dispose, IDisposable } from '../../../../base/common/lifecycle.js';

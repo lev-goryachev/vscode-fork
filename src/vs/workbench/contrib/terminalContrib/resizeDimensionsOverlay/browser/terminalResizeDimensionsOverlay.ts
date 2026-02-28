@@ -1,9 +1,3 @@
-/*---------------------------------------------------------------------------------------------
- *  Copyright (c) Microsoft Corporation. All rights reserved.
- *  Licensed under the MIT License. See License.txt in the project root for license information.
- *--------------------------------------------------------------------------------------------*/
-
-
 import './media/terminalResizeDimensionsOverlay.css';
 import { $ } from '../../../../../base/browser/dom.js';
 import { disposableTimeout } from '../../../../../base/common/async.js';

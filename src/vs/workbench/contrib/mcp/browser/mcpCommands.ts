@@ -1,8 +1,3 @@
-/*---------------------------------------------------------------------------------------------
- *  Copyright (c) Microsoft Corporation. All rights reserved.
- *  Licensed under the MIT License. See License.txt in the project root for license information.
- *--------------------------------------------------------------------------------------------*/
-
 import { $, addDisposableListener, disposableWindowInterval, EventType } from '../../../../base/browser/dom.js';
 import { renderMarkdown } from '../../../../base/browser/markdownRenderer.js';
 import { IManagedHoverTooltipHTMLElement } from '../../../../base/browser/ui/hover/hover.js';

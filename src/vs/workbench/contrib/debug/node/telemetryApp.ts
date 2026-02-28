@@ -1,8 +1,3 @@
-/*---------------------------------------------------------------------------------------------
- *  Copyright (c) Microsoft Corporation. All rights reserved.
- *  Licensed under the MIT License. See License.txt in the project root for license information.
- *--------------------------------------------------------------------------------------------*/
-
 import { Server } from '../../../../base/parts/ipc/node/ipc.cp.js';
 import { TelemetryAppenderChannel } from '../../../../platform/telemetry/common/telemetryIpc.js';
 import { OneDataSystemAppender } from '../../../../platform/telemetry/node/1dsAppender.js';

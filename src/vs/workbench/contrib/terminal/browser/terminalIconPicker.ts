@@ -1,8 +1,3 @@
-/*---------------------------------------------------------------------------------------------
- *  Copyright (c) Microsoft Corporation. All rights reserved.
- *  Licensed under the MIT License. See License.txt in the project root for license information.
- *--------------------------------------------------------------------------------------------*/
-
 import { Dimension, getActiveDocument } from '../../../../base/browser/dom.js';
 import { HoverPosition } from '../../../../base/browser/ui/hover/hoverWidget.js';
 import { codiconsLibrary } from '../../../../base/common/codiconsLibrary.js';

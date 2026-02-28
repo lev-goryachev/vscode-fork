@@ -1,8 +1,3 @@
-/*---------------------------------------------------------------------------------------------
- *  Copyright (c) Microsoft Corporation. All rights reserved.
- *  Licensed under the MIT License. See License.txt in the project root for license information.
- *--------------------------------------------------------------------------------------------*/
-
 import { alert } from '../../../../../base/browser/ui/aria/aria.js';
 import { timeout } from '../../../../../base/common/async.js';
 import { cancelOnDispose } from '../../../../../base/common/cancellation.js';

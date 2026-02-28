@@ -1,8 +1,3 @@
-/*---------------------------------------------------------------------------------------------
- *  Copyright (c) Microsoft Corporation. All rights reserved.
- *  Licensed under the MIT License. See License.txt in the project root for license information.
- *--------------------------------------------------------------------------------------------*/
-
 import { FuzzyScore, matchesFuzzy } from '../../../../base/common/filters.js';
 import { splitGlobAware } from '../../../../base/common/glob.js';
 import { ITreeFilter, TreeVisibility, TreeFilterResult } from '../../../../base/browser/ui/tree/tree.js';

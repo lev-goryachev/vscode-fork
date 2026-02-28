@@ -1,8 +1,3 @@
-/*---------------------------------------------------------------------------------------------
- *  Copyright (c) Microsoft Corporation. All rights reserved.
- *  Licensed under the MIT License. See License.txt in the project root for license information.
- *--------------------------------------------------------------------------------------------*/
-
 import { IEditorService } from '../../../services/editor/common/editorService.js';
 import { WalkThroughPart, WALK_THROUGH_FOCUS } from './walkThroughPart.js';
 import { ICommandAndKeybindingRule, KeybindingWeight } from '../../../../platform/keybinding/common/keybindingsRegistry.js';

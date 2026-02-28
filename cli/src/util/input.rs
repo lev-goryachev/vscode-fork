@@ -1,7 +1,3 @@
-/*---------------------------------------------------------------------------------------------
- *  Copyright (c) Microsoft Corporation. All rights reserved.
- *  Licensed under the MIT License. See License.txt in the project root for license information.
- *--------------------------------------------------------------------------------------------*/
 use crate::util::errors::wrap;
 use dialoguer::{theme::ColorfulTheme, Confirm, Input, Select};
 use indicatif::ProgressBar;

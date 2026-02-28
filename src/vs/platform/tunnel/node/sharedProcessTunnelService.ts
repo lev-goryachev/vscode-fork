@@ -1,8 +1,3 @@
-/*---------------------------------------------------------------------------------------------
- *  Copyright (c) Microsoft Corporation. All rights reserved.
- *  Licensed under the MIT License. See License.txt in the project root for license information.
- *--------------------------------------------------------------------------------------------*/
-
 import { ILogService } from '../../log/common/log.js';
 import { ISharedProcessTunnel, ISharedProcessTunnelService } from '../../remote/common/sharedProcessTunnelService.js';
 import { ISharedTunnelsService, RemoteTunnel } from '../common/tunnel.js';

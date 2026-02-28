@@ -1,8 +1,3 @@
-/*---------------------------------------------------------------------------------------------
- *  Copyright (c) Microsoft Corporation. All rights reserved.
- *  Licensed under the MIT License. See License.txt in the project root for license information.
- *--------------------------------------------------------------------------------------------*/
-
 import { AbstractTextFileService } from './textFileService.js';
 import { ITextFileService, TextFileEditorModelState } from '../common/textfiles.js';
 import { InstantiationType, registerSingleton } from '../../../../platform/instantiation/common/extensions.js';

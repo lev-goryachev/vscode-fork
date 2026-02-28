@@ -1,8 +1,3 @@
-/*---------------------------------------------------------------------------------------------
- *  Copyright (c) Microsoft Corporation. All rights reserved.
- *  Licensed under the MIT License. See License.txt in the project root for license information.
- *--------------------------------------------------------------------------------------------*/
-
 import { AuthenticationResult } from '@azure/msal-node';
 import { Uri, LogOutputChannel, env } from 'vscode';
 import { ICachedPublicClientApplication } from '../common/publicClientCache';

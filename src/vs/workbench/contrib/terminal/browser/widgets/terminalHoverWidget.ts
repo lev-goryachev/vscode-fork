@@ -1,8 +1,3 @@
-/*---------------------------------------------------------------------------------------------
- *  Copyright (c) Microsoft Corporation. All rights reserved.
- *  Licensed under the MIT License. See License.txt in the project root for license information.
- *--------------------------------------------------------------------------------------------*/
-
 import { Disposable, toDisposable } from '../../../../../base/common/lifecycle.js';
 import { IMarkdownString } from '../../../../../base/common/htmlContent.js';
 import { Widget } from '../../../../../base/browser/ui/widget.js';

@@ -1,8 +1,3 @@
-/*---------------------------------------------------------------------------------------------
- *  Copyright (c) Microsoft Corporation. All rights reserved.
- *  Licensed under the MIT License. See License.txt in the project root for license information.
- *--------------------------------------------------------------------------------------------*/
-
 import { findFirstIdxMonotonousOrArrLen } from '../../../../base/common/arraysFind.js';
 import { RunOnceScheduler, TimeoutTimer } from '../../../../base/common/async.js';
 import { KeyCode, KeyMod } from '../../../../base/common/keyCodes.js';

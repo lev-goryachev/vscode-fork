@@ -1,8 +1,3 @@
-/*---------------------------------------------------------------------------------------------
- *  Copyright (c) Microsoft Corporation. All rights reserved.
- *  Licensed under the MIT License. See License.txt in the project root for license information.
- *--------------------------------------------------------------------------------------------*/
-
 import { constObservable } from '../../../../src/vs/base/common/observable';
 import { URI } from '../../../../src/vs/base/common/uri';
 import { Range } from '../../../../src/vs/editor/common/core/range';

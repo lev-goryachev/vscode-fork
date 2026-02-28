@@ -1,8 +1,3 @@
-/*---------------------------------------------------------------------------------------------
- *  Copyright (c) Microsoft Corporation. All rights reserved.
- *  Licensed under the MIT License. See License.txt in the project root for license information.
- *--------------------------------------------------------------------------------------------*/
-
 import { URI, UriComponents } from '../../../../../../base/common/uri.js';
 import { LanguageId } from '../../../../../../editor/common/encodedTokenAttributes.js';
 import { IModelChangedEvent } from '../../../../../../editor/common/model/mirrorTextModel.js';

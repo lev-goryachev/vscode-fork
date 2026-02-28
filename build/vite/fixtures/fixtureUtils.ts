@@ -1,8 +1,3 @@
-/*---------------------------------------------------------------------------------------------
- *  Copyright (c) Microsoft Corporation. All rights reserved.
- *  Licensed under the MIT License. See License.txt in the project root for license information.
- *--------------------------------------------------------------------------------------------*/
-
 import { defineFixture, defineFixtureGroup, defineFixtureVariants } from '@vscode/component-explorer';
 import { DisposableStore, toDisposable } from '../../../src/vs/base/common/lifecycle';
 import { URI } from '../../../src/vs/base/common/uri';

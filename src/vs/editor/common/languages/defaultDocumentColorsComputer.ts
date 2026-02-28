@@ -1,7 +1,3 @@
-/*---------------------------------------------------------------------------------------------
- *  Copyright (c) Microsoft Corporation. All rights reserved.
- *  Licensed under the MIT License. See License.txt in the project root for license information.
- *--------------------------------------------------------------------------------------------*/
 import { Color, HSLA } from '../../../base/common/color.js';
 import { IPosition } from '../core/position.js';
 import { IRange } from '../core/range.js';

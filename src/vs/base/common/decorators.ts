@@ -1,8 +1,3 @@
-/*---------------------------------------------------------------------------------------------
- *  Copyright (c) Microsoft Corporation. All rights reserved.
- *  Licensed under the MIT License. See License.txt in the project root for license information.
- *--------------------------------------------------------------------------------------------*/
-
 function createDecorator(mapFn: (fn: Function, key: string) => Function): MethodDecorator {
 	return (_target: Object, key: string | symbol, descriptor: TypedPropertyDescriptor<any>) => {
 		let fnKey: 'value' | 'get' | null = null;

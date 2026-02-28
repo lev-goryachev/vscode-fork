@@ -1,8 +1,3 @@
-/*---------------------------------------------------------------------------------------------
- *  Copyright (c) Microsoft Corporation. All rights reserved.
- *  Licensed under the MIT License. See License.txt in the project root for license information.
- *--------------------------------------------------------------------------------------------*/
-
 import { DisposableStore } from '../../../../base/common/lifecycle.js';
 import { getDelayedChannel, ProxyChannel } from '../../../../base/parts/ipc/common/ipc.js';
 import { IFileChange } from '../../../../platform/files/common/files.js';

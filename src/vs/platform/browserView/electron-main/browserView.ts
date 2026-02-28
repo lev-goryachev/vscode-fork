@@ -1,8 +1,3 @@
-/*---------------------------------------------------------------------------------------------
- *  Copyright (c) Microsoft Corporation. All rights reserved.
- *  Licensed under the MIT License. See License.txt in the project root for license information.
- *--------------------------------------------------------------------------------------------*/
-
 import { WebContentsView, webContents } from 'electron';
 import { FileAccess } from '../../../base/common/network.js';
 import { Disposable } from '../../../base/common/lifecycle.js';

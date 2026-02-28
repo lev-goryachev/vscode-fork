@@ -1,8 +1,3 @@
-/*---------------------------------------------------------------------------------------------
- *  Copyright (c) Microsoft Corporation. All rights reserved.
- *  Licensed under the MIT License. See License.txt in the project root for license information.
- *--------------------------------------------------------------------------------------------*/
-
 import { ChildProcessWithoutNullStreams, spawn } from 'child_process';
 import { readFile } from 'fs/promises';
 import { homedir } from 'os';

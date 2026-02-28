@@ -1,8 +1,3 @@
-/*---------------------------------------------------------------------------------------------
- *  Copyright (c) Microsoft Corporation. All rights reserved.
- *  Licensed under the MIT License. See License.txt in the project root for license information.
- *--------------------------------------------------------------------------------------------*/
-
 import { findNodeAtLocation, Node, parse as parseJSONC, parseTree } from '../../../../../base/common/json.js';
 import { ITextEditorSelection } from '../../../../../platform/editor/common/editor.js';
 import { URI } from '../../../../../base/common/uri.js';

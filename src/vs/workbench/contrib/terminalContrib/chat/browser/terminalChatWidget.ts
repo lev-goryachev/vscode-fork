@@ -1,8 +1,3 @@
-/*---------------------------------------------------------------------------------------------
- *  Copyright (c) Microsoft Corporation. All rights reserved.
- *  Licensed under the MIT License. See License.txt in the project root for license information.
- *--------------------------------------------------------------------------------------------*/
-
 import type { Terminal as RawXtermTerminal } from '@xterm/xterm';
 import { Dimension, getActiveWindow, IFocusTracker, trackFocus } from '../../../../../base/browser/dom.js';
 import { CancelablePromise, createCancelablePromise, DeferredPromise } from '../../../../../base/common/async.js';

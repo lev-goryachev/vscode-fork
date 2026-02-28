@@ -1,8 +1,3 @@
-/*---------------------------------------------------------------------------------------------
- *  Copyright (c) Microsoft Corporation. All rights reserved.
- *  Licensed under the MIT License. See License.txt in the project root for license information.
- *--------------------------------------------------------------------------------------------*/
-
 import { Widget } from '../widget.js';
 import { ThemeIcon } from '../../../common/themables.js';
 import { Emitter } from '../../../common/event.js';

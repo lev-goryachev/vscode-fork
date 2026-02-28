@@ -1,8 +1,3 @@
-/*---------------------------------------------------------------------------------------------
- *  Copyright (c) Microsoft Corporation. All rights reserved.
- *  Licensed under the MIT License. See License.txt in the project root for license information.
- *--------------------------------------------------------------------------------------------*/
-
 import { doHash } from '../../../base/common/hash.js';
 import { LRUCache } from '../../../base/common/map.js';
 import { clamp, MovingAverage, SlidingWindowAverage } from '../../../base/common/numbers.js';

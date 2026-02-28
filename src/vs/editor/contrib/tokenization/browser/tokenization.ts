@@ -1,8 +1,3 @@
-/*---------------------------------------------------------------------------------------------
- *  Copyright (c) Microsoft Corporation. All rights reserved.
- *  Licensed under the MIT License. See License.txt in the project root for license information.
- *--------------------------------------------------------------------------------------------*/
-
 import { StopWatch } from '../../../../base/common/stopwatch.js';
 import { ICodeEditor } from '../../../browser/editorBrowser.js';
 import { EditorAction, registerEditorAction, ServicesAccessor } from '../../../browser/editorExtensions.js';

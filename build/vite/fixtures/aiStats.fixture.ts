@@ -1,8 +1,3 @@
-/*---------------------------------------------------------------------------------------------
- *  Copyright (c) Microsoft Corporation. All rights reserved.
- *  Licensed under the MIT License. See License.txt in the project root for license information.
- *--------------------------------------------------------------------------------------------*/
-
 import { observableValue } from '../../../src/vs/base/common/observable';
 import { createAiStatsHover, IAiStatsHoverData } from '../../../src/vs/workbench/contrib/editTelemetry/browser/editStats/aiStatsStatusBar';
 import { ISessionData } from '../../../src/vs/workbench/contrib/editTelemetry/browser/editStats/aiStatsChart';

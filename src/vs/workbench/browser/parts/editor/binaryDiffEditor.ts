@@ -1,8 +1,3 @@
-/*---------------------------------------------------------------------------------------------
- *  Copyright (c) Microsoft Corporation. All rights reserved.
- *  Licensed under the MIT License. See License.txt in the project root for license information.
- *--------------------------------------------------------------------------------------------*/
-
 import { localize } from '../../../../nls.js';
 import { BINARY_DIFF_EDITOR_ID } from '../../../common/editor.js';
 import { ITelemetryService } from '../../../../platform/telemetry/common/telemetry.js';

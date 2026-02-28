@@ -1,8 +1,3 @@
-/*---------------------------------------------------------------------------------------------
- *  Copyright (c) Microsoft Corporation. All rights reserved.
- *  Licensed under the MIT License. See License.txt in the project root for license information.
- *--------------------------------------------------------------------------------------------*/
-
 import * as cp from 'child_process';
 import { getDriveLetter } from '../../../../base/common/extpath.js';
 import * as platform from '../../../../base/common/platform.js';

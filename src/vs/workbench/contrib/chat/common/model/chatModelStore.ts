@@ -1,8 +1,3 @@
-/*---------------------------------------------------------------------------------------------
- *  Copyright (c) Microsoft Corporation. All rights reserved.
- *  Licensed under the MIT License. See License.txt in the project root for license information.
- *--------------------------------------------------------------------------------------------*/
-
 import { Emitter } from '../../../../../base/common/event.js';
 import { DisposableStore, IDisposable, IReference, ReferenceCollection } from '../../../../../base/common/lifecycle.js';
 import { ObservableMap } from '../../../../../base/common/observable.js';

@@ -1,8 +1,3 @@
-/*---------------------------------------------------------------------------------------------
- *  Copyright (c) Microsoft Corporation. All rights reserved.
- *  Licensed under the MIT License. See License.txt in the project root for license information.
- *--------------------------------------------------------------------------------------------*/
-
 import { Dimension } from '../../../../base/browser/dom.js';
 import { Event } from '../../../../base/common/event.js';
 import { readHotReloadableExport } from '../../../../base/common/hotReloadHelpers.js';

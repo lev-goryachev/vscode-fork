@@ -1,8 +1,3 @@
-/*---------------------------------------------------------------------------------------------
- *  Copyright (c) Microsoft Corporation. All rights reserved.
- *  Licensed under the MIT License. See License.txt in the project root for license information.
- *--------------------------------------------------------------------------------------------*/
-
 import { deepStrictEqual, notStrictEqual, ok, strictEqual } from 'assert';
 import { platform } from 'os';
 import { env, TerminalShellExecutionCommandLineConfidence, UIKind, window, workspace, type Disposable, type Terminal, type TerminalShellExecution, type TerminalShellExecutionCommandLine, type TerminalShellExecutionEndEvent, type TerminalShellIntegration } from 'vscode';

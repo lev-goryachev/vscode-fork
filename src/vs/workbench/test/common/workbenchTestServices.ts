@@ -1,8 +1,3 @@
-/*---------------------------------------------------------------------------------------------
- *  Copyright (c) Microsoft Corporation. All rights reserved.
- *  Licensed under the MIT License. See License.txt in the project root for license information.
- *--------------------------------------------------------------------------------------------*/
-
 import { DeferredPromise, timeout } from '../../../base/common/async.js';
 import { bufferToStream, readableToBuffer, VSBuffer, VSBufferReadable } from '../../../base/common/buffer.js';
 import { CancellationToken } from '../../../base/common/cancellation.js';

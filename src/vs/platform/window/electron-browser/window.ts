@@ -1,8 +1,3 @@
-/*---------------------------------------------------------------------------------------------
- *  Copyright (c) Microsoft Corporation. All rights reserved.
- *  Licensed under the MIT License. See License.txt in the project root for license information.
- *--------------------------------------------------------------------------------------------*/
-
 import { getZoomLevel, setZoomFactor, setZoomLevel } from '../../../base/browser/browser.js';
 import { getActiveWindow, getWindows } from '../../../base/browser/dom.js';
 import { mainWindow } from '../../../base/browser/window.js';

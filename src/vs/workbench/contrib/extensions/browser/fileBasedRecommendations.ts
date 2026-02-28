@@ -1,8 +1,3 @@
-/*---------------------------------------------------------------------------------------------
- *  Copyright (c) Microsoft Corporation. All rights reserved.
- *  Licensed under the MIT License. See License.txt in the project root for license information.
- *--------------------------------------------------------------------------------------------*/
-
 import { ExtensionRecommendations, GalleryExtensionRecommendation } from './extensionRecommendations.js';
 import { EnablementState } from '../../../services/extensionManagement/common/extensionManagement.js';
 import { ExtensionRecommendationReason, IExtensionIgnoredRecommendationsService } from '../../../services/extensionRecommendations/common/extensionRecommendations.js';

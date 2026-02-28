@@ -1,8 +1,3 @@
-/*---------------------------------------------------------------------------------------------
- *  Copyright (c) Microsoft Corporation. All rights reserved.
- *  Licensed under the MIT License. See License.txt in the project root for license information.
- *--------------------------------------------------------------------------------------------*/
-
 import assert from 'assert';
 import { decodeBase64, encodeBase64, VSBuffer } from '../../../../../base/common/buffer.js';
 import { Emitter } from '../../../../../base/common/event.js';

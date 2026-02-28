@@ -1,8 +1,3 @@
-/*---------------------------------------------------------------------------------------------
- *  Copyright (c) Microsoft Corporation. All rights reserved.
- *  Licensed under the MIT License. See License.txt in the project root for license information.
- *--------------------------------------------------------------------------------------------*/
-
 import { IAsyncDataSource } from '../../../../../../base/browser/ui/tree/tree.js';
 import { CancellationTokenSource } from '../../../../../../base/common/cancellation.js';
 import { localize } from '../../../../../../nls.js';

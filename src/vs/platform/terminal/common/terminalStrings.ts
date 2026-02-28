@@ -1,8 +1,3 @@
-/*---------------------------------------------------------------------------------------------
- *  Copyright (c) Microsoft Corporation. All rights reserved.
- *  Licensed under the MIT License. See License.txt in the project root for license information.
- *--------------------------------------------------------------------------------------------*/
-
 export interface ITerminalFormatMessageOptions {
 	/**
 	 * Whether to exclude the new line at the start of the message. Defaults to false.

@@ -1,7 +1,4 @@
 #!/usr/bin/env sh
-#
-# Copyright (c) Microsoft Corporation. All rights reserved.
-#
 ROOT="$(dirname "$(dirname "$(dirname "$(readlink -f "$0")")")")"
 
 APP_NAME="@@APPNAME@@"

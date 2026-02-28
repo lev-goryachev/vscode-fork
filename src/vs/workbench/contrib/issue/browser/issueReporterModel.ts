@@ -1,8 +1,3 @@
-/*---------------------------------------------------------------------------------------------
- *  Copyright (c) Microsoft Corporation. All rights reserved.
- *  Licensed under the MIT License. See License.txt in the project root for license information.
- *--------------------------------------------------------------------------------------------*/
-
 import { mainWindow } from '../../../../base/browser/window.js';
 import { isRemoteDiagnosticError, SystemInfo } from '../../../../platform/diagnostics/common/diagnostics.js';
 import { ISettingSearchResult, IssueReporterExtensionData, IssueType } from '../common/issue.js';

@@ -1,8 +1,3 @@
-/*---------------------------------------------------------------------------------------------
- *  Copyright (c) Microsoft Corporation. All rights reserved.
- *  Licensed under the MIT License. See License.txt in the project root for license information.
- *--------------------------------------------------------------------------------------------*/
-
 import { VSBuffer } from '../../../../../base/common/buffer.js';
 import { hashAsync } from '../../../../../base/common/hash.js';
 import { ResourceMap } from '../../../../../base/common/map.js';

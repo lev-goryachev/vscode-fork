@@ -1,8 +1,3 @@
-/*---------------------------------------------------------------------------------------------
- *  Copyright (c) Microsoft Corporation. All rights reserved.
- *  Licensed under the MIT License. See License.txt in the project root for license information.
- *--------------------------------------------------------------------------------------------*/
-
 import { PublicClientApplication, AccountInfo, SilentFlowRequest, AuthenticationResult, InteractiveRequest, LogLevel, RefreshTokenRequest, BrokerOptions, DeviceCodeRequest } from '@azure/msal-node';
 import { NativeBrokerPlugin } from '@azure/msal-node-extensions';
 import { Disposable, SecretStorage, LogOutputChannel, window, ProgressLocation, l10n, EventEmitter, workspace, env, Uri, UIKind } from 'vscode';

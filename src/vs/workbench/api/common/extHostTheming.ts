@@ -1,8 +1,3 @@
-/*---------------------------------------------------------------------------------------------
- *  Copyright (c) Microsoft Corporation. All rights reserved.
- *  Licensed under the MIT License. See License.txt in the project root for license information.
- *--------------------------------------------------------------------------------------------*/
-
 import { ColorTheme, ColorThemeKind } from './extHostTypes.js';
 import { IExtHostRpcService } from './extHostRpcService.js';
 import { ExtHostThemingShape } from './extHost.protocol.js';

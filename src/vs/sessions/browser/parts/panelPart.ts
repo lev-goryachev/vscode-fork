@@ -1,8 +1,3 @@
-/*---------------------------------------------------------------------------------------------
- *  Copyright (c) Microsoft Corporation. All rights reserved.
- *  Licensed under the MIT License. See License.txt in the project root for license information.
- *--------------------------------------------------------------------------------------------*/
-
 import '../../../workbench/browser/parts/panel/media/panelpart.css';
 import { IAction } from '../../../base/common/actions.js';
 import { ActionsOrientation } from '../../../base/browser/ui/actionbar/actionbar.js';

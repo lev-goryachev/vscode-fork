@@ -1,8 +1,3 @@
-/*---------------------------------------------------------------------------------------------
- *  Copyright (c) Microsoft Corporation. All rights reserved.
- *  Licensed under the MIT License. See License.txt in the project root for license information.
- *--------------------------------------------------------------------------------------------*/
-
 import { canASAR, importAMDNodeModule, resolveAmdNodeModulePath } from '../../../../amdX.js';
 import * as domStylesheets from '../../../../base/browser/domStylesheets.js';
 import { equals as equalArray } from '../../../../base/common/arrays.js';

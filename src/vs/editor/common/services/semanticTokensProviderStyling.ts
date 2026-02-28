@@ -1,8 +1,3 @@
-/*---------------------------------------------------------------------------------------------
- *  Copyright (c) Microsoft Corporation. All rights reserved.
- *  Licensed under the MIT License. See License.txt in the project root for license information.
- *--------------------------------------------------------------------------------------------*/
-
 import { SemanticTokensLegend, SemanticTokens } from '../languages.js';
 import { FontStyle, MetadataConsts, TokenMetadata } from '../encodedTokenAttributes.js';
 import { IThemeService } from '../../../platform/theme/common/themeService.js';

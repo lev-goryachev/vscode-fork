@@ -1,8 +1,3 @@
-/*---------------------------------------------------------------------------------------------
- *  Copyright (c) Microsoft Corporation. All rights reserved.
- *  Licensed under the MIT License. See License.txt in the project root for license information.
- *--------------------------------------------------------------------------------------------*/
-
 import { createWriteStream, WriteStream, promises } from 'fs';
 import { Readable } from 'stream';
 import { createCancelablePromise, Sequencer } from '../common/async.js';

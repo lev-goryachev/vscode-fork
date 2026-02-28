@@ -1,8 +1,3 @@
-/*---------------------------------------------------------------------------------------------
- *  Copyright (c) Microsoft Corporation. All rights reserved.
- *  Licensed under the MIT License. See License.txt in the project root for license information.
- *--------------------------------------------------------------------------------------------*/
-
 import { IAsyncDataSource, ITreeRenderer, ITreeNode, ITreeSorter } from '../../../../base/browser/ui/tree/tree.js';
 import { TypeHierarchyDirection, TypeHierarchyItem, TypeHierarchyModel } from '../common/typeHierarchy.js';
 import { CancellationToken } from '../../../../base/common/cancellation.js';

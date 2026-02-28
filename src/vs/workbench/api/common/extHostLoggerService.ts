@@ -1,8 +1,3 @@
-/*---------------------------------------------------------------------------------------------
- *  Copyright (c) Microsoft Corporation. All rights reserved.
- *  Licensed under the MIT License. See License.txt in the project root for license information.
- *--------------------------------------------------------------------------------------------*/
-
 import { ILogger, ILoggerOptions, AbstractMessageLogger, LogLevel, AbstractLoggerService } from '../../../platform/log/common/log.js';
 import { MainThreadLoggerShape, MainContext, ExtHostLogLevelServiceShape } from './extHost.protocol.js';
 import { IExtHostInitDataService } from './extHostInitDataService.js';

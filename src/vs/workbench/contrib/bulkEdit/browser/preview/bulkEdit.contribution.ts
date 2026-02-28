@@ -1,8 +1,3 @@
-/*---------------------------------------------------------------------------------------------
- *  Copyright (c) Microsoft Corporation. All rights reserved.
- *  Licensed under the MIT License. See License.txt in the project root for license information.
- *--------------------------------------------------------------------------------------------*/
-
 import { Registry } from '../../../../../platform/registry/common/platform.js';
 import { WorkbenchPhase, registerWorkbenchContribution2 } from '../../../../common/contributions.js';
 import { IBulkEditService, ResourceEdit } from '../../../../../editor/browser/services/bulkEditService.js';

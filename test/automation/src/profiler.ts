@@ -1,8 +1,3 @@
-/*---------------------------------------------------------------------------------------------
- *  Copyright (c) Microsoft Corporation. All rights reserved.
- *  Licensed under the MIT License. See License.txt in the project root for license information.
- *--------------------------------------------------------------------------------------------*/
-
 const { decode_bytes } = require('@vscode/v8-heap-parser');
 import { Code } from './code';
 import { PlaywrightDriver } from './playwrightDriver';

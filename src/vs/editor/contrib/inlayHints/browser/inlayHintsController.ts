@@ -1,8 +1,3 @@
-/*---------------------------------------------------------------------------------------------
- *  Copyright (c) Microsoft Corporation. All rights reserved.
- *  Licensed under the MIT License. See License.txt in the project root for license information.
- *--------------------------------------------------------------------------------------------*/
-
 import { isHTMLElement, ModifierKeyEmitter } from '../../../../base/browser/dom.js';
 import { isNonEmptyArray } from '../../../../base/common/arrays.js';
 import { disposableTimeout, RunOnceScheduler } from '../../../../base/common/async.js';

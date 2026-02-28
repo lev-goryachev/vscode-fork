@@ -1,8 +1,3 @@
-/*---------------------------------------------------------------------------------------------
- *  Copyright (c) Microsoft Corporation. All rights reserved.
- *  Licensed under the MIT License. See License.txt in the project root for license information.
- *--------------------------------------------------------------------------------------------*/
-
 import { getActiveWindow } from '../../../../base/browser/dom.js';
 import { CharCode } from '../../../../base/common/charCode.js';
 import { BugIndicatingError } from '../../../../base/common/errors.js';

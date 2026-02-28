@@ -1,8 +1,3 @@
-/*---------------------------------------------------------------------------------------------
- *  Copyright (c) Microsoft Corporation. All rights reserved.
- *  Licensed under the MIT License. See License.txt in the project root for license information.
- *--------------------------------------------------------------------------------------------*/
-
 import { Cache } from './cache';
 import type { Annotation } from '../../autocomplete-parser/parseArguments';
 import type { Suggestion } from '../../shared/internal';

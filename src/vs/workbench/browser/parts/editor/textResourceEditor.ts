@@ -1,8 +1,3 @@
-/*---------------------------------------------------------------------------------------------
- *  Copyright (c) Microsoft Corporation. All rights reserved.
- *  Licensed under the MIT License. See License.txt in the project root for license information.
- *--------------------------------------------------------------------------------------------*/
-
 import { assertReturnsDefined } from '../../../../base/common/types.js';
 import { ICodeEditor, IPasteEvent } from '../../../../editor/browser/editorBrowser.js';
 import { IEditorOpenContext, isTextEditorViewState } from '../../../common/editor.js';

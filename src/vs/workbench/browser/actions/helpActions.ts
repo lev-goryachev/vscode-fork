@@ -1,8 +1,3 @@
-/*---------------------------------------------------------------------------------------------
- *  Copyright (c) Microsoft Corporation. All rights reserved.
- *  Licensed under the MIT License. See License.txt in the project root for license information.
- *--------------------------------------------------------------------------------------------*/
-
 import { localize, localize2 } from '../../../nls.js';
 import product from '../../../platform/product/common/product.js';
 import { isMacintosh, isLinux, language, isWeb } from '../../../base/common/platform.js';

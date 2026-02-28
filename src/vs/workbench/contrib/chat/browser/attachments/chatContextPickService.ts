@@ -1,7 +1,3 @@
-/*---------------------------------------------------------------------------------------------
- *  Copyright (c) Microsoft Corporation. All rights reserved.
- *  Licensed under the MIT License. See License.txt in the project root for license information.
- *--------------------------------------------------------------------------------------------*/
 import { CancellationToken, CancellationTokenSource } from '../../../../../base/common/cancellation.js';
 import { IDisposable, toDisposable } from '../../../../../base/common/lifecycle.js';
 import { derived, IObservable, ObservablePromise } from '../../../../../base/common/observable.js';

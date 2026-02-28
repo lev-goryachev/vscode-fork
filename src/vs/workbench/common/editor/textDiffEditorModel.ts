@@ -1,8 +1,3 @@
-/*---------------------------------------------------------------------------------------------
- *  Copyright (c) Microsoft Corporation. All rights reserved.
- *  Licensed under the MIT License. See License.txt in the project root for license information.
- *--------------------------------------------------------------------------------------------*/
-
 import { IDiffEditorModel } from '../../../editor/common/editorCommon.js';
 import { BaseTextEditorModel } from './textEditorModel.js';
 import { DiffEditorModel } from './diffEditorModel.js';

@@ -1,8 +1,3 @@
-/*---------------------------------------------------------------------------------------------
- *  Copyright (c) Microsoft Corporation. All rights reserved.
- *  Licensed under the MIT License. See License.txt in the project root for license information.
- *--------------------------------------------------------------------------------------------*/
-
 import { assertFn, checkAdjacentItems } from '../../../../../base/common/assert.js';
 import { IReader } from '../../../../../base/common/observable.js';
 import { RangeMapping as DiffRangeMapping } from '../../../../../editor/common/diff/rangeMapping.js';

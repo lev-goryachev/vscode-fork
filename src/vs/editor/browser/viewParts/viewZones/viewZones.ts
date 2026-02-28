@@ -1,8 +1,3 @@
-/*---------------------------------------------------------------------------------------------
- *  Copyright (c) Microsoft Corporation. All rights reserved.
- *  Licensed under the MIT License. See License.txt in the project root for license information.
- *--------------------------------------------------------------------------------------------*/
-
 import { FastDomNode, createFastDomNode } from '../../../../base/browser/fastDomNode.js';
 import { onUnexpectedError } from '../../../../base/common/errors.js';
 import { IViewZone, IViewZoneChangeAccessor } from '../../editorBrowser.js';

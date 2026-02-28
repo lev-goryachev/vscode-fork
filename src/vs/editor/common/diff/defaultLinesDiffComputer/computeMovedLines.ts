@@ -1,8 +1,3 @@
-/*---------------------------------------------------------------------------------------------
- *  Copyright (c) Microsoft Corporation. All rights reserved.
- *  Licensed under the MIT License. See License.txt in the project root for license information.
- *--------------------------------------------------------------------------------------------*/
-
 import { ITimeout, SequenceDiff } from './algorithms/diffAlgorithm.js';
 import { DetailedLineRangeMapping, LineRangeMapping } from '../rangeMapping.js';
 import { pushMany, compareBy, numberComparator, reverseOrder } from '../../../../base/common/arrays.js';

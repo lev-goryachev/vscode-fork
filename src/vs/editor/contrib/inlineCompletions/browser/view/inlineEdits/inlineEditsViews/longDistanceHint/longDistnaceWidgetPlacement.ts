@@ -1,8 +1,3 @@
-/*---------------------------------------------------------------------------------------------
- *  Copyright (c) Microsoft Corporation. All rights reserved.
- *  Licensed under the MIT License. See License.txt in the project root for license information.
- *--------------------------------------------------------------------------------------------*/
-
 import { derived, IReader } from '../../../../../../../../base/common/observable.js';
 import { ObservableCodeEditor } from '../../../../../../../browser/observableCodeEditor.js';
 import { Size2D } from '../../../../../../../common/core/2d/size.js';

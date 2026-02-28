@@ -1,8 +1,3 @@
-/*---------------------------------------------------------------------------------------------
- *  Copyright (c) Microsoft Corporation. All rights reserved.
- *  Licensed under the MIT License. See License.txt in the project root for license information.
- *--------------------------------------------------------------------------------------------*/
-
 import { getZoomFactor } from '../../../base/browser/browser.js';
 import { getWindow, getWindowId } from '../../../base/browser/dom.js';
 import { IConfigurationService } from '../../../platform/configuration/common/configuration.js';

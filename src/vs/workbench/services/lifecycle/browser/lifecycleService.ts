@@ -1,8 +1,3 @@
-/*---------------------------------------------------------------------------------------------
- *  Copyright (c) Microsoft Corporation. All rights reserved.
- *  Licensed under the MIT License. See License.txt in the project root for license information.
- *--------------------------------------------------------------------------------------------*/
-
 import { ShutdownReason, ILifecycleService, StartupKind } from '../common/lifecycle.js';
 import { ILogService } from '../../../../platform/log/common/log.js';
 import { AbstractLifecycleService } from '../common/lifecycleService.js';

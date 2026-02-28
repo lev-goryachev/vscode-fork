@@ -1,8 +1,3 @@
-/*---------------------------------------------------------------------------------------------
- *  Copyright (c) Microsoft Corporation. All rights reserved.
- *  Licensed under the MIT License. See License.txt in the project root for license information.
- *--------------------------------------------------------------------------------------------*/
-
 import { mainWindow } from '../../../../base/browser/window.js';
 import { Schemas } from '../../../../base/common/network.js';
 import { IConfigurationService } from '../../../../platform/configuration/common/configuration.js';

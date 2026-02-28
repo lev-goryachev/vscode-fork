@@ -1,8 +1,3 @@
-/*---------------------------------------------------------------------------------------------
- *  Copyright (c) Microsoft Corporation. All rights reserved.
- *  Licensed under the MIT License. See License.txt in the project root for license information.
- *--------------------------------------------------------------------------------------------*/
-
 import type { IBuffer, IBufferCell, IBufferLine, IMarker, Terminal } from '@xterm/headless';
 import { throttle } from '../../../../../base/common/decorators.js';
 import { Emitter, Event } from '../../../../../base/common/event.js';

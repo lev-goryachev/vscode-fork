@@ -1,8 +1,3 @@
-/*---------------------------------------------------------------------------------------------
- *  Copyright (c) Microsoft Corporation. All rights reserved.
- *  Licensed under the MIT License. See License.txt in the project root for license information.
- *--------------------------------------------------------------------------------------------*/
-
 import type { SerializeAddon as SerializeAddonType } from '@xterm/addon-serialize';
 import type { WebglAddon as WebglAddonType } from '@xterm/addon-webgl';
 import type { LigaturesAddon as LigaturesAddonType } from '@xterm/addon-ligatures';

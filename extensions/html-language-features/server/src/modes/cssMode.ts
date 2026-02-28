@@ -1,8 +1,3 @@
-/*---------------------------------------------------------------------------------------------
- *  Copyright (c) Microsoft Corporation. All rights reserved.
- *  Licensed under the MIT License. See License.txt in the project root for license information.
- *--------------------------------------------------------------------------------------------*/
-
 import { LanguageModelCache, getLanguageModelCache } from '../languageModelCache';
 import { Stylesheet, LanguageService as CSSLanguageService } from 'vscode-css-languageservice';
 import { LanguageMode, Workspace, Color, TextDocument, Position, Range, CompletionList, DocumentContext, Diagnostic } from './languageModes';

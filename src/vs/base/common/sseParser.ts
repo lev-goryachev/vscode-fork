@@ -1,8 +1,3 @@
-/*---------------------------------------------------------------------------------------------
- *  Copyright (c) Microsoft Corporation. All rights reserved.
- *  Licensed under the MIT License. See License.txt in the project root for license information.
- *--------------------------------------------------------------------------------------------*/
-
 /**
  * Parser for Server-Sent Events (SSE) streams according to the HTML specification.
  * @see https://html.spec.whatwg.org/multipage/server-sent-events.html#event-stream-interpretation

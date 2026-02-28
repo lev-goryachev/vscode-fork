@@ -1,8 +1,3 @@
-/*---------------------------------------------------------------------------------------------
- *  Copyright (c) Microsoft Corporation. All rights reserved.
- *  Licensed under the MIT License. See License.txt in the project root for license information.
- *--------------------------------------------------------------------------------------------*/
-
 import { $, append, clearNode, getContentHeight, getContentWidth } from '../../dom.js';
 import { createStyleSheet } from '../../domStylesheets.js';
 import { getBaseLayerHoverDelegate } from '../hover/hoverDelegate2.js';

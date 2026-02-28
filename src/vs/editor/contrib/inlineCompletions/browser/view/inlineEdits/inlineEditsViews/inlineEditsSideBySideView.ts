@@ -1,7 +1,3 @@
-/*---------------------------------------------------------------------------------------------
- *  Copyright (c) Microsoft Corporation. All rights reserved.
- *  Licensed under the MIT License. See License.txt in the project root for license information.
- *--------------------------------------------------------------------------------------------*/
 import { $, getWindow, n } from '../../../../../../../base/browser/dom.js';
 import { Color } from '../../../../../../../base/common/color.js';
 import { Emitter } from '../../../../../../../base/common/event.js';

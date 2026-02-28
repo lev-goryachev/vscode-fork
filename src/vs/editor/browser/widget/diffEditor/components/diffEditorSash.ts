@@ -1,8 +1,3 @@
-/*---------------------------------------------------------------------------------------------
- *  Copyright (c) Microsoft Corporation. All rights reserved.
- *  Licensed under the MIT License. See License.txt in the project root for license information.
- *--------------------------------------------------------------------------------------------*/
-
 import { IBoundarySashes, ISashEvent, Orientation, Sash, SashState } from '../../../../../base/browser/ui/sash/sash.js';
 import { Disposable } from '../../../../../base/common/lifecycle.js';
 import { IObservable, IReader, ISettableObservable, autorun, derivedWithSetter, observableValue } from '../../../../../base/common/observable.js';

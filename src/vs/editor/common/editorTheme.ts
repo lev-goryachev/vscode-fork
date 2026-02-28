@@ -1,8 +1,3 @@
-/*---------------------------------------------------------------------------------------------
- *  Copyright (c) Microsoft Corporation. All rights reserved.
- *  Licensed under the MIT License. See License.txt in the project root for license information.
- *--------------------------------------------------------------------------------------------*/
-
 import { IColorTheme } from '../../platform/theme/common/themeService.js';
 import { ColorIdentifier } from '../../platform/theme/common/colorRegistry.js';
 import { Color } from '../../base/common/color.js';

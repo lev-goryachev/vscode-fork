@@ -1,8 +1,3 @@
-/*---------------------------------------------------------------------------------------------
- *  Copyright (c) Microsoft Corporation. All rights reserved.
- *  Licensed under the MIT License. See License.txt in the project root for license information.
- *--------------------------------------------------------------------------------------------*/
-
 import { withoutDuplicates } from '../../../../base/common/arrays.js';
 import { Disposable } from '../../../../base/common/lifecycle.js';
 import { autorun, observableFromEvent } from '../../../../base/common/observable.js';

@@ -1,8 +1,3 @@
-/*---------------------------------------------------------------------------------------------
- *  Copyright (c) Microsoft Corporation. All rights reserved.
- *  Licensed under the MIT License. See License.txt in the project root for license information.
- *--------------------------------------------------------------------------------------------*/
-
 import { IElementData, INativeBrowserElementsService, IBrowserTargetLocator } from '../../../../platform/browserElements/common/browserElements.js';
 import { IRectangle } from '../../../../platform/window/common/window.js';
 import { ipcRenderer } from '../../../../base/parts/sandbox/electron-browser/globals.js';

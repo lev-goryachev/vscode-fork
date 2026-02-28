@@ -1,8 +1,4 @@
 #!/usr/bin/env sh
-#
-# Copyright (c) Microsoft Corporation. All rights reserved.
-#
-
 set -e
 
 # The script checks necessary server requirements for the classic server

@@ -1,8 +1,3 @@
-/*---------------------------------------------------------------------------------------------
- *  Copyright (c) Microsoft Corporation. All rights reserved.
- *  Licensed under the MIT License. See License.txt in the project root for license information.
- *--------------------------------------------------------------------------------------------*/
-
 import { LogLevel as MsalLogLevel } from '@azure/msal-node';
 import { env, LogLevel, LogOutputChannel } from 'vscode';
 import { MicrosoftAuthenticationTelemetryReporter } from './telemetryReporter';

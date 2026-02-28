@@ -1,8 +1,3 @@
-/*---------------------------------------------------------------------------------------------
- *  Copyright (c) Microsoft Corporation. All rights reserved.
- *  Licensed under the MIT License. See License.txt in the project root for license information.
- *--------------------------------------------------------------------------------------------*/
-
 import { IDiffChange, LcsDiff } from '../../../../../base/common/diff/diff.js';
 import { getLeadingWhitespace } from '../../../../../base/common/strings.js';
 import { Position } from '../../../../common/core/position.js';

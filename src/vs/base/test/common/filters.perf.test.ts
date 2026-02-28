@@ -1,7 +1,3 @@
-/*---------------------------------------------------------------------------------------------
- *  Copyright (c) Microsoft Corporation. All rights reserved.
- *  Licensed under the MIT License. See License.txt in the project root for license information.
- *--------------------------------------------------------------------------------------------*/
 import { importAMDNodeModule } from '../../../amdX.js';
 import * as filters from '../../common/filters.js';
 import { FileAccess } from '../../common/network.js';

@@ -1,8 +1,3 @@
-/*---------------------------------------------------------------------------------------------
- *  Copyright (c) Microsoft Corporation. All rights reserved.
- *  Licensed under the MIT License. See License.txt in the project root for license information.
- *--------------------------------------------------------------------------------------------*/
-
 import { ICellOutputViewModel, ICellViewModel } from '../../../browser/notebookBrowser.js';
 import { mock } from '../../../../../../base/test/common/mock.js';
 import { IClipboardService } from '../../../../../../platform/clipboard/common/clipboardService.js';

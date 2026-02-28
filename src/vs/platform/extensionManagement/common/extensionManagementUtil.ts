@@ -1,8 +1,3 @@
-/*---------------------------------------------------------------------------------------------
- *  Copyright (c) Microsoft Corporation. All rights reserved.
- *  Licensed under the MIT License. See License.txt in the project root for license information.
- *--------------------------------------------------------------------------------------------*/
-
 import { compareIgnoreCase } from '../../../base/common/strings.js';
 import { IExtensionIdentifier, IGalleryExtension, ILocalExtension, MaliciousExtensionInfo, getTargetPlatform } from './extensionManagement.js';
 import { ExtensionIdentifier, IExtension, TargetPlatform, UNDEFINED_PUBLISHER } from '../../extensions/common/extensions.js';

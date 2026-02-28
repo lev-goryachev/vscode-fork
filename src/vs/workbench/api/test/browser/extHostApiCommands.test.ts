@@ -1,8 +1,3 @@
-/*---------------------------------------------------------------------------------------------
- *  Copyright (c) Microsoft Corporation. All rights reserved.
- *  Licensed under the MIT License. See License.txt in the project root for license information.
- *--------------------------------------------------------------------------------------------*/
-
 import '../../../../editor/contrib/codeAction/browser/codeAction.js';
 import '../../../../editor/contrib/codelens/browser/codelens.js';
 import '../../../../editor/contrib/colorPicker/browser/colorPickerContribution.js';

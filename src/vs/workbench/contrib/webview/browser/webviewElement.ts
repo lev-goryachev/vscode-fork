@@ -1,8 +1,3 @@
-/*---------------------------------------------------------------------------------------------
- *  Copyright (c) Microsoft Corporation. All rights reserved.
- *  Licensed under the MIT License. See License.txt in the project root for license information.
- *--------------------------------------------------------------------------------------------*/
-
 import { isFirefox } from '../../../../base/browser/browser.js';
 import { addDisposableListener, EventType, getWindow, getWindowById } from '../../../../base/browser/dom.js';
 import { parentOriginHash } from '../../../../base/browser/iframe.js';

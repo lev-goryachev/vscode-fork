@@ -1,8 +1,3 @@
-/*---------------------------------------------------------------------------------------------
- *  Copyright (c) Microsoft Corporation. All rights reserved.
- *  Licensed under the MIT License. See License.txt in the project root for license information.
- *--------------------------------------------------------------------------------------------*/
-
 import { Dimension, getWindow, h, scheduleAtNextAnimationFrame } from '../../../../base/browser/dom.js';
 import { SmoothScrollableElement } from '../../../../base/browser/ui/scrollbar/scrollableElement.js';
 import { compareBy, numberComparator } from '../../../../base/common/arrays.js';

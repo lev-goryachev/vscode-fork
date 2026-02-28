@@ -1,8 +1,3 @@
-/*---------------------------------------------------------------------------------------------
- *  Copyright (c) Microsoft Corporation. All rights reserved.
- *  Licensed under the MIT License. See License.txt in the project root for license information.
- *--------------------------------------------------------------------------------------------*/
-
 import { CharCode } from './charCode.js';
 import { isAbsolute, join, normalize, posix, sep } from './path.js';
 import { isWindows } from './platform.js';

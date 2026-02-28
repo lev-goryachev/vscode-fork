@@ -1,7 +1,4 @@
 #!/usr/bin/env bash
-#
-# Copyright (c) Microsoft Corporation. All rights reserved.
-#
 realdir() {
 	SOURCE=$1
 	while [ -h "$SOURCE" ]; do

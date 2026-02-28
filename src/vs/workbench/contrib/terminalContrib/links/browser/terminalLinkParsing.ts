@@ -1,8 +1,3 @@
-/*---------------------------------------------------------------------------------------------
- *  Copyright (c) Microsoft Corporation. All rights reserved.
- *  Licensed under the MIT License. See License.txt in the project root for license information.
- *--------------------------------------------------------------------------------------------*/
-
 /**
  * This module is responsible for parsing possible links out of lines with only access to the line
  * text and the target operating system, ie. it does not do any validation that paths actually

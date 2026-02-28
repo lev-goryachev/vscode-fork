@@ -1,8 +1,3 @@
-/*---------------------------------------------------------------------------------------------
- *  Copyright (c) Microsoft Corporation. All rights reserved.
- *  Licensed under the MIT License. See License.txt in the project root for license information.
- *--------------------------------------------------------------------------------------------*/
-
 import { IIdentityProvider, IListVirtualDelegate } from '../list/list.js';
 import { AbstractTree, AbstractTreeViewState, IAbstractTreeOptions } from './abstractTree.js';
 import { ObjectTreeModel } from './objectTreeModel.js';

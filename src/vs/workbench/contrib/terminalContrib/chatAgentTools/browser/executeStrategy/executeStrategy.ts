@@ -1,8 +1,3 @@
-/*---------------------------------------------------------------------------------------------
- *  Copyright (c) Microsoft Corporation. All rights reserved.
- *  Licensed under the MIT License. See License.txt in the project root for license information.
- *--------------------------------------------------------------------------------------------*/
-
 import { DeferredPromise, RunOnceScheduler } from '../../../../../../base/common/async.js';
 import type { CancellationToken } from '../../../../../../base/common/cancellation.js';
 import type { Event } from '../../../../../../base/common/event.js';

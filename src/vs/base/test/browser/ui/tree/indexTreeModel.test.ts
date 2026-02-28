@@ -1,8 +1,3 @@
-/*---------------------------------------------------------------------------------------------
- *  Copyright (c) Microsoft Corporation. All rights reserved.
- *  Licensed under the MIT License. See License.txt in the project root for license information.
- *--------------------------------------------------------------------------------------------*/
-
 import assert from 'assert';
 import { IIndexTreeModelSpliceOptions, IIndexTreeNode, IndexTreeModel } from '../../../../browser/ui/tree/indexTreeModel.js';
 import { ITreeElement, ITreeFilter, ITreeNode, TreeVisibility } from '../../../../browser/ui/tree/tree.js';

@@ -1,8 +1,3 @@
-/*---------------------------------------------------------------------------------------------
- *  Copyright (c) Microsoft Corporation. All rights reserved.
- *  Licensed under the MIT License. See License.txt in the project root for license information.
- *--------------------------------------------------------------------------------------------*/
-
 import { registerAttachPromptActions } from './attachInstructionsAction.js';
 import { registerAgentActions } from './chatModeActions.js';
 import { registerRunPromptActions } from './runPromptAction.js';

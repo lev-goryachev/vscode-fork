@@ -1,8 +1,3 @@
-/*---------------------------------------------------------------------------------------------
- *  Copyright (c) Microsoft Corporation. All rights reserved.
- *  Licensed under the MIT License. See License.txt in the project root for license information.
- *--------------------------------------------------------------------------------------------*/
-
 import { IExtensionManagementService } from '../common/extensionManagement.js';
 import { IFileService } from '../../files/common/files.js';
 import { IProductService } from '../../product/common/productService.js';

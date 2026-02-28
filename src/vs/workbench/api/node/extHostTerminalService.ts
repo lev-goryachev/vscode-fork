@@ -1,8 +1,3 @@
-/*---------------------------------------------------------------------------------------------
- *  Copyright (c) Microsoft Corporation. All rights reserved.
- *  Licensed under the MIT License. See License.txt in the project root for license information.
- *--------------------------------------------------------------------------------------------*/
-
 import { generateUuid } from '../../../base/common/uuid.js';
 import { IExtHostRpcService } from '../common/extHostRpcService.js';
 import { BaseExtHostTerminalService, ExtHostTerminal, ITerminalInternalOptions } from '../common/extHostTerminalService.js';

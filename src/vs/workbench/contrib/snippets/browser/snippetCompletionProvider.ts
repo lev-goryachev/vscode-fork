@@ -1,8 +1,3 @@
-/*---------------------------------------------------------------------------------------------
- *  Copyright (c) Microsoft Corporation. All rights reserved.
- *  Licensed under the MIT License. See License.txt in the project root for license information.
- *--------------------------------------------------------------------------------------------*/
-
 import { MarkdownString } from '../../../../base/common/htmlContent.js';
 import { compare, compareSubstring } from '../../../../base/common/strings.js';
 import { Position } from '../../../../editor/common/core/position.js';

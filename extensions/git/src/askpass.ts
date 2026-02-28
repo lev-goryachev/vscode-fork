@@ -1,8 +1,3 @@
-/*---------------------------------------------------------------------------------------------
- *  Copyright (c) Microsoft Corporation. All rights reserved.
- *  Licensed under the MIT License. See License.txt in the project root for license information.
- *--------------------------------------------------------------------------------------------*/
-
 import { window, InputBoxOptions, Uri, Disposable, workspace, QuickPickOptions, l10n, LogOutputChannel } from 'vscode';
 import { IDisposable, EmptyDisposable, toDisposable, extractFilePathFromArgs } from './util';
 import { IIPCHandler, IIPCServer } from './ipc/ipcServer';

@@ -1,8 +1,3 @@
-/*---------------------------------------------------------------------------------------------
- *  Copyright (c) Microsoft Corporation. All rights reserved.
- *  Licensed under the MIT License. See License.txt in the project root for license information.
- *--------------------------------------------------------------------------------------------*/
-
 import { IHighlight } from '../../../../base/browser/ui/highlightedlabel/highlightedLabel.js';
 import { Color, RGBA } from '../../../../base/common/color.js';
 import { isDefined } from '../../../../base/common/types.js';

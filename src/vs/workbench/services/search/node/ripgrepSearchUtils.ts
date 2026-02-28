@@ -1,8 +1,3 @@
-/*---------------------------------------------------------------------------------------------
- *  Copyright (c) Microsoft Corporation. All rights reserved.
- *  Licensed under the MIT License. See License.txt in the project root for license information.
- *--------------------------------------------------------------------------------------------*/
-
 import { ILogService } from '../../../../platform/log/common/log.js';
 import { SearchRange } from '../common/search.js';
 import * as searchExtTypes from '../common/searchExtTypes.js';

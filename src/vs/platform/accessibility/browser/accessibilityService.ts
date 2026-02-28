@@ -1,8 +1,3 @@
-/*---------------------------------------------------------------------------------------------
- *  Copyright (c) Microsoft Corporation. All rights reserved.
- *  Licensed under the MIT License. See License.txt in the project root for license information.
- *--------------------------------------------------------------------------------------------*/
-
 import { addDisposableListener } from '../../../base/browser/dom.js';
 import { alert, status } from '../../../base/browser/ui/aria/aria.js';
 import { mainWindow } from '../../../base/browser/window.js';

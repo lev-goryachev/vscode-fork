@@ -1,8 +1,3 @@
-/*---------------------------------------------------------------------------------------------
- *  Copyright (c) Microsoft Corporation. All rights reserved.
- *  Licensed under the MIT License. See License.txt in the project root for license information.
- *--------------------------------------------------------------------------------------------*/
-
 import { Command, l10n, LogOutputChannel, workspace } from 'vscode';
 import { Commit, Repository as GitHubRepository, Maybe } from '@octokit/graphql-schema';
 import { API, AvatarQuery, AvatarQueryCommit, Repository, SourceControlHistoryItemDetailsProvider } from './typings/git.js';

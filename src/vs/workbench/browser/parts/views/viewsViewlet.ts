@@ -1,8 +1,3 @@
-/*---------------------------------------------------------------------------------------------
- *  Copyright (c) Microsoft Corporation. All rights reserved.
- *  Licensed under the MIT License. See License.txt in the project root for license information.
- *--------------------------------------------------------------------------------------------*/
-
 import { IExtensionService } from '../../../services/extensions/common/extensions.js';
 import { IContextMenuService } from '../../../../platform/contextview/browser/contextView.js';
 import { IViewDescriptor, IViewDescriptorService, IAddedViewDescriptorRef, IView } from '../../../common/views.js';

@@ -1,8 +1,3 @@
-/*---------------------------------------------------------------------------------------------
- *  Copyright (c) Microsoft Corporation. All rights reserved.
- *  Licensed under the MIT License. See License.txt in the project root for license information.
- *--------------------------------------------------------------------------------------------*/
-
 import type { IMarker as XtermMarker } from '@xterm/xterm';
 import { IAction } from '../../../../../../../base/common/actions.js';
 import { timeout, type MaybePromise } from '../../../../../../../base/common/async.js';

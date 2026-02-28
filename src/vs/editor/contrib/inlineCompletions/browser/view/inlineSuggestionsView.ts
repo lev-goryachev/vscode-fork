@@ -1,8 +1,3 @@
-/*---------------------------------------------------------------------------------------------
- *  Copyright (c) Microsoft Corporation. All rights reserved.
- *  Licensed under the MIT License. See License.txt in the project root for license information.
- *--------------------------------------------------------------------------------------------*/
-
 import { createStyleSheetFromObservable } from '../../../../../base/browser/domStylesheets.js';
 import { createHotClass } from '../../../../../base/common/hotReloadHelpers.js';
 import { Disposable } from '../../../../../base/common/lifecycle.js';

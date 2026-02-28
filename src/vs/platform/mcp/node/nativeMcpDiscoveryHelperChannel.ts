@@ -1,8 +1,3 @@
-/*---------------------------------------------------------------------------------------------
- *  Copyright (c) Microsoft Corporation. All rights reserved.
- *  Licensed under the MIT License. See License.txt in the project root for license information.
- *--------------------------------------------------------------------------------------------*/
-
 import { Event } from '../../../base/common/event.js';
 import { IURITransformer, transformOutgoingURIs } from '../../../base/common/uriIpc.js';
 import { IServerChannel } from '../../../base/parts/ipc/common/ipc.js';

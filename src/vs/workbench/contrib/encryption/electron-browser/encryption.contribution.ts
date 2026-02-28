@@ -1,8 +1,3 @@
-/*---------------------------------------------------------------------------------------------
- *  Copyright (c) Microsoft Corporation. All rights reserved.
- *  Licensed under the MIT License. See License.txt in the project root for license information.
- *--------------------------------------------------------------------------------------------*/
-
 import { isLinux } from '../../../../base/common/platform.js';
 import { parse } from '../../../../base/common/jsonc.js';
 import { IEnvironmentService } from '../../../../platform/environment/common/environment.js';

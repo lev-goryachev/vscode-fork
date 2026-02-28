@@ -1,8 +1,3 @@
-/*---------------------------------------------------------------------------------------------
- *  Copyright (c) Microsoft Corporation. All rights reserved.
- *  Licensed under the MIT License. See License.txt in the project root for license information.
- *--------------------------------------------------------------------------------------------*/
-
 import { ILanguageIdCodec } from '../languages.js';
 import { FontStyle, ColorId, StandardTokenType, MetadataConsts, ITokenPresentation, TokenMetadata } from '../encodedTokenAttributes.js';
 import { IPosition } from '../core/position.js';

@@ -1,8 +1,3 @@
-/*---------------------------------------------------------------------------------------------
- *  Copyright (c) Microsoft Corporation. All rights reserved.
- *  Licensed under the MIT License. See License.txt in the project root for license information.
- *--------------------------------------------------------------------------------------------*/
-
 import { FindMatch } from '../../../../../editor/common/model.js';
 import { IFileMatch, ITextSearchMatch, TextSearchMatch } from '../../../../services/search/common/search.js';
 import { Range } from '../../../../../editor/common/core/range.js';

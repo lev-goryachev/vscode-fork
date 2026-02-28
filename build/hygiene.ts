@@ -1,8 +1,3 @@
-/*---------------------------------------------------------------------------------------------
- *  Copyright (c) Microsoft Corporation. All rights reserved.
- *  Licensed under the MIT License. See License.txt in the project root for license information.
- *--------------------------------------------------------------------------------------------*/
-
 import cp from 'child_process';
 import es from 'event-stream';
 import fs from 'fs';
@@ -16,12 +11,7 @@ import eslint from './gulp-eslint.ts';
 import * as formatter from './lib/formatter.ts';
 import gulpstylelint from './stylelint.ts';
 
-const copyrightHeaderLines = [
-	'/*---------------------------------------------------------------------------------------------',
-	' *  Copyright (c) Microsoft Corporation. All rights reserved.',
-	' *  Licensed under the MIT License. See License.txt in the project root for license information.',
-	' *--------------------------------------------------------------------------------------------*/',
-];
+const copyrightHeaderLines: string[] = [];
 
 interface VinylFileWithLines extends VinylFile {
 	__lines: string[];

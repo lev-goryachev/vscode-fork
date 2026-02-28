@@ -1,8 +1,3 @@
-/*---------------------------------------------------------------------------------------------
- *  Copyright (c) Microsoft Corporation. All rights reserved.
- *  Licensed under the MIT License. See License.txt in the project root for license information.
- *--------------------------------------------------------------------------------------------*/
-
 import { Event } from '../../../base/common/event.js';
 import { IJSONSchema } from '../../../base/common/jsonSchema.js';
 import { KeyCode } from '../../../base/common/keyCodes.js';

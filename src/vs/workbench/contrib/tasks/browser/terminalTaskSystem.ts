@@ -1,8 +1,3 @@
-/*---------------------------------------------------------------------------------------------
- *  Copyright (c) Microsoft Corporation. All rights reserved.
- *  Licensed under the MIT License. See License.txt in the project root for license information.
- *--------------------------------------------------------------------------------------------*/
-
 import { asArray } from '../../../../base/common/arrays.js';
 import * as Async from '../../../../base/common/async.js';
 import { IStringDictionary } from '../../../../base/common/collections.js';

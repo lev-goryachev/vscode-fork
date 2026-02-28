@@ -1,8 +1,3 @@
-/*---------------------------------------------------------------------------------------------
- *  Copyright (c) Microsoft Corporation. All rights reserved.
- *  Licensed under the MIT License. See License.txt in the project root for license information.
- *--------------------------------------------------------------------------------------------*/
-
 import { localize2 } from '../../../nls.js';
 import { IEditorGroupsService, GroupDirection, GroupLocation, IFindGroupScope } from '../../services/editor/common/editorGroupsService.js';
 import { IWorkbenchLayoutService, Parts } from '../../services/layout/browser/layoutService.js';

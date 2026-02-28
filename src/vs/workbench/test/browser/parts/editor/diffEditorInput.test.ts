@@ -1,8 +1,3 @@
-/*---------------------------------------------------------------------------------------------
- *  Copyright (c) Microsoft Corporation. All rights reserved.
- *  Licensed under the MIT License. See License.txt in the project root for license information.
- *--------------------------------------------------------------------------------------------*/
-
 import assert from 'assert';
 import { EditorInput } from '../../../../common/editor/editorInput.js';
 import { DiffEditorInput } from '../../../../common/editor/diffEditorInput.js';

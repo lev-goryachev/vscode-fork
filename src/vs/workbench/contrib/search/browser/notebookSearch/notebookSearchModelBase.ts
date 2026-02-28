@@ -1,8 +1,3 @@
-/*---------------------------------------------------------------------------------------------
- *  Copyright (c) Microsoft Corporation. All rights reserved.
- *  Licensed under the MIT License. See License.txt in the project root for license information.
- *--------------------------------------------------------------------------------------------*/
-
 import { ITextSearchMatch } from '../../../../services/search/common/search.js';
 import { ICellViewModel } from '../../../notebook/browser/notebookBrowser.js';
 import { NotebookEditorWidget } from '../../../notebook/browser/notebookEditorWidget.js';

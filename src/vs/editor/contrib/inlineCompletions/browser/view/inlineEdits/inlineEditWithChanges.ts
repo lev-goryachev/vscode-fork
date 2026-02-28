@@ -1,8 +1,3 @@
-/*---------------------------------------------------------------------------------------------
- *  Copyright (c) Microsoft Corporation. All rights reserved.
- *  Licensed under the MIT License. See License.txt in the project root for license information.
- *--------------------------------------------------------------------------------------------*/
-
 import { LineReplacement } from '../../../../../common/core/edits/lineEdit.js';
 import { TextEdit } from '../../../../../common/core/edits/textEdit.js';
 import { Position } from '../../../../../common/core/position.js';

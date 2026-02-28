@@ -1,8 +1,3 @@
-/*---------------------------------------------------------------------------------------------
- *  Copyright (c) Microsoft Corporation. All rights reserved.
- *  Licensed under the MIT License. See License.txt in the project root for license information.
- *--------------------------------------------------------------------------------------------*/
-
 import { testPaths, type ISuiteSpec } from './helpers';
 const expectedCompletions = [{ label: 'foo', description: 'Foo' }];
 export const figGenericTestSuites: ISuiteSpec[] = [

@@ -1,8 +1,3 @@
-/*---------------------------------------------------------------------------------------------
- *  Copyright (c) Microsoft Corporation. All rights reserved.
- *  Licensed under the MIT License. See License.txt in the project root for license information.
- *--------------------------------------------------------------------------------------------*/
-
 import { assertFn } from '../../../../base/common/assert.js';
 import { autorun } from '../../../../base/common/observable.js';
 import { isEqual } from '../../../../base/common/resources.js';

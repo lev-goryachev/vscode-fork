@@ -1,8 +1,3 @@
-/*---------------------------------------------------------------------------------------------
- *  Copyright (c) Microsoft Corporation. All rights reserved.
- *  Licensed under the MIT License. See License.txt in the project root for license information.
- *--------------------------------------------------------------------------------------------*/
-
 import fs from 'fs';
 import cp from 'child_process';
 import path from 'path';
@@ -71,12 +66,6 @@ function getNewFileHeader(shorttag: string) {
 		`// Project: https://github.com/microsoft/vscode`,
 		`// Definitions by: Visual Studio Code Team, Microsoft <https://github.com/microsoft>`,
 		`// Definitions: https://github.com/DefinitelyTyped/DefinitelyTyped`,
-		``,
-		`/*---------------------------------------------------------------------------------------------`,
-		` *  Copyright (c) Microsoft Corporation. All rights reserved.`,
-		` *  Licensed under the MIT License.`,
-		` *  See https://github.com/microsoft/vscode/blob/main/LICENSE.txt for license information.`,
-		` *--------------------------------------------------------------------------------------------*/`,
 		``,
 		`/**`,
 		` * Type Definition for Visual Studio Code ${shorttag} Extension API`,

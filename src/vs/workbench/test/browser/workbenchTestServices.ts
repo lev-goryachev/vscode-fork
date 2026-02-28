@@ -1,8 +1,3 @@
-/*---------------------------------------------------------------------------------------------
- *  Copyright (c) Microsoft Corporation. All rights reserved.
- *  Licensed under the MIT License. See License.txt in the project root for license information.
- *--------------------------------------------------------------------------------------------*/
-
 import { IContextMenuDelegate } from '../../../base/browser/contextmenu.js';
 import { IDimension } from '../../../base/browser/dom.js';
 import { Direction, IViewSize } from '../../../base/browser/ui/grid/grid.js';

@@ -1,8 +1,3 @@
-/*---------------------------------------------------------------------------------------------
- *  Copyright (c) Microsoft Corporation. All rights reserved.
- *  Licensed under the MIT License. See License.txt in the project root for license information.
- *--------------------------------------------------------------------------------------------*/
-
 import { stripIcons } from '../../../../base/common/iconLabels.js';
 import { IEditor } from '../../../common/editorCommon.js';
 import { ILocalizedString } from '../../../../nls.js';

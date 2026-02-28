@@ -1,8 +1,3 @@
-/*---------------------------------------------------------------------------------------------
- *  Copyright (c) Microsoft Corporation. All rights reserved.
- *  Licensed under the MIT License. See License.txt in the project root for license information.
- *--------------------------------------------------------------------------------------------*/
-
 import * as assert from 'assert';
 import { detectsGenericPressAnyKeyPattern, detectsInputRequiredPattern, detectsNonInteractiveHelpPattern, detectsVSCodeTaskFinishMessage, matchTerminalPromptOption, OutputMonitor } from '../../browser/tools/monitoring/outputMonitor.js';
 import { CancellationTokenSource } from '../../../../../../base/common/cancellation.js';

@@ -1,8 +1,3 @@
-/*---------------------------------------------------------------------------------------------
- *  Copyright (c) Microsoft Corporation. All rights reserved.
- *  Licensed under the MIT License. See License.txt in the project root for license information.
- *--------------------------------------------------------------------------------------------*/
-
 import { platform } from 'os';
 import { exec } from 'child_process';
 import { promisify } from 'util';
@@ -31,14 +26,6 @@ export function cleanupText(text: string): string {
 
 	return cleanedText;
 }
-
-/**
- * Copyright notice for generated files
- */
-export const copyright = `/*---------------------------------------------------------------------------------------------
- *  Copyright (c) Microsoft Corporation. All rights reserved.
- *  Licensed under the MIT License. See License.txt in the project root for license information.
- *--------------------------------------------------------------------------------------------*/`;
 
 /**
  * Checks if the script is running on Windows and exits if so

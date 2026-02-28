@@ -1,8 +1,3 @@
-/*---------------------------------------------------------------------------------------------
- *  Copyright (c) Microsoft Corporation. All rights reserved.
- *  Licensed under the MIT License. See License.txt in the project root for license information.
- *--------------------------------------------------------------------------------------------*/
-
 import { memoize } from '../../../../../base/common/decorators.js';
 import { lcut } from '../../../../../base/common/strings.js';
 import { ISearchRange, ITextSearchMatch, OneLineRange } from '../../../../services/search/common/search.js';

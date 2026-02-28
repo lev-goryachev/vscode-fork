@@ -1,8 +1,3 @@
-/*---------------------------------------------------------------------------------------------
- *  Copyright (c) Microsoft Corporation. All rights reserved.
- *  Licensed under the MIT License. See License.txt in the project root for license information.
- *--------------------------------------------------------------------------------------------*/
-
 import { IAction, IActionRunner, ActionRunner } from '../../base/common/actions.js';
 import { Component } from '../common/component.js';
 import { ITelemetryService } from '../../platform/telemetry/common/telemetry.js';

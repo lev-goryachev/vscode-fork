@@ -1,8 +1,3 @@
-/*---------------------------------------------------------------------------------------------
- *  Copyright (c) Microsoft Corporation. All rights reserved.
- *  Licensed under the MIT License. See License.txt in the project root for license information.
- *--------------------------------------------------------------------------------------------*/
-
 import { LogOutputChannel, Memento, Uri, workspace } from 'vscode';
 import { LRUCache } from './cache';
 import { Remote, RepositoryAccessDetails } from './api/git';

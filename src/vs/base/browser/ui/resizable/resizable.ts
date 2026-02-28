@@ -1,8 +1,3 @@
-/*---------------------------------------------------------------------------------------------
- *  Copyright (c) Microsoft Corporation. All rights reserved.
- *  Licensed under the MIT License. See License.txt in the project root for license information.
- *--------------------------------------------------------------------------------------------*/
-
 import { Dimension } from '../../dom.js';
 import { Orientation, OrthogonalEdge, Sash, SashState } from '../sash/sash.js';
 import { Emitter, Event } from '../../../common/event.js';

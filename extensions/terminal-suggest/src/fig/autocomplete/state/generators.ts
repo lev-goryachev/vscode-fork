@@ -1,8 +1,3 @@
-/*---------------------------------------------------------------------------------------------
- *  Copyright (c) Microsoft Corporation. All rights reserved.
- *  Licensed under the MIT License. See License.txt in the project root for license information.
- *--------------------------------------------------------------------------------------------*/
-
 import { getScriptSuggestions } from '../generators/scriptSuggestionsGenerator';
 // import { getCustomSuggestions } from '../generators/customSuggestionsGenerator';
 import { AutocompleteState } from './types';

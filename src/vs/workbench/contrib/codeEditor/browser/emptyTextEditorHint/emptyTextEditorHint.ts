@@ -1,8 +1,3 @@
-/*---------------------------------------------------------------------------------------------
- *  Copyright (c) Microsoft Corporation. All rights reserved.
- *  Licensed under the MIT License. See License.txt in the project root for license information.
- *--------------------------------------------------------------------------------------------*/
-
 import { $, addDisposableListener, getActiveWindow } from '../../../../../base/browser/dom.js';
 import { IContentActionHandler, renderFormattedText } from '../../../../../base/browser/formattedTextRenderer.js';
 import { StandardMouseEvent } from '../../../../../base/browser/mouseEvent.js';

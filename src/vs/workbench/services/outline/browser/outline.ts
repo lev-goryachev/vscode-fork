@@ -1,8 +1,3 @@
-/*---------------------------------------------------------------------------------------------
- *  Copyright (c) Microsoft Corporation. All rights reserved.
- *  Licensed under the MIT License. See License.txt in the project root for license information.
- *--------------------------------------------------------------------------------------------*/
-
 import { IListVirtualDelegate } from '../../../../base/browser/ui/list/list.js';
 import { IDataSource, ITreeRenderer } from '../../../../base/browser/ui/tree/tree.js';
 import { CancellationToken } from '../../../../base/common/cancellation.js';

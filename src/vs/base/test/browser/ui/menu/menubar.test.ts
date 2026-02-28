@@ -1,8 +1,3 @@
-/*---------------------------------------------------------------------------------------------
- *  Copyright (c) Microsoft Corporation. All rights reserved.
- *  Licensed under the MIT License. See License.txt in the project root for license information.
- *--------------------------------------------------------------------------------------------*/
-
 import assert from 'assert';
 import { $, ModifierKeyEmitter } from '../../../../browser/dom.js';
 import { unthemedMenuStyles } from '../../../../browser/ui/menu/menu.js';

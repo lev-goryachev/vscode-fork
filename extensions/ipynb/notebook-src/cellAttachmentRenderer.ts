@@ -1,8 +1,3 @@
-/*---------------------------------------------------------------------------------------------
- *  Copyright (c) Microsoft Corporation. All rights reserved.
- *  Licensed under the MIT License. See License.txt in the project root for license information.
- *--------------------------------------------------------------------------------------------*/
-
 import type * as MarkdownIt from 'markdown-it';
 import type * as MarkdownItToken from 'markdown-it/lib/token';
 import type { RendererContext } from 'vscode-notebook-renderer';

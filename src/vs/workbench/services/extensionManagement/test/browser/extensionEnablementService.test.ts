@@ -1,7 +1,3 @@
-/*---------------------------------------------------------------------------------------------
- *  Copyright (c) Microsoft Corporation. All rights reserved.
- *  Licensed under the MIT License. See License.txt in the project root for license information.
- *--------------------------------------------------------------------------------------------*/
 import assert from 'assert';
 import * as sinon from 'sinon';
 import { IExtensionManagementService, DidUninstallExtensionEvent, ILocalExtension, InstallExtensionEvent, InstallExtensionResult, UninstallExtensionEvent, DidUpdateExtensionMetadata, InstallOperation, IAllowedExtensionsService, AllowedExtensionsConfigKey, IExtensionsControlManifest } from '../../../../../platform/extensionManagement/common/extensionManagement.js';

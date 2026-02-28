@@ -1,8 +1,3 @@
-/*---------------------------------------------------------------------------------------------
- *  Copyright (c) Microsoft Corporation. All rights reserved.
- *  Licensed under the MIT License. See License.txt in the project root for license information.
- *--------------------------------------------------------------------------------------------*/
-
 import { commands, CompletionItem, CompletionItemKind, ExtensionContext, languages, Position, Range, SnippetString, TextEdit, window, TextDocument, CompletionContext, CancellationToken, ProviderResult, CompletionList, FormattingOptions, workspace, l10n } from 'vscode';
 import { Disposable, LanguageClientOptions, ProvideCompletionItemsSignature, NotificationType, BaseLanguageClient, DocumentRangeFormattingParams, DocumentRangeFormattingRequest } from 'vscode-languageclient';
 import { getCustomDataSource } from './customData';

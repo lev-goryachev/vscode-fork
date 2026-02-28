@@ -1,8 +1,3 @@
-/*---------------------------------------------------------------------------------------------
- *  Copyright (c) Microsoft Corporation. All rights reserved.
- *  Licensed under the MIT License. See License.txt in the project root for license information.
- *--------------------------------------------------------------------------------------------*/
-
 import { isMacintosh } from '../../../base/common/platform.js';
 import { getMachineId, getSqmMachineId, getDevDeviceId } from '../../../base/node/id.js';
 import { ILogService } from '../../log/common/log.js';

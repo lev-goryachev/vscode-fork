@@ -1,8 +1,3 @@
-/*---------------------------------------------------------------------------------------------
- *  Copyright (c) Microsoft Corporation. All rights reserved.
- *  Licensed under the MIT License. See License.txt in the project root for license information.
- *--------------------------------------------------------------------------------------------*/
-
 import { writeFileSync } from 'fs';
 import { tmpdir } from 'os';
 import { randomPath } from '../../../base/common/extpath.js';

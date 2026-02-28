@@ -1,8 +1,3 @@
-/*---------------------------------------------------------------------------------------------
- *  Copyright (c) Microsoft Corporation. All rights reserved.
- *  Licensed under the MIT License. See License.txt in the project root for license information.
- *--------------------------------------------------------------------------------------------*/
-
 import { getMonacoEnvironment } from '../../../../base/browser/browser.js';
 import { WebWorkerDescriptor } from '../../../../platform/webWorker/browser/webWorkerDescriptor.js';
 import { WebWorkerService } from '../../../../platform/webWorker/browser/webWorkerServiceImpl.js';

@@ -1,8 +1,3 @@
-/*---------------------------------------------------------------------------------------------
- *  Copyright (c) Microsoft Corporation. All rights reserved.
- *  Licensed under the MIT License. See License.txt in the project root for license information.
- *--------------------------------------------------------------------------------------------*/
-
 import { buffer, ExtractError } from '../../../base/node/zip.js';
 import { localize } from '../../../nls.js';
 import { toExtensionManagementError } from '../common/abstractExtensionManagementService.js';

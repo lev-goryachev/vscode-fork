@@ -1,8 +1,3 @@
-/*---------------------------------------------------------------------------------------------
- *  Copyright (c) Microsoft Corporation. All rights reserved.
- *  Licensed under the MIT License. See License.txt in the project root for license information.
- *--------------------------------------------------------------------------------------------*/
-
 import { ScrollEvent } from '../../base/common/scrollable.js';
 import { ConfigurationChangedEvent, EditorOption } from './config/editorOptions.js';
 import { Range } from './core/range.js';

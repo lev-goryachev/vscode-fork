@@ -1,8 +1,3 @@
-/*---------------------------------------------------------------------------------------------
- *  Copyright (c) Microsoft Corporation. All rights reserved.
- *  Licensed under the MIT License. See License.txt in the project root for license information.
- *--------------------------------------------------------------------------------------------*/
-
 import { binarySearch2 } from '../../../../base/common/arrays.js';
 import { StringEdit } from '../../core/edits/stringEdit.js';
 import { OffsetRange } from '../../core/ranges/offsetRange.js';

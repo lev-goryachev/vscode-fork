@@ -1,8 +1,3 @@
-/*---------------------------------------------------------------------------------------------
- *  Copyright (c) Microsoft Corporation. All rights reserved.
- *  Licensed under the MIT License. See License.txt in the project root for license information.
- *--------------------------------------------------------------------------------------------*/
-
 import './media/scm.css';
 import { $, append, h, reset } from '../../../../base/browser/dom.js';
 import { HoverStyle, IDelayedHoverOptions, IHoverLifecycleOptions } from '../../../../base/browser/ui/hover/hover.js';

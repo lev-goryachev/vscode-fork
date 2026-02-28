@@ -1,8 +1,3 @@
-/*---------------------------------------------------------------------------------------------
- *  Copyright (c) Microsoft Corporation. All rights reserved.
- *  Licensed under the MIT License. See License.txt in the project root for license information.
- *--------------------------------------------------------------------------------------------*/
-
 import { forEachWithNeighbors } from '../../../../base/common/arrays.js';
 import { OffsetRange } from '../../core/ranges/offsetRange.js';
 import { ISequence, OffsetPair, SequenceDiff } from './algorithms/diffAlgorithm.js';

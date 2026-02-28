@@ -1,8 +1,3 @@
-/*---------------------------------------------------------------------------------------------
- *  Copyright (c) Microsoft Corporation. All rights reserved.
- *  Licensed under the MIT License. See License.txt in the project root for license information.
- *--------------------------------------------------------------------------------------------*/
-
 // NOTE that this is a partial copy from lib.dom.d.ts which is NEEDED because these utils are used in the /common/
 // layer which has no dependency on the DOM/browser-context. However, `crypto` is available as global in all browsers and
 // in nodejs. Therefore it's OK to spell out its typings here

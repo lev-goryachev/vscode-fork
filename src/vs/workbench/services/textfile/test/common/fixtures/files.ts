@@ -1,8 +1,3 @@
-/*---------------------------------------------------------------------------------------------
- *  Copyright (c) Microsoft Corporation. All rights reserved.
- *  Licensed under the MIT License. See License.txt in the project root for license information.
- *--------------------------------------------------------------------------------------------*/
-
 import { range } from '../../../../../../base/common/arrays.js';
 import { VSBuffer } from '../../../../../../base/common/buffer.js';
 import { UTF8_BOM } from '../../../common/encoding.js';

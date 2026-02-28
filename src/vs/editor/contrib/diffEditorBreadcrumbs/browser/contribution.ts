@@ -1,8 +1,3 @@
-/*---------------------------------------------------------------------------------------------
- *  Copyright (c) Microsoft Corporation. All rights reserved.
- *  Licensed under the MIT License. See License.txt in the project root for license information.
- *--------------------------------------------------------------------------------------------*/
-
 import { reverseOrder, compareBy, numberComparator } from '../../../../base/common/arrays.js';
 import { observableValue, observableSignalFromEvent, autorunWithStore, IReader } from '../../../../base/common/observable.js';
 import { HideUnchangedRegionsFeature, IDiffEditorBreadcrumbsSource } from '../../../browser/widget/diffEditor/features/hideUnchangedRegionsFeature.js';

@@ -1,8 +1,3 @@
-/*---------------------------------------------------------------------------------------------
- *  Copyright (c) Microsoft Corporation. All rights reserved.
- *  Licensed under the MIT License. See License.txt in the project root for license information.
- *--------------------------------------------------------------------------------------------*/
-
 import { IMarkProperties, ISerializedTerminalCommand, ITerminalCommand } from '../capabilities.js';
 import { ITerminalOutputMatcher, ITerminalOutputMatch } from '../../terminal.js';
 import type { IBuffer, IBufferLine, IMarker, Terminal } from '@xterm/headless';

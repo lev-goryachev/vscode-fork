@@ -1,8 +1,3 @@
-/*---------------------------------------------------------------------------------------------
- *  Copyright (c) Microsoft Corporation. All rights reserved.
- *  Licensed under the MIT License. See License.txt in the project root for license information.
- *--------------------------------------------------------------------------------------------*/
-
 import './browser/coreCommands.js';
 import './browser/widget/codeEditor/codeEditorWidget.js';
 import './browser/widget/diffEditor/diffEditor.contribution.js';

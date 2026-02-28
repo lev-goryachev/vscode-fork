@@ -1,8 +1,3 @@
-/*---------------------------------------------------------------------------------------------
- *  Copyright (c) Microsoft Corporation. All rights reserved.
- *  Licensed under the MIT License. See License.txt in the project root for license information.
- *--------------------------------------------------------------------------------------------*/
-
 import { DisposableStore, toDisposable, IDisposable, Disposable } from '../common/lifecycle.js';
 import { autorun, IObservable } from '../common/observable.js';
 import { isFirefox } from './browser.js';

@@ -1,8 +1,3 @@
-/*---------------------------------------------------------------------------------------------
- *  Copyright (c) Microsoft Corporation. All rights reserved.
- *  Licensed under the MIT License. See License.txt in the project root for license information.
- *--------------------------------------------------------------------------------------------*/
-
 import { ITerminalLinkDetector, ITerminalSimpleLink, OmitFirstArg } from './links.js';
 import { convertLinkRangeToBuffer, getXtermLineContent } from './terminalLinkHelpers.js';
 import { ITerminalExternalLinkProvider } from '../../../terminal/browser/terminal.js';

@@ -1,8 +1,3 @@
-/*---------------------------------------------------------------------------------------------
- *  Copyright (c) Microsoft Corporation. All rights reserved.
- *  Licensed under the MIT License. See License.txt in the project root for license information.
- *--------------------------------------------------------------------------------------------*/
-
 import { groupBy, isFalsyOrEmpty } from '../../../../../base/common/arrays.js';
 import { compare } from '../../../../../base/common/strings.js';
 import { getCodeEditor } from '../../../../../editor/browser/editorBrowser.js';

@@ -1,8 +1,3 @@
-/*---------------------------------------------------------------------------------------------
- *  Copyright (c) Microsoft Corporation. All rights reserved.
- *  Licensed under the MIT License. See License.txt in the project root for license information.
- *--------------------------------------------------------------------------------------------*/
-
 import { ThrottledDelayer } from '../../../common/async.js';
 import { Event, PauseableEmitter } from '../../../common/event.js';
 import { Disposable, IDisposable } from '../../../common/lifecycle.js';

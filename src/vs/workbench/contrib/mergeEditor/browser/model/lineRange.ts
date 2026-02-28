@@ -1,8 +1,3 @@
-/*---------------------------------------------------------------------------------------------
- *  Copyright (c) Microsoft Corporation. All rights reserved.
- *  Licensed under the MIT License. See License.txt in the project root for license information.
- *--------------------------------------------------------------------------------------------*/
-
 import { Constants } from '../../../../../base/common/uint.js';
 import { Range } from '../../../../../editor/common/core/range.js';
 import { LineRange } from '../../../../../editor/common/core/ranges/lineRange.js';

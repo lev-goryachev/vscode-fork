@@ -1,8 +1,3 @@
-/*---------------------------------------------------------------------------------------------
- *  Copyright (c) Microsoft Corporation. All rights reserved.
- *  Licensed under the MIT License. See License.txt in the project root for license information.
- *--------------------------------------------------------------------------------------------*/
-
 import { getActiveWindow } from '../../../../../../base/browser/dom.js';
 import { IHoverPositionOptions } from '../../../../../../base/browser/ui/hover/hover.js';
 import { IAction } from '../../../../../../base/common/actions.js';

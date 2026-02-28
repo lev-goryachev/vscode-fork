@@ -1,8 +1,3 @@
-/*---------------------------------------------------------------------------------------------
- *  Copyright (c) Microsoft Corporation. All rights reserved.
- *  Licensed under the MIT License. See License.txt in the project root for license information.
- *--------------------------------------------------------------------------------------------*/
-
 import * as objects from '../../../../base/common/objects.js';
 import { ICodeEditor, IDiffEditorConstructionOptions } from '../../editorBrowser.js';
 import { ICodeEditorService } from '../../services/codeEditorService.js';

@@ -1,8 +1,3 @@
-/*---------------------------------------------------------------------------------------------
- *  Copyright (c) Microsoft Corporation. All rights reserved.
- *  Licensed under the MIT License. See License.txt in the project root for license information.
- *--------------------------------------------------------------------------------------------*/
-
 import { ILanguageConfigurationService } from '../../languages/languageConfigurationRegistry.js';
 import { AstNode, AstNodeKind } from './bracketPairsTree/ast.js';
 import { LanguageAgnosticBracketTokens } from './bracketPairsTree/brackets.js';

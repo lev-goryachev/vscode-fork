@@ -1,8 +1,3 @@
-/*---------------------------------------------------------------------------------------------
- *  Copyright (c) Microsoft Corporation. All rights reserved.
- *  Licensed under the MIT License. See License.txt in the project root for license information.
- *--------------------------------------------------------------------------------------------*/
-
 import { ChannelFactory, IChannelHandler, API, SimpleTypedRpcConnection, MakeSideAsync } from './rpc.js';
 
 export function registerDebugChannel<T extends { channelId: string } & API>(

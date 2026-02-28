@@ -1,8 +1,3 @@
-/*---------------------------------------------------------------------------------------------
- *  Copyright (c) Microsoft Corporation. All rights reserved.
- *  Licensed under the MIT License. See License.txt in the project root for license information.
- *--------------------------------------------------------------------------------------------*/
-
 import { IReaderWithStore, IReader, IObservable } from '../base.js';
 import { IChangeTracker } from '../changeTracker.js';
 import { DisposableStore, IDisposable, toDisposable } from '../commonFacade/deps.js';

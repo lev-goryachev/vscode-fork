@@ -1,8 +1,3 @@
-/*---------------------------------------------------------------------------------------------
- *  Copyright (c) Microsoft Corporation. All rights reserved.
- *  Licensed under the MIT License. See License.txt in the project root for license information.
- *--------------------------------------------------------------------------------------------*/
-
 import { RGBA8 } from '../../../common/core/misc/rgba.js';
 import { Constants, getCharIndex } from './minimapCharSheet.js';
 import { toUint8 } from '../../../../base/common/uint.js';

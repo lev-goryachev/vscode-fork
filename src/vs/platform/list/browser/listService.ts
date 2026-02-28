@@ -1,8 +1,3 @@
-/*---------------------------------------------------------------------------------------------
- *  Copyright (c) Microsoft Corporation. All rights reserved.
- *  Licensed under the MIT License. See License.txt in the project root for license information.
- *--------------------------------------------------------------------------------------------*/
-
 import { isActiveElement, isKeyboardEvent } from '../../../base/browser/dom.js';
 import { IContextViewProvider } from '../../../base/browser/ui/contextview/contextview.js';
 import { IListMouseEvent, IListRenderer, IListTouchEvent, IListVirtualDelegate } from '../../../base/browser/ui/list/list.js';

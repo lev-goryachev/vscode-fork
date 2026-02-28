@@ -1,8 +1,3 @@
-/*---------------------------------------------------------------------------------------------
- *  Copyright (c) Microsoft Corporation. All rights reserved.
- *  Licensed under the MIT License. See License.txt in the project root for license information.
- *--------------------------------------------------------------------------------------------*/
-
 import { IRange } from '../../../../../base/common/range.js';
 import { ListView } from '../../../../../base/browser/ui/list/listView.js';
 import { IItem, IRangeMap } from '../../../../../base/browser/ui/list/rangeMap.js';

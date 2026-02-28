@@ -1,8 +1,3 @@
-/*---------------------------------------------------------------------------------------------
- *  Copyright (c) Microsoft Corporation. All rights reserved.
- *  Licensed under the MIT License. See License.txt in the project root for license information.
- *--------------------------------------------------------------------------------------------*/
-
 import * as assert from 'assert';
 import { commands, Disposable, QuickPick, QuickPickItem, window, workspace } from 'vscode';
 import { assertNoRpc, closeAllEditors } from '../utils';

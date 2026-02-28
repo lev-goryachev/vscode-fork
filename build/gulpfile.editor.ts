@@ -1,8 +1,3 @@
-/*---------------------------------------------------------------------------------------------
- *  Copyright (c) Microsoft Corporation. All rights reserved.
- *  Licensed under the MIT License. See License.txt in the project root for license information.
- *--------------------------------------------------------------------------------------------*/
-
 import gulp from 'gulp';
 import path from 'path';
 import * as util from './lib/util.ts';
@@ -25,15 +20,7 @@ const sha1 = getVersion(root);
 const semver = monacoPackage.version;
 const headerVersion = semver + '(' + sha1 + ')';
 
-const BUNDLED_FILE_HEADER = [
-	'/*!-----------------------------------------------------------',
-	' * Copyright (c) Microsoft Corporation. All rights reserved.',
-	' * Version: ' + headerVersion,
-	' * Released under the MIT license',
-	' * https://github.com/microsoft/vscode/blob/main/LICENSE.txt',
-	' *-----------------------------------------------------------*/',
-	''
-].join('\n');
+const BUNDLED_FILE_HEADER = '';
 
 const extractEditorSrcTask = task.define('extract-editor-src', () => {
 	// Ensure codicon.ttf is copied from node_modules (needed when node_modules is cached and postinstall doesn't run)

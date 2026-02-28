@@ -1,8 +1,3 @@
-/*---------------------------------------------------------------------------------------------
- *  Copyright (c) Microsoft Corporation. All rights reserved.
- *  Licensed under the MIT License. See License.txt in the project root for license information.
- *--------------------------------------------------------------------------------------------*/
-
 import { escapeTerminalCompletionLabel } from '../../browser/terminalCompletionService.js';
 import { GeneralShellType, PosixShellType, TerminalShellType, WindowsShellType } from '../../../../../../platform/terminal/common/terminal.js';
 import { strict as assert } from 'assert';

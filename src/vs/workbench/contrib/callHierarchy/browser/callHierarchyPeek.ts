@@ -1,8 +1,3 @@
-/*---------------------------------------------------------------------------------------------
- *  Copyright (c) Microsoft Corporation. All rights reserved.
- *  Licensed under the MIT License. See License.txt in the project root for license information.
- *--------------------------------------------------------------------------------------------*/
-
 import './media/callHierarchy.css';
 import * as peekView from '../../../../editor/contrib/peekView/browser/peekView.js';
 import { ICodeEditor } from '../../../../editor/browser/editorBrowser.js';

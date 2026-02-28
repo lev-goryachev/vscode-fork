@@ -1,8 +1,3 @@
-/*---------------------------------------------------------------------------------------------
- *  Copyright (c) Microsoft Corporation. All rights reserved.
- *  Licensed under the MIT License. See License.txt in the project root for license information.
- *--------------------------------------------------------------------------------------------*/
-
 import type { IExperimentationFilterProvider } from 'tas-client';
 import { IExtensionService } from '../../extensions/common/extensions.js';
 import { Disposable } from '../../../../base/common/lifecycle.js';

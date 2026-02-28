@@ -1,8 +1,3 @@
-/*---------------------------------------------------------------------------------------------
- *  Copyright (c) Microsoft Corporation. All rights reserved.
- *  Licensed under the MIT License. See License.txt in the project root for license information.
- *--------------------------------------------------------------------------------------------*/
-
 import assert from 'assert';
 import { EditorResourceAccessor, SideBySideEditor, EditorInputWithPreferredResource, EditorInputCapabilities, isEditorIdentifier, IResourceDiffEditorInput, IUntitledTextResourceEditorInput, isResourceEditorInput, isUntitledResourceEditorInput, isResourceDiffEditorInput, isEditorInputWithOptionsAndGroup, EditorInputWithOptions, isEditorInputWithOptions, isEditorInput, EditorInputWithOptionsAndGroup, isResourceSideBySideEditorInput, IResourceSideBySideEditorInput, isTextEditorViewState, isResourceMergeEditorInput, IResourceMergeEditorInput } from '../../../../common/editor.js';
 import { DiffEditorInput } from '../../../../common/editor/diffEditorInput.js';

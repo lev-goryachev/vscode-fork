@@ -1,8 +1,3 @@
-/*---------------------------------------------------------------------------------------------
- *  Copyright (c) Microsoft Corporation. All rights reserved.
- *  Licensed under the MIT License. See License.txt in the project root for license information.
- *--------------------------------------------------------------------------------------------*/
-
 import { LineTokens } from '../../common/tokens/lineTokens.js';
 import { StandardTokenType, MetadataConsts } from '../../common/encodedTokenAttributes.js';
 import { ScopedLineTokens, createScopedLineTokens } from '../../common/languages/supports.js';

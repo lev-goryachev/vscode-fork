@@ -1,8 +1,3 @@
-/*---------------------------------------------------------------------------------------------
- *  Copyright (c) Microsoft Corporation. All rights reserved.
- *  Licensed under the MIT License. See License.txt in the project root for license information.
- *--------------------------------------------------------------------------------------------*/
-
 import { $, addDisposableListener, append, EventHelper, EventLike, getWindow, isHTMLElement } from '../../dom.js';
 import { createStyleSheet } from '../../domStylesheets.js';
 import { DomEmitter } from '../../event.js';

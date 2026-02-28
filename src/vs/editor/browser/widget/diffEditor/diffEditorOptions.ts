@@ -1,8 +1,3 @@
-/*---------------------------------------------------------------------------------------------
- *  Copyright (c) Microsoft Corporation. All rights reserved.
- *  Licensed under the MIT License. See License.txt in the project root for license information.
- *--------------------------------------------------------------------------------------------*/
-
 import { IObservable, IObservableWithChange, ISettableObservable, derived, derivedConstOnceDefined, observableFromEvent, observableValue } from '../../../../base/common/observable.js';
 import { Constants } from '../../../../base/common/uint.js';
 import { IAccessibilityService } from '../../../../platform/accessibility/common/accessibility.js';

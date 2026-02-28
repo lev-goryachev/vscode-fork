@@ -1,8 +1,3 @@
-/*---------------------------------------------------------------------------------------------
- *  Copyright (c) Microsoft Corporation. All rights reserved.
- *  Licensed under the MIT License. See License.txt in the project root for license information.
- *--------------------------------------------------------------------------------------------*/
-
 import { ChildProcess, spawn, SpawnOptions, StdioOptions } from 'child_process';
 import { chmodSync, existsSync, readFileSync, statSync, truncateSync, unlinkSync } from 'fs';
 import { homedir, tmpdir } from 'os';

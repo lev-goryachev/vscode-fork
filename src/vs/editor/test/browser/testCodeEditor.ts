@@ -1,8 +1,3 @@
-/*---------------------------------------------------------------------------------------------
- *  Copyright (c) Microsoft Corporation. All rights reserved.
- *  Licensed under the MIT License. See License.txt in the project root for license information.
- *--------------------------------------------------------------------------------------------*/
-
 import { DisposableStore, IDisposable, toDisposable } from '../../../base/common/lifecycle.js';
 import { mock } from '../../../base/test/common/mock.js';
 import { EditorConfiguration } from '../../browser/config/editorConfiguration.js';

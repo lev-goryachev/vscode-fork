@@ -1,8 +1,3 @@
-/*---------------------------------------------------------------------------------------------
- *  Copyright (c) Microsoft Corporation. All rights reserved.
- *  Licensed under the MIT License. See License.txt in the project root for license information.
- *--------------------------------------------------------------------------------------------*/
-
 import { toCanonicalName } from '../../textfile/common/encoding.js';
 import * as pfs from '../../../../base/node/pfs.js';
 import { ITextQuery, ITextSearchStats } from '../common/search.js';

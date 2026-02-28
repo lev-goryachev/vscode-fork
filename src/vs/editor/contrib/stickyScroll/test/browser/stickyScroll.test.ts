@@ -1,7 +1,3 @@
-/*---------------------------------------------------------------------------------------------
- *  Copyright (c) Microsoft Corporation. All rights reserved.
- *  Licensed under the MIT License. See License.txt in the project root for license information.
- *--------------------------------------------------------------------------------------------*/
 import assert from 'assert';
 import { withAsyncTestCodeEditor } from '../../../../test/browser/testCodeEditor.js';
 import { StickyScrollController } from '../../browser/stickyScrollController.js';

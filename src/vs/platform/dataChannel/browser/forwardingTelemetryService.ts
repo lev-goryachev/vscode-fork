@@ -1,8 +1,3 @@
-/*---------------------------------------------------------------------------------------------
- *  Copyright (c) Microsoft Corporation. All rights reserved.
- *  Licensed under the MIT License. See License.txt in the project root for license information.
- *--------------------------------------------------------------------------------------------*/
-
 import { ClassifiedEvent, OmitMetadata, IGDPRProperty, StrictPropertyCheck } from '../../telemetry/common/gdprTypings.js';
 import { ITelemetryData, ITelemetryService, TelemetryLevel } from '../../telemetry/common/telemetry.js';
 import { IDataChannelService } from '../common/dataChannel.js';

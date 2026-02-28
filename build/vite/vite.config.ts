@@ -1,8 +1,3 @@
-/*---------------------------------------------------------------------------------------------
- *  Copyright (c) Microsoft Corporation. All rights reserved.
- *  Licensed under the MIT License. See License.txt in the project root for license information.
- *--------------------------------------------------------------------------------------------*/
-
 import { createLogger, defineConfig, Plugin } from 'vite';
 import path, { join } from 'path';
 import { componentExplorer } from '@vscode/component-explorer-vite-plugin';

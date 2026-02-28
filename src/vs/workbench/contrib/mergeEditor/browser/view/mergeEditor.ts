@@ -1,8 +1,3 @@
-/*---------------------------------------------------------------------------------------------
- *  Copyright (c) Microsoft Corporation. All rights reserved.
- *  Licensed under the MIT License. See License.txt in the project root for license information.
- *--------------------------------------------------------------------------------------------*/
-
 import { Dimension, reset } from '../../../../../base/browser/dom.js';
 import { Grid, GridNodeDescriptor, IView, SerializableGrid } from '../../../../../base/browser/ui/grid/grid.js';
 import { Orientation } from '../../../../../base/browser/ui/splitview/splitview.js';

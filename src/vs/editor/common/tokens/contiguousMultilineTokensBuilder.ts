@@ -1,8 +1,3 @@
-/*---------------------------------------------------------------------------------------------
- *  Copyright (c) Microsoft Corporation. All rights reserved.
- *  Licensed under the MIT License. See License.txt in the project root for license information.
- *--------------------------------------------------------------------------------------------*/
-
 import { readUInt32BE, writeUInt32BE } from '../../../base/common/buffer.js';
 import { ContiguousMultilineTokens } from './contiguousMultilineTokens.js';
 

@@ -1,8 +1,3 @@
-/*---------------------------------------------------------------------------------------------
- *  Copyright (c) Microsoft Corporation. All rights reserved.
- *  Licensed under the MIT License. See License.txt in the project root for license information.
- *--------------------------------------------------------------------------------------------*/
-
 export function formatStackTrace(stack: string, trustHtml: boolean): { formattedStack: string; errorLocation?: string } {
 	let cleaned: string;
 	// Ansi colors are described here:

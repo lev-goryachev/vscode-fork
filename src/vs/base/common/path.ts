@@ -1,8 +1,3 @@
-/*---------------------------------------------------------------------------------------------
- *  Copyright (c) Microsoft Corporation. All rights reserved.
- *  Licensed under the MIT License. See License.txt in the project root for license information.
- *--------------------------------------------------------------------------------------------*/
-
 // NOTE: VSCode's copy of nodejs path library to be usable in common (non-node) namespace
 // Copied from: https://github.com/nodejs/node/commits/v22.15.0/lib/path.js
 // Excluding: the change that adds primordials

@@ -1,8 +1,4 @@
 #!/usr/bin/env bash
-#
-# Copyright (c) Microsoft Corporation. All rights reserved.
-#
-
 if [[ "$OSTYPE" == "darwin"* ]]; then
 	realpath() { [[ $1 = /* ]] && echo "$1" || echo "$PWD/${1#./}"; }
 	VSCODE_PATH=$(dirname $(dirname $(dirname $(dirname $(dirname $(realpath "$0"))))))

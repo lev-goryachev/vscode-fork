@@ -1,8 +1,3 @@
-/*---------------------------------------------------------------------------------------------
- *  Copyright (c) Microsoft Corporation. All rights reserved.
- *  Licensed under the MIT License. See License.txt in the project root for license information.
- *--------------------------------------------------------------------------------------------*/
-
 import { findLast } from '../../../../../base/common/arraysFind.js';
 import { Disposable } from '../../../../../base/common/lifecycle.js';
 import { derived, derivedObservableWithWritableCache, IObservable, IReader, ITransaction, observableValue, transaction } from '../../../../../base/common/observable.js';

@@ -1,8 +1,3 @@
-/*---------------------------------------------------------------------------------------------
- *  Copyright (c) Microsoft Corporation. All rights reserved.
- *  Licensed under the MIT License. See License.txt in the project root for license information.
- *--------------------------------------------------------------------------------------------*/
-
 import { IObservable, IObservableWithChange, IObserver, IReaderWithStore, ISettableObservable, ITransaction, } from '../base.js';
 import { BaseObservable } from './baseObservable.js';
 import { DebugNameData } from '../debugName.js';

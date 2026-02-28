@@ -1,8 +1,3 @@
-/*---------------------------------------------------------------------------------------------
- *  Copyright (c) Microsoft Corporation. All rights reserved.
- *  Licensed under the MIT License. See License.txt in the project root for license information.
- *--------------------------------------------------------------------------------------------*/
-
 import type { IConfigurationService } from '../../../../../../platform/configuration/common/configuration.js';
 import { URI } from '../../../../../../base/common/uri.js';
 import { PromptsType } from '../promptTypes.js';

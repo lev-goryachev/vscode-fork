@@ -1,7 +1,3 @@
-/*---------------------------------------------------------------------------------------------
- *  Copyright (c) Microsoft Corporation. All rights reserved.
- *  Licensed under the MIT License. See License.txt in the project root for license information.
- *--------------------------------------------------------------------------------------------*/
 import { IDisposable, IReference } from '../../../../base/common/lifecycle.js';
 
 export class ObjectPool<TData extends IObjectData, T extends IPooledObject<TData>> implements IDisposable {

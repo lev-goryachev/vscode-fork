@@ -1,7 +1,3 @@
-/*---------------------------------------------------------------------------------------------
- *  Copyright (c) Microsoft Corporation. All rights reserved.
- *  Licensed under the MIT License. See License.txt in the project root for license information.
- *--------------------------------------------------------------------------------------------*/
 import { FileSystem } from '@vscode/sync-api-client';
 import type * as ts from 'typescript/lib/tsserverlibrary';
 import { Logger } from './logging';

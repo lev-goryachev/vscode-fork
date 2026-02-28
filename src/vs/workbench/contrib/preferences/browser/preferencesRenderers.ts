@@ -1,8 +1,3 @@
-/*---------------------------------------------------------------------------------------------
- *  Copyright (c) Microsoft Corporation. All rights reserved.
- *  Licensed under the MIT License. See License.txt in the project root for license information.
- *--------------------------------------------------------------------------------------------*/
-
 import { EventHelper, getDomNodePagePosition } from '../../../../base/browser/dom.js';
 import { IAction, SubmenuAction } from '../../../../base/common/actions.js';
 import { Delayer } from '../../../../base/common/async.js';

@@ -1,7 +1,3 @@
-/*---------------------------------------------------------------------------------------------
- *  Copyright (c) Microsoft Corporation. All rights reserved.
- *  Licensed under the MIT License. See License.txt in the project root for license information.
- *--------------------------------------------------------------------------------------------*/
 import { CancellationToken } from '../../../../../base/common/cancellation.js';
 import * as glob from '../../../../../base/common/glob.js';
 import { ResourceSet, ResourceMap } from '../../../../../base/common/map.js';

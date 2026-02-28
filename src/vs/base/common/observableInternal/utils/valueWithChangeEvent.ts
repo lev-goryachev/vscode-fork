@@ -1,8 +1,3 @@
-/*---------------------------------------------------------------------------------------------
- *  Copyright (c) Microsoft Corporation. All rights reserved.
- *  Licensed under the MIT License. See License.txt in the project root for license information.
- *--------------------------------------------------------------------------------------------*/
-
 import { IObservable } from '../base.js';
 import { Event, IValueWithChangeEvent } from '../commonFacade/deps.js';
 import { DebugOwner } from '../debugName.js';

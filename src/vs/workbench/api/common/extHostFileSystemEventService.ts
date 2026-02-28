@@ -1,8 +1,3 @@
-/*---------------------------------------------------------------------------------------------
- *  Copyright (c) Microsoft Corporation. All rights reserved.
- *  Licensed under the MIT License. See License.txt in the project root for license information.
- *--------------------------------------------------------------------------------------------*/
-
 import { Emitter, Event, AsyncEmitter, IWaitUntil, IWaitUntilData } from '../../../base/common/event.js';
 import { GLOBSTAR, GLOB_SPLIT, IRelativePattern, parse } from '../../../base/common/glob.js';
 import { URI } from '../../../base/common/uri.js';

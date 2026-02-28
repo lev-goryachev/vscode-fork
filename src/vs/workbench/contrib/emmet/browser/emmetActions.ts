@@ -1,8 +1,3 @@
-/*---------------------------------------------------------------------------------------------
- *  Copyright (c) Microsoft Corporation. All rights reserved.
- *  Licensed under the MIT License. See License.txt in the project root for license information.
- *--------------------------------------------------------------------------------------------*/
-
 import { EditorAction, ServicesAccessor, IActionOptions } from '../../../../editor/browser/editorExtensions.js';
 import { grammarsExtPoint, ITMSyntaxExtensionPoint } from '../../../services/textMate/common/TMGrammars.js';
 import { IExtensionService, ExtensionPointContribution } from '../../../services/extensions/common/extensions.js';

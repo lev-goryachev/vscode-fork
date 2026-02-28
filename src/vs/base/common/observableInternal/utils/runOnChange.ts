@@ -1,8 +1,3 @@
-/*---------------------------------------------------------------------------------------------
- *  Copyright (c) Microsoft Corporation. All rights reserved.
- *  Licensed under the MIT License. See License.txt in the project root for license information.
- *--------------------------------------------------------------------------------------------*/
-
 import { IObservableWithChange } from '../base.js';
 import { CancellationToken, cancelOnDispose } from '../commonFacade/cancellation.js';
 import { DisposableStore, IDisposable } from '../commonFacade/deps.js';

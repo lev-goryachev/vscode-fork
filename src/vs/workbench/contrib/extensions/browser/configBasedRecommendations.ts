@@ -1,8 +1,3 @@
-/*---------------------------------------------------------------------------------------------
- *  Copyright (c) Microsoft Corporation. All rights reserved.
- *  Licensed under the MIT License. See License.txt in the project root for license information.
- *--------------------------------------------------------------------------------------------*/
-
 import { IExtensionTipsService, IConfigBasedExtensionTip } from '../../../../platform/extensionManagement/common/extensionManagement.js';
 import { ExtensionRecommendations, ExtensionRecommendation } from './extensionRecommendations.js';
 import { localize } from '../../../../nls.js';

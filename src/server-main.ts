@@ -1,8 +1,3 @@
-/*---------------------------------------------------------------------------------------------
- *  Copyright (c) Microsoft Corporation. All rights reserved.
- *  Licensed under the MIT License. See License.txt in the project root for license information.
- *--------------------------------------------------------------------------------------------*/
-
 import './bootstrap-server.js'; // this MUST come before other imports as it changes global state
 import * as path from 'node:path';
 import * as http from 'node:http';

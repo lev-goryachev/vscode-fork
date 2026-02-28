@@ -1,8 +1,3 @@
-/*---------------------------------------------------------------------------------------------
- *  Copyright (c) Microsoft Corporation. All rights reserved.
- *  Licensed under the MIT License. See License.txt in the project root for license information.
- *--------------------------------------------------------------------------------------------*/
-
 import './media/projectBarPart.css';
 import { Part } from '../../../workbench/browser/part.js';
 import { IWorkbenchLayoutService, Position } from '../../../workbench/services/layout/browser/layoutService.js';

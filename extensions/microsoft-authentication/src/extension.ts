@@ -1,8 +1,3 @@
-/*---------------------------------------------------------------------------------------------
- *  Copyright (c) Microsoft Corporation. All rights reserved.
- *  Licensed under the MIT License. See License.txt in the project root for license information.
- *--------------------------------------------------------------------------------------------*/
-
 import { Environment, EnvironmentParameters } from '@azure/ms-rest-azure-env';
 import Logger from './logger';
 import { MsalAuthProvider } from './node/authProvider';

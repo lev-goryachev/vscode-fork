@@ -1,8 +1,3 @@
-/*---------------------------------------------------------------------------------------------
- *  Copyright (c) Microsoft Corporation. All rights reserved.
- *  Licensed under the MIT License. See License.txt in the project root for license information.
- *--------------------------------------------------------------------------------------------*/
-
 import { DisposableStore, IDisposable } from '../../../../base/common/lifecycle.js';
 import { ILocalMcpServer, IMcpManagementService, IGalleryMcpServer, InstallOptions, InstallMcpServerEvent, UninstallMcpServerEvent, DidUninstallMcpServerEvent, InstallMcpServerResult, IInstallableMcpServer, IMcpGalleryService, UninstallOptions, IAllowedMcpServersService, RegistryType } from '../../../../platform/mcp/common/mcpManagement.js';
 import { IInstantiationService, refineServiceDecorator } from '../../../../platform/instantiation/common/instantiation.js';

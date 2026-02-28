@@ -1,8 +1,3 @@
-/*---------------------------------------------------------------------------------------------
- *  Copyright (c) Microsoft Corporation. All rights reserved.
- *  Licensed under the MIT License. See License.txt in the project root for license information.
- *--------------------------------------------------------------------------------------------*/
-
 import { CancellationToken } from './cancellation.js';
 import { onUnexpectedError } from './errors.js';
 import { DisposableStore, toDisposable } from './lifecycle.js';

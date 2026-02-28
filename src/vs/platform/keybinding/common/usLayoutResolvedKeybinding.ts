@@ -1,8 +1,3 @@
-/*---------------------------------------------------------------------------------------------
- *  Copyright (c) Microsoft Corporation. All rights reserved.
- *  Licensed under the MIT License. See License.txt in the project root for license information.
- *--------------------------------------------------------------------------------------------*/
-
 import { KeyCode, KeyCodeUtils, IMMUTABLE_CODE_TO_KEY_CODE, ScanCode } from '../../../base/common/keyCodes.js';
 import { SingleModifierChord, Chord, KeyCodeChord, Keybinding } from '../../../base/common/keybindings.js';
 import { OperatingSystem } from '../../../base/common/platform.js';

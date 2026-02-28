@@ -1,8 +1,3 @@
-/*---------------------------------------------------------------------------------------------
- *  Copyright (c) Microsoft Corporation. All rights reserved.
- *  Licensed under the MIT License. See License.txt in the project root for license information.
- *--------------------------------------------------------------------------------------------*/
-
 import { getZoomFactor, isChrome } from '../../browser.js';
 import * as dom from '../../dom.js';
 import { FastDomNode, createFastDomNode } from '../../fastDomNode.js';

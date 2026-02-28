@@ -1,8 +1,3 @@
-/*---------------------------------------------------------------------------------------------
- *  Copyright (c) Microsoft Corporation. All rights reserved.
- *  Licensed under the MIT License. See License.txt in the project root for license information.
- *--------------------------------------------------------------------------------------------*/
-
 import { defaultGenerator } from '../../../../base/common/idGenerator.js';
 import { IFileQuery } from '../../../services/search/common/search.js';
 import { equals } from '../../../../base/common/objects.js';

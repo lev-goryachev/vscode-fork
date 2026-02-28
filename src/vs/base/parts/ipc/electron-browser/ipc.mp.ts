@@ -1,8 +1,3 @@
-/*---------------------------------------------------------------------------------------------
- *  Copyright (c) Microsoft Corporation. All rights reserved.
- *  Licensed under the MIT License. See License.txt in the project root for license information.
- *--------------------------------------------------------------------------------------------*/
-
 import { mainWindow } from '../../../browser/window.js';
 import { Event } from '../../../common/event.js';
 import { generateUuid } from '../../../common/uuid.js';

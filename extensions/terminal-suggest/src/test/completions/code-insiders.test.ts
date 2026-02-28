@@ -1,8 +1,3 @@
-/*---------------------------------------------------------------------------------------------
- *  Copyright (c) Microsoft Corporation. All rights reserved.
- *  Licensed under the MIT License. See License.txt in the project root for license information.
- *--------------------------------------------------------------------------------------------*/
-
 import codeInsidersCompletionSpec from '../../completions/code-insiders';
 import codeTunnelInsidersCompletionSpec from '../../completions/code-tunnel-insiders';
 import type { ISuiteSpec } from '../helpers';

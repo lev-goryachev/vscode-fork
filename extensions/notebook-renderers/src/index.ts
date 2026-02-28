@@ -1,8 +1,3 @@
-/*---------------------------------------------------------------------------------------------
- *  Copyright (c) Microsoft Corporation. All rights reserved.
- *  Licensed under the MIT License. See License.txt in the project root for license information.
- *--------------------------------------------------------------------------------------------*/
-
 import type { ActivationFunction, OutputItem, RendererContext } from 'vscode-notebook-renderer';
 import { createOutputContent, appendOutput, scrollableClass } from './textHelper';
 import { HtmlRenderingHook, IDisposable, IRichRenderContext, JavaScriptRenderingHook, OutputWithAppend, RenderOptions } from './rendererTypes';

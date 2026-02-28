@@ -1,8 +1,3 @@
-/*---------------------------------------------------------------------------------------------
- *  Copyright (c) Microsoft Corporation. All rights reserved.
- *  Licensed under the MIT License. See License.txt in the project root for license information.
- *--------------------------------------------------------------------------------------------*/
-
 import { $, append, EventHelper, EventLike, clearNode } from '../../../base/browser/dom.js';
 import { DomEmitter } from '../../../base/browser/event.js';
 import { StandardKeyboardEvent } from '../../../base/browser/keyboardEvent.js';

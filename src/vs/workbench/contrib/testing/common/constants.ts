@@ -1,8 +1,3 @@
-/*---------------------------------------------------------------------------------------------
- *  Copyright (c) Microsoft Corporation. All rights reserved.
- *  Licensed under the MIT License. See License.txt in the project root for license information.
- *--------------------------------------------------------------------------------------------*/
-
 import { stripIcons } from '../../../../base/common/iconLabels.js';
 import { localize } from '../../../../nls.js';
 import { TestResultState, TestRunProfileBitset } from './testTypes.js';

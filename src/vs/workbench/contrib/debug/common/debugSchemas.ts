@@ -1,8 +1,3 @@
-/*---------------------------------------------------------------------------------------------
- *  Copyright (c) Microsoft Corporation. All rights reserved.
- *  Licensed under the MIT License. See License.txt in the project root for license information.
- *--------------------------------------------------------------------------------------------*/
-
 import * as extensionsRegistry from '../../../services/extensions/common/extensionsRegistry.js';
 import * as nls from '../../../../nls.js';
 import { IDebuggerContribution, ICompound, IBreakpointContribution } from './debug.js';

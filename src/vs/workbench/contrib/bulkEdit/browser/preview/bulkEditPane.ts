@@ -1,8 +1,3 @@
-/*---------------------------------------------------------------------------------------------
- *  Copyright (c) Microsoft Corporation. All rights reserved.
- *  Licensed under the MIT License. See License.txt in the project root for license information.
- *--------------------------------------------------------------------------------------------*/
-
 import { ButtonBar } from '../../../../../base/browser/ui/button/button.js';
 import type { IAsyncDataTreeViewState } from '../../../../../base/browser/ui/tree/asyncDataTree.js';
 import { ITreeContextMenuEvent } from '../../../../../base/browser/ui/tree/tree.js';

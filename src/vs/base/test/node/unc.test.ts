@@ -1,8 +1,3 @@
-/*---------------------------------------------------------------------------------------------
- *  Copyright (c) Microsoft Corporation. All rights reserved.
- *  Licensed under the MIT License. See License.txt in the project root for license information.
- *--------------------------------------------------------------------------------------------*/
-
 import { strictEqual } from 'assert';
 import { getUNCHost } from '../../node/unc.js';
 import { ensureNoDisposablesAreLeakedInTestSuite } from '../common/utils.js';

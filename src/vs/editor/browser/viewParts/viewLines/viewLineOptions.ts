@@ -1,8 +1,3 @@
-/*---------------------------------------------------------------------------------------------
- *  Copyright (c) Microsoft Corporation. All rights reserved.
- *  Licensed under the MIT License. See License.txt in the project root for license information.
- *--------------------------------------------------------------------------------------------*/
-
 import type { ColorScheme } from '../../../../platform/theme/common/theme.js';
 import type { IEditorConfiguration } from '../../../common/config/editorConfiguration.js';
 import { EditorOption } from '../../../common/config/editorOptions.js';

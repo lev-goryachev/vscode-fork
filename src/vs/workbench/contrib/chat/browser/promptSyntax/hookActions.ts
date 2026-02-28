@@ -1,8 +1,3 @@
-/*---------------------------------------------------------------------------------------------
- *  Copyright (c) Microsoft Corporation. All rights reserved.
- *  Licensed under the MIT License. See License.txt in the project root for license information.
- *--------------------------------------------------------------------------------------------*/
-
 import { parse as parseJSONC } from '../../../../../base/common/jsonc.js';
 import { setProperty, applyEdits } from '../../../../../base/common/jsonEdit.js';
 import { FormattingOptions } from '../../../../../base/common/jsonFormatter.js';

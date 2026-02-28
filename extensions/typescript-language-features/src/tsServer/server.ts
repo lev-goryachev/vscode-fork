@@ -1,8 +1,3 @@
-/*---------------------------------------------------------------------------------------------
- *  Copyright (c) Microsoft Corporation. All rights reserved.
- *  Licensed under the MIT License. See License.txt in the project root for license information.
- *--------------------------------------------------------------------------------------------*/
-
 import { Cancellation } from '@vscode/sync-api-common/lib/common/messageCancellation';
 import * as vscode from 'vscode';
 import { RequestArgs } from '../commands/tsserverRequests';

@@ -1,8 +1,3 @@
-/*---------------------------------------------------------------------------------------------
- *  Copyright (c) Microsoft Corporation. All rights reserved.
- *  Licensed under the MIT License. See License.txt in the project root for license information.
- *--------------------------------------------------------------------------------------------*/
-
 import './media/agentFeedbackEditorOverlay.css';
 import { Disposable, DisposableMap, DisposableStore, combinedDisposable, toDisposable } from '../../../../../base/common/lifecycle.js';
 import { autorun, observableFromEvent, observableSignalFromEvent, observableValue } from '../../../../../base/common/observable.js';

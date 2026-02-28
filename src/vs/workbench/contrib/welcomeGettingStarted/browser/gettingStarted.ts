@@ -1,8 +1,3 @@
-/*---------------------------------------------------------------------------------------------
- *  Copyright (c) Microsoft Corporation. All rights reserved.
- *  Licensed under the MIT License. See License.txt in the project root for license information.
- *--------------------------------------------------------------------------------------------*/
-
 import { $, Dimension, addDisposableListener, append, clearNode, reset } from '../../../../base/browser/dom.js';
 import { renderFormattedText } from '../../../../base/browser/formattedTextRenderer.js';
 import { status } from '../../../../base/browser/ui/aria/aria.js';

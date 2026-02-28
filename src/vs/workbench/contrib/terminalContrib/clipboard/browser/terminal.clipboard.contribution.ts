@@ -1,8 +1,3 @@
-/*---------------------------------------------------------------------------------------------
- *  Copyright (c) Microsoft Corporation. All rights reserved.
- *  Licensed under the MIT License. See License.txt in the project root for license information.
- *--------------------------------------------------------------------------------------------*/
-
 import type { Terminal as RawXtermTerminal } from '@xterm/xterm';
 import { Disposable, toDisposable, type IDisposable } from '../../../../../base/common/lifecycle.js';
 import { IClipboardService } from '../../../../../platform/clipboard/common/clipboardService.js';

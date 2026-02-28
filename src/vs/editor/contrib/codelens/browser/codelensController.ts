@@ -1,9 +1,3 @@
-/*---------------------------------------------------------------------------------------------
- *  Copyright (c) Microsoft Corporation. All rights reserved.
- *  Licensed under the MIT License. See License.txt in the project root for license information.
- *--------------------------------------------------------------------------------------------*/
-
-
 import { CancelablePromise, createCancelablePromise, disposableTimeout, RunOnceScheduler } from '../../../../base/common/async.js';
 import { onUnexpectedError, onUnexpectedExternalError } from '../../../../base/common/errors.js';
 import { DisposableStore, toDisposable } from '../../../../base/common/lifecycle.js';

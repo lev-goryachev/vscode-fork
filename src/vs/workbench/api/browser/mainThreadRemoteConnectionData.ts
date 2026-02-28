@@ -1,8 +1,3 @@
-/*---------------------------------------------------------------------------------------------
- *  Copyright (c) Microsoft Corporation. All rights reserved.
- *  Licensed under the MIT License. See License.txt in the project root for license information.
- *--------------------------------------------------------------------------------------------*/
-
 import { extHostCustomer, IExtHostContext } from '../../services/extensions/common/extHostCustomers.js';
 import { ExtHostContext, ExtHostExtensionServiceShape } from '../common/extHost.protocol.js';
 import { IRemoteAuthorityResolverService } from '../../../platform/remote/common/remoteAuthorityResolver.js';

@@ -1,8 +1,3 @@
-/*---------------------------------------------------------------------------------------------
- *  Copyright (c) Microsoft Corporation. All rights reserved.
- *  Licensed under the MIT License. See License.txt in the project root for license information.
- *--------------------------------------------------------------------------------------------*/
-
 import '../../../workbench/browser/parts/titlebar/media/titlebarpart.css';
 import './media/titlebarpart.css';
 import { MultiWindowParts, Part } from '../../../workbench/browser/part.js';

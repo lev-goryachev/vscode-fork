@@ -1,8 +1,3 @@
-/*---------------------------------------------------------------------------------------------
- *  Copyright (c) Microsoft Corporation. All rights reserved.
- *  Licensed under the MIT License. See License.txt in the project root for license information.
- *--------------------------------------------------------------------------------------------*/
-
 import { ExtHostManagedSocketsShape, MainContext, MainThreadManagedSocketsShape } from './extHost.protocol.js';
 import { createDecorator } from '../../../platform/instantiation/common/instantiation.js';
 import * as vscode from 'vscode';

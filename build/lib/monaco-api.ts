@@ -1,8 +1,3 @@
-/*---------------------------------------------------------------------------------------------
- *  Copyright (c) Microsoft Corporation. All rights reserved.
- *  Licensed under the MIT License. See License.txt in the project root for license information.
- *--------------------------------------------------------------------------------------------*/
-
 import fs from 'fs';
 import path from 'path';
 import fancyLog from 'fancy-log';
@@ -537,11 +532,6 @@ function generateDeclarationFile(ts: Typescript, recipe: string, sourceFileGette
 	});
 
 	let resultEnums = [
-		'/*---------------------------------------------------------------------------------------------',
-		' *  Copyright (c) Microsoft Corporation. All rights reserved.',
-		' *  Licensed under the MIT License. See License.txt in the project root for license information.',
-		' *--------------------------------------------------------------------------------------------*/',
-		'',
 		'// THIS IS A GENERATED FILE. DO NOT EDIT DIRECTLY.',
 		''
 	].concat(enums.map(e => e.text)).join(endl);

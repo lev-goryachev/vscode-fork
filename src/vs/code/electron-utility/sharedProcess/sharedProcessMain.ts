@@ -1,8 +1,3 @@
-/*---------------------------------------------------------------------------------------------
- *  Copyright (c) Microsoft Corporation. All rights reserved.
- *  Licensed under the MIT License. See License.txt in the project root for license information.
- *--------------------------------------------------------------------------------------------*/
-
 import { hostname, release } from 'os';
 import { MessagePortMain, MessageEvent } from '../../../base/parts/sandbox/node/electronTypes.js';
 import { toErrorMessage } from '../../../base/common/errorMessage.js';

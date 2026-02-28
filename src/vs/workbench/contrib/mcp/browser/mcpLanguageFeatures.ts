@@ -1,8 +1,3 @@
-/*---------------------------------------------------------------------------------------------
- *  Copyright (c) Microsoft Corporation. All rights reserved.
- *  Licensed under the MIT License. See License.txt in the project root for license information.
- *--------------------------------------------------------------------------------------------*/
-
 import { computeLevenshteinDistance } from '../../../../base/common/diff/diff.js';
 import { Emitter, Event } from '../../../../base/common/event.js';
 import { createMarkdownCommandLink, MarkdownString } from '../../../../base/common/htmlContent.js';

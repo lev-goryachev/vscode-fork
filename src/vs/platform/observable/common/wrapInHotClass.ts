@@ -1,7 +1,3 @@
-/*---------------------------------------------------------------------------------------------
- *  Copyright (c) Microsoft Corporation. All rights reserved.
- *  Licensed under the MIT License. See License.txt in the project root for license information.
- *--------------------------------------------------------------------------------------------*/
 import { isHotReloadEnabled } from '../../../base/common/hotReload.js';
 import { IDisposable } from '../../../base/common/lifecycle.js';
 import { autorunWithStore, IObservable } from '../../../base/common/observable.js';

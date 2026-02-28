@@ -1,8 +1,3 @@
-/*---------------------------------------------------------------------------------------------
- *  Copyright (c) Microsoft Corporation. All rights reserved.
- *  Licensed under the MIT License. See License.txt in the project root for license information.
- *--------------------------------------------------------------------------------------------*/
-
 import { KeyCodeUtils, ScanCodeUtils } from './keyCodes.js';
 import { KeyCodeChord, ScanCodeChord, Keybinding, Chord } from './keybindings.js';
 

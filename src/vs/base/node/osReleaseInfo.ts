@@ -1,8 +1,3 @@
-/*---------------------------------------------------------------------------------------------
- *  Copyright (c) Microsoft Corporation. All rights reserved.
- *  Licensed under the MIT License. See License.txt in the project root for license information.
- *--------------------------------------------------------------------------------------------*/
-
 import { constants as FSConstants, promises as FSPromises } from 'fs';
 import { createInterface as readLines } from 'readline';
 import * as Platform from '../common/platform.js';

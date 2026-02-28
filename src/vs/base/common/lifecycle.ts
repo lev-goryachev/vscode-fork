@@ -1,8 +1,3 @@
-/*---------------------------------------------------------------------------------------------
- *  Copyright (c) Microsoft Corporation. All rights reserved.
- *  Licensed under the MIT License. See License.txt in the project root for license information.
- *--------------------------------------------------------------------------------------------*/
-
 import { compareBy, numberComparator } from './arrays.js';
 import { groupBy } from './collections.js';
 import { SetMap, ResourceMap } from './map.js';

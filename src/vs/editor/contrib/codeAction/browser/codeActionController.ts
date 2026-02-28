@@ -1,8 +1,3 @@
-/*---------------------------------------------------------------------------------------------
- *  Copyright (c) Microsoft Corporation. All rights reserved.
- *  Licensed under the MIT License. See License.txt in the project root for license information.
- *--------------------------------------------------------------------------------------------*/
-
 import { getDomNodePagePosition } from '../../../../base/browser/dom.js';
 import * as aria from '../../../../base/browser/ui/aria/aria.js';
 import { IAnchor } from '../../../../base/browser/ui/contextview/contextview.js';

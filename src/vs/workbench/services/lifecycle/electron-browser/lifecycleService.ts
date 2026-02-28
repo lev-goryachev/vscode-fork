@@ -1,8 +1,3 @@
-/*---------------------------------------------------------------------------------------------
- *  Copyright (c) Microsoft Corporation. All rights reserved.
- *  Licensed under the MIT License. See License.txt in the project root for license information.
- *--------------------------------------------------------------------------------------------*/
-
 import { handleVetos } from '../../../../platform/lifecycle/common/lifecycle.js';
 import { ShutdownReason, ILifecycleService, IWillShutdownEventJoiner, WillShutdownJoinerOrder } from '../common/lifecycle.js';
 import { IStorageService } from '../../../../platform/storage/common/storage.js';

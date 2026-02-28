@@ -1,8 +1,3 @@
-/*---------------------------------------------------------------------------------------------
- *  Copyright (c) Microsoft Corporation. All rights reserved.
- *  Licensed under the MIT License. See License.txt in the project root for license information.
- *--------------------------------------------------------------------------------------------*/
-
 import { IEditorOptions } from '../../../common/config/editorOptions.js';
 import { TextModel } from '../../../common/model/textModel.js';
 import { ViewModel } from '../../../common/viewModel/viewModelImpl.js';

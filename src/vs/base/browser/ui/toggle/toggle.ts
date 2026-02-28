@@ -1,8 +1,3 @@
-/*---------------------------------------------------------------------------------------------
- *  Copyright (c) Microsoft Corporation. All rights reserved.
- *  Licensed under the MIT License. See License.txt in the project root for license information.
- *--------------------------------------------------------------------------------------------*/
-
 import { IAction } from '../../../common/actions.js';
 import { Codicon } from '../../../common/codicons.js';
 import { Emitter, Event } from '../../../common/event.js';

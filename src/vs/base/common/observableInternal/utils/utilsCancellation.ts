@@ -1,8 +1,3 @@
-/*---------------------------------------------------------------------------------------------
- *  Copyright (c) Microsoft Corporation. All rights reserved.
- *  Licensed under the MIT License. See License.txt in the project root for license information.
- *--------------------------------------------------------------------------------------------*/
-
 import { IReader, IObservable } from '../base.js';
 import { DebugOwner, DebugNameData } from '../debugName.js';
 import { CancellationError, CancellationToken, CancellationTokenSource } from '../commonFacade/cancellation.js';

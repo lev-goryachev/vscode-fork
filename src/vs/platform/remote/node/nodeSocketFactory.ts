@@ -1,8 +1,3 @@
-/*---------------------------------------------------------------------------------------------
- *  Copyright (c) Microsoft Corporation. All rights reserved.
- *  Licensed under the MIT License. See License.txt in the project root for license information.
- *--------------------------------------------------------------------------------------------*/
-
 import * as net from 'net';
 import { ISocket } from '../../../base/parts/ipc/common/ipc.net.js';
 import { NodeSocket } from '../../../base/parts/ipc/node/ipc.net.js';

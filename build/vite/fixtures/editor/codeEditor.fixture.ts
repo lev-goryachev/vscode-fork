@@ -1,8 +1,3 @@
-/*---------------------------------------------------------------------------------------------
- *  Copyright (c) Microsoft Corporation. All rights reserved.
- *  Licensed under the MIT License. See License.txt in the project root for license information.
- *--------------------------------------------------------------------------------------------*/
-
 import { URI } from '../../../../src/vs/base/common/uri';
 import { CodeEditorWidget, ICodeEditorWidgetOptions } from '../../../../src/vs/editor/browser/widget/codeEditor/codeEditorWidget';
 import { ComponentFixtureContext, createEditorServices, createTextModel, defineComponentFixture, defineThemedFixtureGroup } from '../fixtureUtils';

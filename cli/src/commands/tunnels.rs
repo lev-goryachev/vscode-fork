@@ -1,8 +1,3 @@
-/*---------------------------------------------------------------------------------------------
- *  Copyright (c) Microsoft Corporation. All rights reserved.
- *  Licensed under the MIT License. See License.txt in the project root for license information.
- *--------------------------------------------------------------------------------------------*/
-
 use async_trait::async_trait;
 use base64::{engine::general_purpose as b64, Engine as _};
 use futures::{stream::FuturesUnordered, StreamExt};

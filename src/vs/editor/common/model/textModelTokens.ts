@@ -1,8 +1,3 @@
-/*---------------------------------------------------------------------------------------------
- *  Copyright (c) Microsoft Corporation. All rights reserved.
- *  Licensed under the MIT License. See License.txt in the project root for license information.
- *--------------------------------------------------------------------------------------------*/
-
 import { IdleDeadline, runWhenGlobalIdle } from '../../../base/common/async.js';
 import { BugIndicatingError, onUnexpectedError } from '../../../base/common/errors.js';
 import { setTimeout0 } from '../../../base/common/platform.js';

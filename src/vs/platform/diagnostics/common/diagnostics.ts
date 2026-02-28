@@ -1,8 +1,3 @@
-/*---------------------------------------------------------------------------------------------
- *  Copyright (c) Microsoft Corporation. All rights reserved.
- *  Licensed under the MIT License. See License.txt in the project root for license information.
- *--------------------------------------------------------------------------------------------*/
-
 import { IStringDictionary } from '../../../base/common/collections.js';
 import { ProcessItem } from '../../../base/common/processes.js';
 import { UriComponents } from '../../../base/common/uri.js';

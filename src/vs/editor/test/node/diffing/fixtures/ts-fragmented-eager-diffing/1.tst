@@ -1,8 +1,3 @@
-/*---------------------------------------------------------------------------------------------
- *  Copyright (c) Microsoft Corporation. All rights reserved.
- *  Licensed under the MIT License. See License.txt in the project root for license information.
- *--------------------------------------------------------------------------------------------*/
-
 import { IHistoryNavigationWidget } from 'vs/base/browser/history';
 import { IContextViewProvider } from 'vs/base/browser/ui/contextview/contextview';
 import { FindInput, IFindInputOptions } from 'vs/base/browser/ui/findinput/findInput';

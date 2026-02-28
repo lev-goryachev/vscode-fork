@@ -1,8 +1,3 @@
-/*---------------------------------------------------------------------------------------------
- *  Copyright (c) Microsoft Corporation. All rights reserved.
- *  Licensed under the MIT License. See License.txt in the project root for license information.
- *--------------------------------------------------------------------------------------------*/
-
 import * as dom from '../../../../../../base/browser/dom.js';
 import { Button, IButtonOptions } from '../../../../../../base/browser/ui/button/button.js';
 import { IMarkdownString } from '../../../../../../base/common/htmlContent.js';

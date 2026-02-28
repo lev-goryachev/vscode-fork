@@ -1,8 +1,3 @@
-/*---------------------------------------------------------------------------------------------
- *  Copyright (c) Microsoft Corporation. All rights reserved.
- *  Licensed under the MIT License. See License.txt in the project root for license information.
- *--------------------------------------------------------------------------------------------*/
-
 import { Iterable } from '../../../../../base/common/iterator.js';
 import { dirname, joinPath } from '../../../../../base/common/resources.js';
 import { splitLinesIncludeSeparators } from '../../../../../base/common/strings.js';

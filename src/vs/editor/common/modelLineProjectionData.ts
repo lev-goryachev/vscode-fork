@@ -1,8 +1,3 @@
-/*---------------------------------------------------------------------------------------------
- *  Copyright (c) Microsoft Corporation. All rights reserved.
- *  Licensed under the MIT License. See License.txt in the project root for license information.
- *--------------------------------------------------------------------------------------------*/
-
 import { assertNever } from '../../base/common/assert.js';
 import { WrappingIndent } from './config/editorOptions.js';
 import { FontInfo } from './config/fontInfo.js';

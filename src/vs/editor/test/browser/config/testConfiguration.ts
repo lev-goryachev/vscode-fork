@@ -1,8 +1,3 @@
-/*---------------------------------------------------------------------------------------------
- *  Copyright (c) Microsoft Corporation. All rights reserved.
- *  Licensed under the MIT License. See License.txt in the project root for license information.
- *--------------------------------------------------------------------------------------------*/
-
 import { EditorConfiguration, IEnvConfiguration } from '../../../browser/config/editorConfiguration.js';
 import { EditorFontLigatures, EditorFontVariations } from '../../../common/config/editorOptions.js';
 import { BareFontInfo, FontInfo } from '../../../common/config/fontInfo.js';

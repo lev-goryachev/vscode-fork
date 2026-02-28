@@ -1,8 +1,3 @@
-/*---------------------------------------------------------------------------------------------
- *  Copyright (c) Microsoft Corporation. All rights reserved.
- *  Licensed under the MIT License. See License.txt in the project root for license information.
- *--------------------------------------------------------------------------------------------*/
-
 import { Command, Disposable, Event, EventEmitter, SourceControlActionButton, Uri, workspace, l10n, LogOutputChannel } from 'vscode';
 import { Branch, RefType, Status } from './api/git';
 import { OperationKind } from './operation';

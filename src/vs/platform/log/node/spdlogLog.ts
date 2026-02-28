@@ -1,8 +1,3 @@
-/*---------------------------------------------------------------------------------------------
- *  Copyright (c) Microsoft Corporation. All rights reserved.
- *  Licensed under the MIT License. See License.txt in the project root for license information.
- *--------------------------------------------------------------------------------------------*/
-
 import type * as spdlog from '@vscode/spdlog';
 import { ByteSize } from '../../files/common/files.js';
 import { AbstractMessageLogger, ILogger, LogLevel } from '../common/log.js';

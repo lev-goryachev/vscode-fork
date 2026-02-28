@@ -1,8 +1,3 @@
-/*---------------------------------------------------------------------------------------------
- *  Copyright (c) Microsoft Corporation. All rights reserved.
- *  Licensed under the MIT License. See License.txt in the project root for license information.
- *--------------------------------------------------------------------------------------------*/
-
 import { ITreeNode } from '../../../../../base/browser/ui/tree/tree.js';
 import { WorkbenchObjectTree } from '../../../../../platform/list/browser/listService.js';
 import { TestExplorerTreeElement, TestItemTreeElement } from './index.js';

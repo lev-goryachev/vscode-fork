@@ -1,8 +1,3 @@
-/*---------------------------------------------------------------------------------------------
- *  Copyright (c) Microsoft Corporation. All rights reserved.
- *  Licensed under the MIT License. See License.txt in the project root for license information.
- *--------------------------------------------------------------------------------------------*/
-
 import { LazyStatefulPromise, raceTimeout } from '../../../../base/common/async.js';
 import { BugIndicatingError, onUnexpectedError } from '../../../../base/common/errors.js';
 import { Event, ValueWithChangeEvent } from '../../../../base/common/event.js';

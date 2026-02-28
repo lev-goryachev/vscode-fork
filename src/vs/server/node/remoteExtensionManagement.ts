@@ -1,8 +1,3 @@
-/*---------------------------------------------------------------------------------------------
- *  Copyright (c) Microsoft Corporation. All rights reserved.
- *  Licensed under the MIT License. See License.txt in the project root for license information.
- *--------------------------------------------------------------------------------------------*/
-
 import { PersistentProtocol, ISocket, ProtocolConstants } from '../../base/parts/ipc/common/ipc.net.js';
 import { ILogService } from '../../platform/log/common/log.js';
 import { Emitter, Event } from '../../base/common/event.js';

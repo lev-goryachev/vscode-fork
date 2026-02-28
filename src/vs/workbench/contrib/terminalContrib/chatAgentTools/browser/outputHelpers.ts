@@ -1,8 +1,3 @@
-/*---------------------------------------------------------------------------------------------
- *  Copyright (c) Microsoft Corporation. All rights reserved.
- *  Licensed under the MIT License. See License.txt in the project root for license information.
- *--------------------------------------------------------------------------------------------*/
-
 import { ITerminalInstance } from '../../../terminal/browser/terminal.js';
 import type { IMarker as IXtermMarker } from '@xterm/xterm';
 import { truncateOutputKeepingTail } from './runInTerminalHelpers.js';

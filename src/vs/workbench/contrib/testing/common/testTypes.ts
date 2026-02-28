@@ -1,8 +1,3 @@
-/*---------------------------------------------------------------------------------------------
- *  Copyright (c) Microsoft Corporation. All rights reserved.
- *  Licensed under the MIT License. See License.txt in the project root for license information.
- *--------------------------------------------------------------------------------------------*/
-
 import { IMarkdownString } from '../../../../base/common/htmlContent.js';
 import { MarshalledId } from '../../../../base/common/marshallingIds.js';
 import { URI, UriComponents } from '../../../../base/common/uri.js';

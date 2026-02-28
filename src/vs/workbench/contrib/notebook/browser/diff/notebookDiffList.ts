@@ -1,8 +1,3 @@
-/*---------------------------------------------------------------------------------------------
- *  Copyright (c) Microsoft Corporation. All rights reserved.
- *  Licensed under the MIT License. See License.txt in the project root for license information.
- *--------------------------------------------------------------------------------------------*/
-
 import './notebookDiff.css';
 import { IListMouseEvent, IListRenderer, IListVirtualDelegate } from '../../../../../base/browser/ui/list/list.js';
 import * as DOM from '../../../../../base/browser/dom.js';

@@ -1,7 +1,3 @@
-/*---------------------------------------------------------------------------------------------
- *  Copyright (c) Microsoft Corporation. All rights reserved.
- *  Licensed under the MIT License. See License.txt in the project root for license information.
- *--------------------------------------------------------------------------------------------*/
 import type { LooseRuleDefinition } from '@typescript-eslint/utils/ts-eslint';
 import glob from 'glob';
 import { createRequire } from 'module';

@@ -1,8 +1,3 @@
-/*---------------------------------------------------------------------------------------------
- *  Copyright (c) Microsoft Corporation. All rights reserved.
- *  Licensed under the MIT License. See License.txt in the project root for license information.
- *--------------------------------------------------------------------------------------------*/
-
 import { NullLogService } from '../../../../../platform/log/common/log.js';
 import { FileService } from '../../../../../platform/files/common/fileService.js';
 import { Schemas } from '../../../../../base/common/network.js';

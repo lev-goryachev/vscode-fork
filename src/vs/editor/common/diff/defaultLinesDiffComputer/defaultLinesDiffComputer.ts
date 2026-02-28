@@ -1,8 +1,3 @@
-/*---------------------------------------------------------------------------------------------
- *  Copyright (c) Microsoft Corporation. All rights reserved.
- *  Licensed under the MIT License. See License.txt in the project root for license information.
- *--------------------------------------------------------------------------------------------*/
-
 import { equals } from '../../../../base/common/arrays.js';
 import { assertFn } from '../../../../base/common/assert.js';
 import { LineRange } from '../../core/ranges/lineRange.js';

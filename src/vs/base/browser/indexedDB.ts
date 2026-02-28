@@ -1,8 +1,3 @@
-/*---------------------------------------------------------------------------------------------
- *  Copyright (c) Microsoft Corporation. All rights reserved.
- *  Licensed under the MIT License. See License.txt in the project root for license information.
- *--------------------------------------------------------------------------------------------*/
-
 import { toErrorMessage } from '../common/errorMessage.js';
 import { ErrorNoTelemetry, getErrorMessage } from '../common/errors.js';
 import { mark } from '../common/performance.js';

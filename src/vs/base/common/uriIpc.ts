@@ -1,8 +1,3 @@
-/*---------------------------------------------------------------------------------------------
- *  Copyright (c) Microsoft Corporation. All rights reserved.
- *  Licensed under the MIT License. See License.txt in the project root for license information.
- *--------------------------------------------------------------------------------------------*/
-
 import { VSBuffer } from './buffer.js';
 import { MarshalledObject } from './marshalling.js';
 import { MarshalledId } from './marshallingIds.js';

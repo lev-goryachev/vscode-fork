@@ -1,8 +1,3 @@
-/*---------------------------------------------------------------------------------------------
- *  Copyright (c) Microsoft Corporation. All rights reserved.
- *  Licensed under the MIT License. See License.txt in the project root for license information.
- *--------------------------------------------------------------------------------------------*/
-
 import type { IManagedHoverContent, IManagedHoverOptions } from '../../../../base/browser/ui/hover/hover.js';
 import { Disposable } from '../../../../base/common/lifecycle.js';
 import type { IHoverService } from '../../browser/hover.js';

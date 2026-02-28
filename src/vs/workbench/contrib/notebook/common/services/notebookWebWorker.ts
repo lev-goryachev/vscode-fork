@@ -1,7 +1,3 @@
-/*---------------------------------------------------------------------------------------------
- *  Copyright (c) Microsoft Corporation. All rights reserved.
- *  Licensed under the MIT License. See License.txt in the project root for license information.
- *--------------------------------------------------------------------------------------------*/
 import { IDiffChange, ISequence, LcsDiff } from '../../../../../base/common/diff/diff.js';
 import { doHash, hash, numberHash } from '../../../../../base/common/hash.js';
 import { IDisposable } from '../../../../../base/common/lifecycle.js';
