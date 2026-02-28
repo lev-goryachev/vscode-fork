@@ -3,10 +3,10 @@
 	"nameLong": "Talemo",
 	"applicationName": "talemo",
 	"dataFolderName": ".talemo",
-	"win32MutexName": "vscodeoss",
+	"win32MutexName": "talemo",
 	"licenseName": "MIT",
-	"licenseUrl": "https://github.com/microsoft/vscode/blob/main/LICENSE.txt",
-	"serverLicenseUrl": "https://github.com/microsoft/vscode/blob/main/LICENSE.txt",
+	"licenseUrl": "https://t-bos.app/legal/license",
+	"serverLicenseUrl": "https://t-bos.app/legal/license",
 	"serverGreeting": [],
 	"serverLicense": [],
 	"serverLicensePrompt": "",
@@ -22,14 +22,14 @@
 	"win32arm64UserAppId": "{{3AEBF0C8-F733-4AD4-BADE-FDB816D53D7B}",
 	"win32AppUserModelId": "Talemo.App",
 	"win32ShellNameShort": "&Talemo",
-	"win32TunnelServiceMutex": "vscodeoss-tunnelservice",
-	"win32TunnelMutex": "vscodeoss-tunnel",
+	"win32TunnelServiceMutex": "talemo-tunnelservice",
+	"win32TunnelMutex": "talemo-tunnel",
 	"darwinBundleIdentifier": "com.talemo.app",
 	"darwinProfileUUID": "47827DD9-4734-49A0-AF80-7E19B11495CC",
 	"darwinProfilePayloadUUID": "CF808BE7-53F3-46C6-A7E2-7EDB98A5E959",
 	"linuxIconName": "talemo",
 	"licenseFileName": "LICENSE.txt",
-	"reportIssueUrl": "https://github.com/microsoft/vscode/issues/new",
+	"reportIssueUrl": "https://t-bos.app/feedback",
 	"nodejsRepository": "https://nodejs.org",
 	"urlProtocol": "talemo",
 	"talemoBackendUrl": "https://shared-control-plane-yuw3inrbra-uc.a.run.app",
@@ -43,46 +43,46 @@
 			"metadata": {
 				"id": "99cb0b7f-7354-4278-b8da-6cc79972169d",
 				"publisherId": {
-					"publisherId": "5f5636e7-69ed-4afe-b5d6-8d231fb3d3ee",
-					"publisherName": "ms-vscode",
-					"displayName": "Microsoft",
-					"flags": "verified"
-				},
-				"publisherDisplayName": "Microsoft"
-			}
-		},
-		{
-			"name": "ms-vscode.js-debug",
+			"publisherId": "5f5636e7-69ed-4afe-b5d6-8d231fb3d3ee",
+				"publisherName": "ms-vscode",
+				"displayName": "Talemo",
+				"flags": "verified"
+			},
+			"publisherDisplayName": "Talemo"
+		}
+	},
+	{
+		"name": "ms-vscode.js-debug",
 			"version": "1.105.0",
 			"sha256": "0c45b90342e8aafd4ff2963b4006de64208ca58c2fd01fea7a710fe61dcfd12a",
 			"repo": "https://github.com/microsoft/vscode-js-debug",
 			"metadata": {
 				"id": "25629058-ddac-4e17-abba-74678e126c5d",
 				"publisherId": {
-					"publisherId": "5f5636e7-69ed-4afe-b5d6-8d231fb3d3ee",
-					"publisherName": "ms-vscode",
-					"displayName": "Microsoft",
-					"flags": "verified"
-				},
-				"publisherDisplayName": "Microsoft"
-			}
-		},
-		{
-			"name": "ms-vscode.vscode-js-profile-table",
+			"publisherId": "5f5636e7-69ed-4afe-b5d6-8d231fb3d3ee",
+				"publisherName": "ms-vscode",
+				"displayName": "Talemo",
+				"flags": "verified"
+			},
+			"publisherDisplayName": "Talemo"
+		}
+	},
+	{
+		"name": "ms-vscode.vscode-js-profile-table",
 			"version": "1.0.10",
 			"sha256": "7361748ddf9fd09d8a2ed1f2a2d7376a2cf9aae708692820b799708385c38e08",
 			"repo": "https://github.com/microsoft/vscode-js-profile-visualizer",
 			"metadata": {
 				"id": "7e52b41b-71ad-457b-ab7e-0620f1fc4feb",
 				"publisherId": {
-					"publisherId": "5f5636e7-69ed-4afe-b5d6-8d231fb3d3ee",
-					"publisherName": "ms-vscode",
-					"displayName": "Microsoft",
-					"flags": "verified"
-				},
-				"publisherDisplayName": "Microsoft"
-			}
+			"publisherId": "5f5636e7-69ed-4afe-b5d6-8d231fb3d3ee",
+				"publisherName": "ms-vscode",
+				"displayName": "Talemo",
+				"flags": "verified"
+			},
+			"publisherDisplayName": "Talemo"
 		}
+	}
 	],
 	"defaultChatAgent": {
 		"extensionId": "GitHub.copilot",

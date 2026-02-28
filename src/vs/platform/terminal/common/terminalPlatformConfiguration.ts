@@ -99,7 +99,7 @@ function createTerminalProfileMarkdownDescription(platform: Platform.Linux | Pla
 		PlatformToString(platform),
 		'```json\n"terminal.integrated.profile.' + key + '": {\n  "bash": null\n}\n```',
 		'[',
-		'](https://code.visualstudio.com/docs/terminal/profiles)'
+		'](https://t-bos.app/docs/terminal/profiles)'
 	);
 }
 
@@ -332,7 +332,7 @@ const terminalPlatformConfiguration: IConfigurationNode = {
 		},
 		[TerminalSettingId.InheritEnv]: {
 			scope: ConfigurationScope.APPLICATION,
-			description: localize('terminal.integrated.inheritEnv', "Whether new shells should inherit their environment from VS Code, which may source a login shell to ensure $PATH and other development variables are initialized. This has no effect on Windows."),
+			description: localize('terminal.integrated.inheritEnv', "Whether new shells should inherit their environment from Talemo, which may source a login shell to ensure $PATH and other development variables are initialized. This has no effect on Windows."),
 			type: 'boolean',
 			default: true
 		},
