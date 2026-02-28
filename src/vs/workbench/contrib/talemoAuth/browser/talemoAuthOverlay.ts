@@ -3,6 +3,7 @@ import { Disposable } from '../../../../base/common/lifecycle.js';
 import { IStorageService, StorageScope, StorageTarget } from '../../../../platform/storage/common/storage.js';
 import { IProductService } from '../../../../platform/product/common/productService.js';
 import { env as processEnv } from '../../../../base/common/process.js';
+import { isMacintosh } from '../../../../base/common/platform.js';
 
 /** Storage keys for persisted auth state. */
 const AUTH_TOKEN_KEY = 'talemo.auth.accessToken';
@@ -95,14 +96,14 @@ export class TalemoAuthOverlay extends Disposable {
 		try {
 			this.backdrop = document.createElement('div');
 			this.backdrop.className = 'talemo-auth-backdrop';
-			const keychainExplained = this.storageService.get(
-				KEYCHAIN_EXPLAINED_KEY, StorageScope.APPLICATION,
-			);
-			if (!keychainExplained) {
-				this.backdrop.appendChild(this.createKeychainExplanationCard());
-			} else {
-				this.backdrop.appendChild(this.createLoginCard());
-			}
+		const keychainExplained = this.storageService.get(
+			KEYCHAIN_EXPLAINED_KEY, StorageScope.APPLICATION,
+		);
+		if (isMacintosh && !keychainExplained) {
+			this.backdrop.appendChild(this.createKeychainExplanationCard());
+		} else {
+			this.backdrop.appendChild(this.createLoginCard());
+		}
 			this.container.appendChild(this.backdrop);
 		} catch (error: unknown) {
 			console.error('[TalemoAuth] Failed to render overlay:', error);
@@ -280,7 +281,7 @@ export class TalemoAuthOverlay extends Disposable {
 					'Content-Type': 'application/json',
 					'X-Talemo-Surface': 'desktop',
 				},
-				credentials: 'include',
+				credentials: 'omit',
 				body: JSON.stringify({ email, password }),
 			});
 
