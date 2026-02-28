@@ -299,8 +299,9 @@ export class TalemoAuthOverlay extends Disposable {
 			this.hide();
 			this.onAuthenticated();
 		} catch (error: unknown) {
-			const msg = error instanceof Error ? error.message : 'Network error';
-			this.showError(errorBox, `Connection failed: ${msg}`);
+			const msg = error instanceof Error ? error.message : 'Unknown network error';
+			const host = this.backendUrl ?? 'unknown';
+			this.showError(errorBox, `Cannot reach server (${host}): ${msg}`);
 		} finally {
 			button.disabled = false;
 			button.textContent = 'Sign In';
