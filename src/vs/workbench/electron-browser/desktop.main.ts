@@ -187,8 +187,13 @@ export class DesktopMain extends Disposable {
 		serviceCollection.set(IMainProcessService, mainProcessService);
 
 		// Product
-		const talemoBackendUrl = this.resolveTalemoBackendUrlFromEnvironment();
-		const productService: IProductService = { _serviceBrand: undefined, ...product, talemoBackendUrl };
+		// Env var overrides product.json only when explicitly set; otherwise product.json value is preserved.
+		const envBackendUrl = this.resolveTalemoBackendUrlFromEnvironment();
+		const productService: IProductService = {
+			_serviceBrand: undefined,
+			...product,
+			...(envBackendUrl ? { talemoBackendUrl: envBackendUrl } : {}),
+		};
 		serviceCollection.set(IProductService, productService);
 
 		// Environment

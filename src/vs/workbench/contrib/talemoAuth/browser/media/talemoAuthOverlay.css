@@ -114,3 +114,27 @@
 .talemo-auth-error.visible {
 	display: block;
 }
+
+/* Security / Keychain explanation screen */
+.talemo-auth-security-icon {
+	font-size: 40px;
+	text-align: center;
+	margin-bottom: 12px;
+}
+
+.talemo-auth-security-body {
+	font-size: 13px;
+	line-height: 1.6;
+	color: var(--vscode-descriptionForeground);
+	margin: 0 0 24px 0;
+	text-align: center;
+}
+
+/* Version footer */
+.talemo-auth-version {
+	margin: 16px 0 0 0;
+	font-size: 11px;
+	text-align: center;
+	color: var(--vscode-disabledForeground, var(--vscode-descriptionForeground));
+	opacity: 0.5;
+}

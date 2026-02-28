@@ -12,6 +12,7 @@ import { env as processEnv } from '../../../../base/common/process.js';
 /** Storage keys for persisted auth state. */
 const AUTH_TOKEN_KEY = 'talemo.auth.accessToken';
 const AUTH_USER_KEY = 'talemo.auth.user';
+const KEYCHAIN_EXPLAINED_KEY = 'talemo.auth.keychainExplained';
 
 function normalizeBackendUrl(rawValue: string | undefined): string | undefined {
 	try {
@@ -78,6 +79,7 @@ export class TalemoAuthOverlay extends Disposable {
 	private backdrop: HTMLElement | undefined;
 	private readonly backendUrl?: string;
 	private readonly backendUrlError?: string;
+	private readonly talemoVersion?: string;
 
 	constructor(
 		private readonly container: HTMLElement,
@@ -89,6 +91,8 @@ export class TalemoAuthOverlay extends Disposable {
 		const backendResolution = resolveBackendUrl(productService);
 		this.backendUrl = backendResolution.backendUrl;
 		this.backendUrlError = backendResolution.errorMessage;
+		const p = productService as IProductService & { talemoVersion?: string };
+		this.talemoVersion = p.talemoVersion;
 	}
 
 	/** Renders the overlay and attaches it to the container. */
@@ -96,7 +100,14 @@ export class TalemoAuthOverlay extends Disposable {
 		try {
 			this.backdrop = document.createElement('div');
 			this.backdrop.className = 'talemo-auth-backdrop';
-			this.backdrop.appendChild(this.createCard());
+			const keychainExplained = this.storageService.get(
+				KEYCHAIN_EXPLAINED_KEY, StorageScope.APPLICATION,
+			);
+			if (!keychainExplained) {
+				this.backdrop.appendChild(this.createKeychainExplanationCard());
+			} else {
+				this.backdrop.appendChild(this.createLoginCard());
+			}
 			this.container.appendChild(this.backdrop);
 		} catch (error: unknown) {
 			console.error('[TalemoAuth] Failed to render overlay:', error);
@@ -120,7 +131,57 @@ export class TalemoAuthOverlay extends Disposable {
 		super.dispose();
 	}
 
-	private createCard(): HTMLElement {
+	private createKeychainExplanationCard(): HTMLElement {
+		const card = document.createElement('div');
+		card.className = 'talemo-auth-card';
+
+		const icon = document.createElement('div');
+		icon.className = 'talemo-auth-security-icon';
+		icon.textContent = '🔐';
+		card.appendChild(icon);
+
+		const title = document.createElement('h2');
+		title.className = 'talemo-auth-title';
+		title.textContent = 'Your data stays safe';
+		card.appendChild(title);
+
+		const body = document.createElement('p');
+		body.className = 'talemo-auth-security-body';
+		body.textContent =
+			'Talemo stores your credentials encrypted. ' +
+			'The encryption key is kept in your macOS Keychain — ' +
+			'a system vault that only you control. ' +
+			'When you click Continue, macOS will ask for your permission ' +
+			'to create that key. Click "Always Allow" to avoid being asked again.';
+		card.appendChild(body);
+
+		const button = document.createElement('button');
+		button.className = 'talemo-auth-button';
+		button.type = 'button';
+		button.textContent = 'Continue to Sign In →';
+		card.appendChild(button);
+
+		this.appendVersionFooter(card);
+
+		button.addEventListener('click', () => {
+			try {
+				this.storageService.store(
+					KEYCHAIN_EXPLAINED_KEY, '1',
+					StorageScope.APPLICATION, StorageTarget.USER,
+				);
+				if (this.backdrop) {
+					const loginCard = this.createLoginCard();
+					this.backdrop.replaceChild(loginCard, this.backdrop.firstChild!);
+				}
+			} catch (error: unknown) {
+				console.error('[TalemoAuth] Failed to switch to login card:', error);
+			}
+		});
+
+		return card;
+	}
+
+	private createLoginCard(): HTMLElement {
 		const card = document.createElement('div');
 		card.className = 'talemo-auth-card';
 
@@ -157,7 +218,19 @@ export class TalemoAuthOverlay extends Disposable {
 			}
 		});
 
+		this.appendVersionFooter(card);
+
 		return card;
+	}
+
+	private appendVersionFooter(card: HTMLElement): void {
+		if (!this.talemoVersion) {
+			return;
+		}
+		const footer = document.createElement('p');
+		footer.className = 'talemo-auth-version';
+		footer.textContent = `v${this.talemoVersion}`;
+		card.appendChild(footer);
 	}
 
 	private createInput(

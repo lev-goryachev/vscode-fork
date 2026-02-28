@@ -229,6 +229,7 @@ export interface IProductConfiguration {
 
 	readonly remoteDefaultExtensionsIfInstalledLocally?: string[];
 	readonly talemoBackendUrl?: string;
+	readonly talemoVersion?: string;
 
 	readonly extensionConfigurationPolicy?: IStringDictionary<IPolicy>;
 }
