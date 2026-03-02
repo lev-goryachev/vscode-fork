@@ -188,6 +188,9 @@ import './contrib/policyExport/electron-browser/policyExport.contribution.js';
 // Talemo: Billing & Credits settings page
 import '../sessions/contrib/billing/browser/billing.contribution.js';
 
+// Talemo: Supabase authentication provider
+import '../sessions/contrib/auth/browser/talemoAuth.contribution.js';
+
 //#endregion
 
 

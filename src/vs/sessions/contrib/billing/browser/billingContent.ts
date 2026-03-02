@@ -2,7 +2,6 @@ import * as DOM from '../../../../base/browser/dom.js';
 import { Disposable } from '../../../../base/common/lifecycle.js';
 import { localize } from '../../../../nls.js';
 import { IProductService } from '../../../../platform/product/common/productService.js';
-import { IDefaultAccountService } from '../../../../platform/defaultAccount/common/defaultAccount.js';
 import { IAuthenticationService } from '../../../../workbench/services/authentication/common/authentication.js';
 import {
 	BillingSection,
@@ -16,10 +15,12 @@ const $ = DOM.$;
 
 const BACKEND_LOCAL = 'http://localhost:8000';
 
+const TALEMO_PROVIDER_ID = 'talemo';
+
 /**
  * Manages content rendering for each billing section.
- * Uses IDefaultAccountService + IAuthenticationService to get the access token —
- * the same mechanism all other parts of the VS Code fork use.
+ * Uses TalemoAuthenticationProvider (id: 'talemo') to get the Supabase JWT.
+ * If no session exists, createSession() triggers the login prompt.
  */
 export class BillingContent extends Disposable {
 
@@ -32,7 +33,6 @@ export class BillingContent extends Disposable {
 	constructor(
 		parent: HTMLElement,
 		@IProductService private readonly productService: IProductService,
-		@IDefaultAccountService private readonly defaultAccountService: IDefaultAccountService,
 		@IAuthenticationService private readonly authenticationService: IAuthenticationService,
 	) {
 		super();
@@ -60,22 +60,45 @@ export class BillingContent extends Disposable {
 	private async getAuthHeaders(): Promise<Record<string, string>> {
 		const headers: Record<string, string> = { 'X-Talemo-Surface': 'desktop' };
 		try {
-			const provider = this.defaultAccountService.getDefaultAccountAuthenticationProvider();
-			const sessions = await this.authenticationService.getSessions(provider.id);
+			const sessions = await this.authenticationService.getSessions(TALEMO_PROVIDER_ID);
 			if (sessions.length > 0) {
 				headers['Authorization'] = `Bearer ${sessions[0].accessToken}`;
 			}
 		} catch {
-			// not signed in — request proceeds without token (will get 401 from backend)
+			// provider not yet registered or not signed in — request proceeds without token
 		}
 		return headers;
 	}
 
+	/**
+	 * Prompts the user to sign in if no Talemo session exists.
+	 * Called automatically when the backend returns 401.
+	 */
+	private async promptSignIn(): Promise<boolean> {
+		try {
+			if (!this.authenticationService.isAuthenticationProviderRegistered(TALEMO_PROVIDER_ID)) {
+				return false;
+			}
+			await this.authenticationService.createSession(TALEMO_PROVIDER_ID, []);
+			return true;
+		} catch {
+			return false;
+		}
+	}
+
 	private async apiFetch<T>(path: string): Promise<T> {
-		const res = await fetch(`${this.backendUrl}${path}`, {
-			credentials: 'include',
+		let res = await fetch(`${this.backendUrl}${path}`, {
 			headers: await this.getAuthHeaders(),
 		});
+		if (res.status === 401) {
+			// No valid session — prompt sign-in, then retry once
+			const signedIn = await this.promptSignIn();
+			if (signedIn) {
+				res = await fetch(`${this.backendUrl}${path}`, {
+					headers: await this.getAuthHeaders(),
+				});
+			}
+		}
 		if (!res.ok) {
 			throw new Error(`HTTP ${res.status}: ${await res.text()}`);
 		}
@@ -240,7 +263,6 @@ export class BillingContent extends Disposable {
 		try {
 			const res = await fetch(`${this.backendUrl}/billing/checkout`, {
 				method: 'POST',
-				credentials: 'include',
 				headers: { 'Content-Type': 'application/json', ...await this.getAuthHeaders() },
 				body: JSON.stringify({ polar_product_id: pkg.polar_product_id }),
 			});
