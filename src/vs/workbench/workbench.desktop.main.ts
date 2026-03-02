@@ -185,6 +185,9 @@ import './contrib/mcp/electron-browser/mcp.contribution.js';
 // Policy Export
 import './contrib/policyExport/electron-browser/policyExport.contribution.js';
 
+// Talemo: Billing & Credits settings page
+import '../sessions/contrib/billing/browser/billing.contribution.js';
+
 //#endregion
 
 
