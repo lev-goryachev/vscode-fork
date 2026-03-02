@@ -71,19 +71,24 @@ export class BillingContent extends Disposable {
 	}
 
 	/**
-	 * Prompts the user to sign in if no Talemo session exists.
-	 * Called automatically when the backend returns 401.
+	 * Handles 401 from the backend:
+	 * - No session → auto-show login form (first time / signed out).
+	 * - Session exists but rejected → stale token; clear it and throw so caller
+	 *   renders a "Sign In" error with a Retry button rather than auto-prompting.
 	 */
-	private async promptSignIn(): Promise<boolean> {
-		try {
-			if (!this.authenticationService.isAuthenticationProviderRegistered(TALEMO_PROVIDER_ID)) {
-				return false;
-			}
-			await this.authenticationService.createSession(TALEMO_PROVIDER_ID, []);
-			return true;
-		} catch {
-			return false;
+	private async handle401(): Promise<'signed-in' | 'stale-cleared' | 'no-provider'> {
+		if (!this.authenticationService.isAuthenticationProviderRegistered(TALEMO_PROVIDER_ID)) {
+			return 'no-provider';
 		}
+		const existing = await this.authenticationService.getSessions(TALEMO_PROVIDER_ID).catch(() => [] as const);
+		if (existing.length > 0) {
+			// Had a session but backend rejected it — clear stale token.
+			await this.authenticationService.removeSession(TALEMO_PROVIDER_ID, existing[0].id).catch(() => undefined);
+			return 'stale-cleared';
+		}
+		// No session at all — trigger login form. Throws if user cancels.
+		await this.authenticationService.createSession(TALEMO_PROVIDER_ID, []);
+		return 'signed-in';
 	}
 
 	private async apiFetch<T>(path: string): Promise<T> {
@@ -91,13 +96,17 @@ export class BillingContent extends Disposable {
 			headers: await this.getAuthHeaders(),
 		});
 		if (res.status === 401) {
-			// No valid session — prompt sign-in, then retry once
-			const signedIn = await this.promptSignIn();
-			if (signedIn) {
+			const outcome = await this.handle401().catch(() => 'no-provider' as const);
+			if (outcome === 'signed-in') {
+				// Fresh login succeeded — retry with new token.
 				res = await fetch(`${this.backendUrl}${path}`, {
 					headers: await this.getAuthHeaders(),
 				});
+			} else if (outcome === 'stale-cleared') {
+				// Stale session removed — surface a clear error so user can Retry (which will show login form).
+				throw new Error(localize('billing.sessionExpired', "Session expired. Click Retry to sign in again."));
 			}
+			// 'no-provider' falls through to the !res.ok check below
 		}
 		if (!res.ok) {
 			throw new Error(`HTTP ${res.status}: ${await res.text()}`);
