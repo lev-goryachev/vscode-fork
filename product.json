@@ -86,11 +86,53 @@
 	}
 	],
 	"defaultChatAgent": {
+		"extensionId": "",
+		"chatExtensionId": "",
+		"chatExtensionOutputId": "",
+		"documentationUrl": "",
+		"skusDocumentationUrl": "",
+		"publicCodeMatchesUrl": "",
+		"manageSettingsUrl": "",
+		"managePlanUrl": "",
+		"manageOverageUrl": "",
+		"upgradePlanUrl": "",
+		"signUpUrl": "",
+		"termsStatementUrl": "",
+		"privacyStatementUrl": "",
 		"provider": {
 			"default": {
 				"id": "talemo",
 				"name": "Talemo"
+			},
+			"enterprise": {
+				"id": "talemo",
+				"name": "Talemo"
+			},
+			"google": {
+				"id": "talemo",
+				"name": "Talemo"
+			},
+			"apple": {
+				"id": "talemo",
+				"name": "Talemo"
 			}
-		}
+		},
+		"providerUriSetting": "",
+		"providerScopes": [[""]],
+		"entitlementUrl": "",
+		"entitlementSignupLimitedUrl": "",
+		"tokenEntitlementUrl": "",
+		"mcpRegistryDataUrl": "",
+		"chatQuotaExceededContext": "",
+		"completionsQuotaExceededContext": "",
+		"walkthroughCommand": "",
+		"completionsMenuCommand": "",
+		"completionsRefreshTokenCommand": "",
+		"chatRefreshTokenCommand": "",
+		"generateCommitMessageCommand": "",
+		"resolveMergeConflictsCommand": "",
+		"completionsAdvancedSetting": "talemo.advanced",
+		"completionsEnablementSetting": "talemo.enable",
+		"nextEditSuggestionsSetting": ""
 	}
 }
