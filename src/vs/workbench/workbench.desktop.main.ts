@@ -190,6 +190,7 @@ import '../sessions/contrib/billing/browser/billing.contribution.js';
 
 // Talemo: Supabase authentication provider
 import '../sessions/contrib/auth/browser/talemoAuth.contribution.js';
+import '../sessions/contrib/ai/browser/talemoAI.contribution.js';
 
 //#endregion
 
