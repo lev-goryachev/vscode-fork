@@ -18,8 +18,10 @@ class TalemoAuthProviderContribution extends Disposable implements IWorkbenchCon
 	}
 }
 
+// BlockStartup ensures the provider is registered before any workbench UI loads,
+// so getSessions('talemo') works from the first request.
 registerWorkbenchContribution2(
 	TalemoAuthProviderContribution.ID,
 	TalemoAuthProviderContribution,
-	WorkbenchPhase.AfterRestored,
+	WorkbenchPhase.BlockStartup,
 );
