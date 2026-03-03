@@ -17,6 +17,10 @@ const BACKEND_LOCAL = 'http://localhost:8000';
 
 const TALEMO_PROVIDER_ID = 'talemo';
 
+class AuthRequiredError extends Error {
+	constructor() { super('auth-required'); }
+}
+
 /**
  * Manages content rendering for each billing section.
  * Uses TalemoAuthenticationProvider (id: 'talemo') to get the Supabase JWT.
@@ -71,29 +75,28 @@ export class BillingContent extends Disposable {
 	}
 
 	/**
-	 * On any auth failure: clear stale session (if any), show blocking login form.
-	 * Throws if user cancels login.
+	 * Explicitly triggered by the user clicking "Sign In" in the error UI.
+	 * Clears any stale session, then shows the login form.
+	 * After sign-in, reloads the current section.
 	 */
-	private async forceSignIn(): Promise<void> {
+	async signIn(): Promise<void> {
 		if (!this.authenticationService.isAuthenticationProviderRegistered(TALEMO_PROVIDER_ID)) {
-			throw new Error(localize('billing.authNotReady', "Authentication provider not ready. Please retry."));
+			return;
 		}
 		const existing = await this.authenticationService.getSessions(TALEMO_PROVIDER_ID).catch(() => []);
 		for (const s of existing) {
 			await this.authenticationService.removeSession(TALEMO_PROVIDER_ID, s.id).catch(() => undefined);
 		}
 		await this.authenticationService.createSession(TALEMO_PROVIDER_ID, []);
+		this.loadSection(this.currentSection);
 	}
 
 	private async apiFetch<T>(path: string): Promise<T> {
-		let res = await fetch(`${this.backendUrl}${path}`, {
+		const res = await fetch(`${this.backendUrl}${path}`, {
 			headers: await this.getAuthHeaders(),
 		});
 		if (res.status === 401) {
-			await this.forceSignIn();
-			res = await fetch(`${this.backendUrl}${path}`, {
-				headers: await this.getAuthHeaders(),
-			});
+			throw new AuthRequiredError();
 		}
 		if (!res.ok) {
 			throw new Error(`HTTP ${res.status}: ${await res.text()}`);
@@ -337,6 +340,14 @@ export class BillingContent extends Disposable {
 
 	private renderError(container: HTMLElement, err: unknown): void {
 		DOM.clearNode(container);
+		if (err instanceof AuthRequiredError) {
+			const errorEl = DOM.append(container, $('.billing-error'));
+			errorEl.textContent = localize('billing.notSignedIn', "Sign in to view your billing information.");
+			const signInBtn = DOM.append(container, $('button.billing-btn-primary'));
+			signInBtn.textContent = localize('billing.signIn', "Sign In");
+			this._register(DOM.addDisposableListener(signInBtn, 'click', () => void this.signIn()));
+			return;
+		}
 		const errorEl = DOM.append(container, $('.billing-error'));
 		const msg = err instanceof Error ? err.message : String(err);
 		errorEl.textContent = localize('billing.fetchError', "Failed to load: {0}", msg);
