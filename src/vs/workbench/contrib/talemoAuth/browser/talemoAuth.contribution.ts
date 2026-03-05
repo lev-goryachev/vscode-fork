@@ -1,76 +1,93 @@
 import { Disposable } from '../../../../base/common/lifecycle.js';
 import { IStorageService, StorageScope } from '../../../../platform/storage/common/storage.js';
-import { ILayoutService } from '../../../../platform/layout/browser/layoutService.js';
 import { IProductService } from '../../../../platform/product/common/productService.js';
 import { registerWorkbenchContribution2, WorkbenchPhase } from '../../../common/contributions.js';
-import { TalemoAuthOverlay } from './talemoAuthOverlay.js';
 import { registerTalemoAuthProvider } from './talemoAuthProvider.js';
 import { CommandsRegistry } from '../../../../platform/commands/common/commands.js';
-import { MenuId, MenuRegistry } from '../../../../platform/actions/common/actions.js';
 import { ServicesAccessor } from '../../../../platform/instantiation/common/instantiation.js';
+import { MenuRegistry, MenuId } from '../../../../platform/actions/common/actions.js';
 import { IAuthenticationService } from '../../../services/authentication/common/authentication.js';
+import { TalemoAuthOverlay } from './talemoAuthOverlay.js';
 
-/** Storage key matching the overlay module. */
+/** Storage key for the access token. */
 const AUTH_TOKEN_KEY = 'talemo.auth.accessToken';
 
 /**
- * Blocks workbench interaction until the user is authenticated.
- * Mirrors the pattern used by WorkspaceTrustRequestHandler.
+ * Checks authentication at workbench startup. If not authenticated, renders
+ * TalemoAuthOverlay (our own email/password form) directly over the workbench.
  */
 class TalemoAuthGate extends Disposable {
 	static readonly ID = 'workbench.contrib.talemoAuthGate';
 
+	private overlay: TalemoAuthOverlay | undefined;
+
 	constructor(
-		@ILayoutService private readonly layoutService: ILayoutService,
 		@IStorageService private readonly storageService: IStorageService,
 		@IProductService private readonly productService: IProductService,
 	) {
 		super();
 		this.checkAuth();
+
+		// Re-check on sign-out (token removed).
 		this._register(
 			this.storageService.onDidChangeValue(
 				StorageScope.APPLICATION, AUTH_TOKEN_KEY, this._store,
 			)(() => {
-				try {
-					const token = this.storageService.get(AUTH_TOKEN_KEY, StorageScope.APPLICATION);
-					if (!token) {
-						this.showLoginOverlay();
-					}
-				} catch (error: unknown) {
-					console.error('[TalemoAuth] Storage change handler failed:', error);
+				const token = this.storageService.get(AUTH_TOKEN_KEY, StorageScope.APPLICATION);
+				if (!token) {
+					this.showLoginOverlay();
 				}
 			}),
 		);
 	}
 
 	private checkAuth(): void {
+		const token = this.storageService.get(AUTH_TOKEN_KEY, StorageScope.APPLICATION);
+		if (!token) {
+			this.showLoginOverlay();
+			return;
+		}
+		// Validate token is still alive; show login overlay on 401.
+		this.validateToken(token);
+	}
+
+	private async validateToken(token: string): Promise<void> {
+		const product = this.productService as IProductService & { talemoBackendUrl?: string };
+		const backendUrl = product.talemoBackendUrl?.trim();
+		if (!backendUrl) {
+			return; // can't validate without backend URL — assume valid
+		}
 		try {
-			const token = this.storageService.get(AUTH_TOKEN_KEY, StorageScope.APPLICATION);
-			if (token) {
-				return;
+			const res = await fetch(`${backendUrl}/billing/status`, {
+				headers: { 'Authorization': `Bearer ${token}` },
+			});
+			if (res.status === 401) {
+				this.storageService.remove(AUTH_TOKEN_KEY, StorageScope.APPLICATION);
+				this.storageService.remove('talemo.auth.user', StorageScope.APPLICATION);
+				this.showLoginOverlay();
 			}
-			this.showLoginOverlay();
-		} catch (error: unknown) {
-			console.error('[TalemoAuth] Auth check failed, showing login:', error);
-			this.showLoginOverlay();
+		} catch {
+			// Network error — keep existing token, don't block user
 		}
 	}
 
 	private showLoginOverlay(): void {
+		if (this.overlay) {
+			return; // already showing
+		}
+
 		try {
-			const overlay = this._register(
-				new TalemoAuthOverlay(
-					this.layoutService.mainContainer,
-					this.storageService,
-					this.productService,
-					() => {
-						console.log('[TalemoAuth] Authenticated successfully.');
-					},
-				),
-			);
-			overlay.show();
-		} catch (error: unknown) {
-			console.error('[TalemoAuth] Failed to show login overlay:', error);
+			// CSS variables (--vscode-*) are scoped to .monaco-workbench, not body.
+			const container = document.querySelector('.monaco-workbench') as HTMLElement ?? document.body;
+			this.overlay = this._register(new TalemoAuthOverlay(
+				container,
+				this.storageService,
+				this.productService,
+				() => { this.overlay = undefined; },
+			));
+			this.overlay.show();
+		} catch (err: unknown) {
+			console.error('[TalemoAuth] Failed to show login overlay:', err);
 		}
 	}
 }
@@ -80,10 +97,10 @@ class TalemoAuthGate extends Disposable {
 registerWorkbenchContribution2(
 	TalemoAuthGate.ID,
 	TalemoAuthGate,
-	WorkbenchPhase.BlockRestore,
+	WorkbenchPhase.AfterRestored,
 );
 
-// -- Accounts UI provider (registers after workbench is restored) -------------
+// -- Auth provider (reads token from IStorageService for Accounts UI) ----------
 
 class TalemoAuthProviderContribution extends Disposable {
 	static readonly ID = 'workbench.contrib.talemoAuthProvider';
@@ -102,27 +119,34 @@ class TalemoAuthProviderContribution extends Disposable {
 	}
 }
 
+// BlockStartup ensures the provider is registered before AccountsActivityAction
+// initializes, so getSessions('talemo') works from the first request.
 registerWorkbenchContribution2(
 	TalemoAuthProviderContribution.ID,
 	TalemoAuthProviderContribution,
-	WorkbenchPhase.AfterRestored,
+	WorkbenchPhase.BlockStartup,
 );
 
-// -- Sign Out command ----------------------------------------------------------
+// -- Sign Out ------------------------------------------------------------------
 
 CommandsRegistry.registerCommand('talemo.auth.signOut', async (accessor: ServicesAccessor) => {
-	try {
-		const storageService = accessor.get(IStorageService);
-		storageService.remove('talemo.auth.user', StorageScope.APPLICATION);
-		storageService.remove(AUTH_TOKEN_KEY, StorageScope.APPLICATION);
-	} catch (error: unknown) {
-		console.error('[TalemoAuth] Sign out failed:', error);
-	}
+	const storageService = accessor.get(IStorageService);
+	storageService.remove('talemo.auth.user', StorageScope.APPLICATION);
+	storageService.remove(AUTH_TOKEN_KEY, StorageScope.APPLICATION);
 });
 
 MenuRegistry.appendMenuItem(MenuId.CommandPalette, {
-	command: {
-		id: 'talemo.auth.signOut',
-		title: 'Talemo: Sign Out',
-	},
+	command: { id: 'talemo.auth.signOut', title: 'Talemo: Sign Out' },
+});
+
+// -- Sign In (manual trigger via Command Palette) -----------------------------
+
+CommandsRegistry.registerCommand('talemo.auth.signIn', async (accessor: ServicesAccessor) => {
+	const storageService = accessor.get(IStorageService);
+	storageService.remove('talemo.auth.user', StorageScope.APPLICATION);
+	storageService.remove(AUTH_TOKEN_KEY, StorageScope.APPLICATION);
+});
+
+MenuRegistry.appendMenuItem(MenuId.CommandPalette, {
+	command: { id: 'talemo.auth.signIn', title: 'Talemo: Sign In' },
 });

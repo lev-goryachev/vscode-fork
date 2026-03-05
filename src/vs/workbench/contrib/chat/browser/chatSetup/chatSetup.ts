@@ -39,7 +39,9 @@ export enum ChatSetupStrategy {
 	SetupWithoutEnterpriseProvider = 2,
 	SetupWithEnterpriseProvider = 3,
 	SetupWithGoogleProvider = 4,
-	SetupWithAppleProvider = 5
+	SetupWithAppleProvider = 5,
+	/** Talemo email+password auth completed inside the dialog footer — no OAuth needed. */
+	SetupWithEmailPassword = 6,
 }
 
 export type ChatSetupResultValue = boolean /* success */ | undefined /* canceled */;

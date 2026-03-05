@@ -1,5 +1,37 @@
 .chat-setup-dialog {
 
+	/* Lock modal width so hiding OAuth buttons doesn't shrink it */
+
+	&.monaco-dialog-box {
+		min-width: 420px;
+	}
+
+	/* Hide OAuth buttons — functionality preserved in TS, just not shown yet */
+
+	.dialog-buttons-row {
+		display: none;
+	}
+
+	/* Hide separator — no longer needed when OAuth is hidden */
+
+	.chat-setup-email-separator {
+		display: none;
+	}
+
+	/* Replace Copilot icon with Talemo icon */
+
+	.dialog-icon.codicon-copilot-large::before {
+		content: '';
+		display: block;
+		width: 48px;
+		height: 48px;
+		background-image: url('./talemo-icon.svg');
+		background-size: contain;
+		background-repeat: no-repeat;
+		background-position: center;
+		font-family: normal;
+	}
+
 	/* Continue Buttons */
 
 	.dialog-buttons-row > .dialog-buttons > .monaco-button.continue-button::before {
@@ -43,6 +75,90 @@
 	.chat-setup-dialog-footer {
 		font-size: 11px;
 		color: var(--vscode-descriptionForeground);
+	}
+
+	/* Email/password form in footer — matches talemoAuthOverlay.css */
+
+	.chat-setup-email-separator {
+		display: block;
+		text-align: center;
+		margin: 14px 0 12px;
+		font-size: 11px;
+		color: var(--vscode-descriptionForeground);
+	}
+
+	.chat-setup-email-form {
+		display: flex;
+		flex-direction: column;
+		gap: 0;
+	}
+
+	.chat-setup-email-form > .chat-setup-email-input,
+	.chat-setup-email-form > .chat-setup-password-input {
+		box-sizing: border-box;
+		width: 100%;
+		padding: 6px 8px;
+		margin-bottom: 10px;
+		font-size: 13px;
+		font-family: inherit;
+		border-radius: 4px;
+		outline: none;
+		color: var(--vscode-input-foreground);
+		background-color: var(--vscode-input-background);
+		border: 1px solid var(--vscode-input-border, transparent);
+	}
+
+	.chat-setup-email-form > .chat-setup-email-input:focus,
+	.chat-setup-email-form > .chat-setup-password-input:focus {
+		border-color: var(--vscode-focusBorder);
+	}
+
+	.chat-setup-email-form > .chat-setup-email-input::placeholder,
+	.chat-setup-email-form > .chat-setup-password-input::placeholder {
+		color: var(--vscode-input-placeholderForeground);
+	}
+
+	.chat-setup-email-error {
+		margin-bottom: 8px;
+		padding: 6px 8px;
+		font-size: 12px;
+		border-radius: 4px;
+		color: var(--vscode-inputValidation-errorForeground, var(--vscode-errorForeground));
+		background-color: var(--vscode-inputValidation-errorBackground);
+		border: 1px solid var(--vscode-inputValidation-errorBorder);
+	}
+
+	.chat-setup-email-signin {
+		box-sizing: border-box;
+		width: 100%;
+		padding: 8px 16px;
+		margin-top: 2px;
+		font-size: 13px;
+		font-weight: 500;
+		font-family: inherit;
+		cursor: pointer;
+		border-radius: 4px;
+		border: 1px solid var(--vscode-button-border, transparent);
+		color: var(--vscode-button-foreground);
+		background-color: var(--vscode-button-background);
+	}
+
+	.chat-setup-email-signin:hover:not(:disabled) {
+		background-color: var(--vscode-button-hoverBackground);
+	}
+
+	.chat-setup-email-signin:disabled {
+		opacity: 0.5;
+		cursor: default;
+	}
+
+	.chat-setup-version {
+		display: block;
+		margin-top: 14px;
+		font-size: 11px;
+		text-align: center;
+		color: var(--vscode-disabledForeground, var(--vscode-descriptionForeground));
+		opacity: 0.5;
 	}
 }
 

@@ -25,3 +25,7 @@ product.overrides.json
 .vscode-test
 vscode-telemetry-docs/
 test-output.json
+
+# Local environment
+.env
+.talemo-dev-data/

@@ -1,5 +1,5 @@
 import './media/chatSetup.css';
-import { $ } from '../../../../../base/browser/dom.js';
+import { $, addDisposableListener } from '../../../../../base/browser/dom.js';
 import { IButton } from '../../../../../base/browser/ui/button/button.js';
 import { Dialog, DialogContentsAlignment } from '../../../../../base/browser/ui/dialog/dialog.js';
 import { coalesce } from '../../../../../base/common/arrays.js';
@@ -26,7 +26,7 @@ import { ChatSetupController } from './chatSetupController.js';
 import { IChatSetupResult, ChatSetupAnonymous, InstallChatEvent, InstallChatClassification, ChatSetupStrategy, ChatSetupResultValue } from './chatSetup.js';
 import { IDefaultAccountService } from '../../../../../platform/defaultAccount/common/defaultAccount.js';
 import { IHostService } from '../../../../services/host/browser/host.js';
-import { IWorkbenchAssignmentService } from '../../../../services/assignment/common/assignmentService.js';
+import { IStorageService, StorageScope, StorageTarget } from '../../../../../platform/storage/common/storage.js';
 
 const defaultChat = {
 	publicCodeMatchesUrl: product.defaultChatAgent?.publicCodeMatchesUrl ?? '',
@@ -45,7 +45,7 @@ export class ChatSetup {
 		let instance = ChatSetup.instance;
 		if (!instance) {
 			instance = ChatSetup.instance = instantiationService.invokeFunction(accessor => {
-				return new ChatSetup(context, controller, accessor.get(ITelemetryService), accessor.get(IWorkbenchLayoutService), accessor.get(IKeybindingService), accessor.get(IChatEntitlementService) as ChatEntitlementService, accessor.get(ILogService), accessor.get(IChatWidgetService), accessor.get(IWorkspaceTrustRequestService), accessor.get(IMarkdownRendererService), accessor.get(IDefaultAccountService), accessor.get(IHostService), accessor.get(IWorkbenchAssignmentService));
+				return new ChatSetup(context, controller, accessor.get(ITelemetryService), accessor.get(IWorkbenchLayoutService), accessor.get(IKeybindingService), accessor.get(IChatEntitlementService) as ChatEntitlementService, accessor.get(ILogService), accessor.get(IChatWidgetService), accessor.get(IWorkspaceTrustRequestService), accessor.get(IMarkdownRendererService), accessor.get(IDefaultAccountService), accessor.get(IHostService), accessor.get(IStorageService));
 			});
 		}
 
@@ -69,7 +69,7 @@ export class ChatSetup {
 		@IMarkdownRendererService private readonly markdownRendererService: IMarkdownRendererService,
 		@IDefaultAccountService private readonly defaultAccountService: IDefaultAccountService,
 		@IHostService private readonly hostService: IHostService,
-		@IWorkbenchAssignmentService private readonly experimentService: IWorkbenchAssignmentService,
+		@IStorageService private readonly storageService: IStorageService,
 	) { }
 
 	skipDialog(): void {
@@ -143,6 +143,10 @@ export class ChatSetup {
 				case ChatSetupStrategy.DefaultSetup:
 					success = await this.controller.value.setup({ ...options, forceAnonymous: options?.forceAnonymous });
 					break;
+				case ChatSetupStrategy.SetupWithEmailPassword:
+					// Auth already completed inside the dialog footer — session is stored.
+					success = true;
+					break;
 				case ChatSetupStrategy.Canceled:
 					this.context.update({ later: true });
 					this.telemetryService.publicLog2<InstallChatEvent, InstallChatClassification>('commandCenter.chatInstall', { installResult: 'failedMaybeLater', installDuration: 0, signUpErrorCode: undefined, provider: undefined });
@@ -157,10 +161,24 @@ export class ChatSetup {
 	}
 
 	private async showDialog(options?: { forceSignInDialog?: boolean; forceAnonymous?: ChatSetupAnonymous }): Promise<ChatSetupStrategy> {
+		// Loop until the user actually authenticates — pressing Escape re-shows the dialog.
+		while (true) {
+			const strategy = await this._showDialogOnce(options);
+			if (strategy !== ChatSetupStrategy.Canceled) {
+				return strategy;
+			}
+		}
+	}
+
+	private async _showDialogOnce(options?: { forceSignInDialog?: boolean; forceAnonymous?: ChatSetupAnonymous }): Promise<ChatSetupStrategy> {
 		const disposables = new DisposableStore();
 
-		const useCloseButton = await this.experimentService.getTreatment<boolean>('chatSetupDialogCloseButton');
-		const buttons = this.getButtons(options, useCloseButton);
+		// Side-channel: resolves when email/password auth succeeds in the footer.
+		let resolveEmailAuth!: (strategy: ChatSetupStrategy) => void;
+		const emailAuthPromise = new Promise<ChatSetupStrategy>(resolve => { resolveEmailAuth = resolve; });
+
+		// Non-skippable: no "Skip for now", no close button, no X.
+		const buttons = this.getButtons(options);
 
 		const dialog = disposables.add(new Dialog(
 			this.layoutService.activeContainer,
@@ -172,20 +190,31 @@ export class ChatSetup {
 				detail: ' ', // workaround allowing us to render the message in large
 				icon: Codicon.copilotLarge,
 				alignment: DialogContentsAlignment.Vertical,
-				cancelId: useCloseButton ? buttons.length : buttons.length - 1,
-				disableCloseButton: !useCloseButton,
-				renderFooter: footer => footer.appendChild(this.createDialogFooter(disposables, options)),
+				cancelId: buttons.length,     // points past last button → no natural cancel
+				disableCloseButton: true,     // hide the X
+				renderFooter: footer => footer.appendChild(
+					this.createDialogFooter(disposables, options, resolveEmailAuth)
+				),
 				buttonOptions: buttons.map(button => button[2])
 			}, this.keybindingService, this.layoutService, this.hostService)
 		));
 
-		const { button } = await dialog.show();
-		disposables.dispose();
+		// Race: user clicks an OAuth button OR completes email/password auth in footer.
+		const strategy = await Promise.race([
+			dialog.show().then(({ button }) => buttons[button]?.[1] ?? ChatSetupStrategy.Canceled),
+			emailAuthPromise,
+		]);
 
-		return buttons[button]?.[1] ?? ChatSetupStrategy.Canceled;
+		// If email auth won the race, close the dialog cleanly.
+		if (strategy === ChatSetupStrategy.SetupWithEmailPassword) {
+			dialog.dispose();
+		}
+
+		disposables.dispose();
+		return strategy;
 	}
 
-	private getButtons(options?: { forceSignInDialog?: boolean; forceAnonymous?: ChatSetupAnonymous }, useCloseButton?: boolean): Array<[string, ChatSetupStrategy, { styleButton?: (button: IButton) => void } | undefined]> {
+	private getButtons(options?: { forceSignInDialog?: boolean; forceAnonymous?: ChatSetupAnonymous }): Array<[string, ChatSetupStrategy, { styleButton?: (button: IButton) => void } | undefined]> {
 		type ContinueWithButton = [string, ChatSetupStrategy, { styleButton?: (button: IButton) => void } | undefined];
 		const styleButton = (...classes: string[]) => ({ styleButton: (button: IButton) => button.element.classList.add(...classes) });
 
@@ -219,10 +248,6 @@ export class ChatSetup {
 			buttons = [[localize('setupAIButton', "Use AI Features"), ChatSetupStrategy.DefaultSetup, undefined]];
 		}
 
-		if (!useCloseButton) {
-			buttons.push([localize('skipForNow', "Skip for now"), ChatSetupStrategy.Canceled, styleButton('link-button', 'skip-button')]);
-		}
-
 		return buttons;
 	}
 
@@ -236,23 +261,105 @@ export class ChatSetup {
 		}
 
 		if (this.context.state.entitlement === ChatEntitlement.Unknown || options?.forceSignInDialog) {
-			return localize('signIn', "Sign in to use AI Features");
+			return localize('signIn', "Sign in to use Talemo");
 		}
 
 		return localize('startUsing', "Start using AI Features");
 	}
 
-	private createDialogFooter(disposables: DisposableStore, options?: { forceAnonymous?: ChatSetupAnonymous }): HTMLElement {
+	private createDialogFooter(
+		disposables: DisposableStore,
+		options: { forceAnonymous?: ChatSetupAnonymous } | undefined,
+		resolveEmailAuth: (strategy: ChatSetupStrategy) => void,
+	): HTMLElement {
 		const element = $('.chat-setup-dialog-footer');
 
+		// ── Separator (hidden, preserved for future OAuth) ────────────────────
+		const separator = element.appendChild($('.chat-setup-email-separator'));
+		separator.textContent = localize('orSignInWith', "— or sign in with email —");
+		separator.style.display = 'none';
 
-		let footer: string;
+		// ── Email/password form ───────────────────────────────────────────────
+		const form = element.appendChild($('.chat-setup-email-form'));
+
+		const emailInput = form.appendChild($('input.chat-setup-email-input')) as HTMLInputElement;
+		emailInput.type = 'email';
+		emailInput.placeholder = localize('emailPlaceholder', "Email");
+		emailInput.autocomplete = 'email';
+
+		const passwordInput = form.appendChild($('input.chat-setup-password-input')) as HTMLInputElement;
+		passwordInput.type = 'password';
+		passwordInput.placeholder = localize('passwordPlaceholder', "Password");
+		passwordInput.autocomplete = 'current-password';
+
+		const errorMsg = form.appendChild($('.chat-setup-email-error'));
+		errorMsg.style.display = 'none';
+
+		const signInBtn = form.appendChild($('button.chat-setup-email-signin')) as HTMLButtonElement;
+		signInBtn.textContent = localize('signInButton', "Sign in");
+		signInBtn.type = 'button';
+
+		const loginUrl = `${(product as any).talemoBackendUrl ?? 'http://localhost:8000'}/auth/login`;
+
+		const doSignIn = async () => {
+			const email = emailInput.value.trim();
+			const password = passwordInput.value;
+			if (!email || !password) {
+				errorMsg.textContent = localize('emailFormEmpty', "Please enter your email and password.");
+				errorMsg.style.display = '';
+				return;
+			}
+
+			signInBtn.disabled = true;
+			signInBtn.textContent = localize('signingIn', "Signing in…");
+			errorMsg.style.display = 'none';
+
+			try {
+				const response = await fetch(loginUrl, {
+					method: 'POST',
+					headers: { 'Content-Type': 'application/json' },
+					body: JSON.stringify({ email, password }),
+				});
+
+				if (!response.ok) {
+					const body = await response.text().catch(() => '');
+					throw new Error(`${response.status}: ${body.slice(0, 120)}`);
+				}
+
+				const data: { access_token: string; refresh_token: string; user: { id: string; email: string } } = await response.json();
+				// Store in IStorageService — same keys read by TalemoAuthenticationProvider.
+				this.storageService.store('talemo.auth.accessToken', data.access_token, StorageScope.APPLICATION, StorageTarget.MACHINE);
+				this.storageService.store('talemo.auth.user', JSON.stringify(data.user), StorageScope.APPLICATION, StorageTarget.MACHINE);
+
+				resolveEmailAuth(ChatSetupStrategy.SetupWithEmailPassword);
+			} catch (err) {
+				errorMsg.textContent = localize('emailSignInFailed', "Sign-in failed: {0}", String(err));
+				errorMsg.style.display = '';
+				signInBtn.disabled = false;
+				signInBtn.textContent = localize('signInButton', "Sign in");
+			}
+		};
+
+		disposables.add(addDisposableListener(signInBtn, 'click', doSignIn));
+		disposables.add(addDisposableListener(passwordInput, 'keydown', e => {
+			if (e.key === 'Enter') { doSignIn(); }
+		}));
+		disposables.add(addDisposableListener(emailInput, 'keydown', e => {
+			if (e.key === 'Enter') { passwordInput.focus(); }
+		}));
+
+		// ── Terms text (below Sign in button) ────────────────────────────────
+		let termsText: string;
 		if (options?.forceAnonymous || this.telemetryService.telemetryLevel === TelemetryLevel.NONE) {
-			footer = localize({ key: 'settingsAnonymous', comment: ['{Locked="["}', '{Locked="]({1})"}', '{Locked="]({2})"}'] }, "By continuing, you agree to {0}'s [Terms]({1}) and [Privacy Statement]({2}).", defaultChat.provider.default.name, defaultChat.termsStatementUrl, defaultChat.privacyStatementUrl);
+			termsText = localize({ key: 'settingsAnonymous', comment: ['{Locked="["}', '{Locked="]({1})"}', '{Locked="]({2})"}'] }, "By continuing, you agree to {0}'s [Terms]({1}) and [Privacy Statement]({2}).", defaultChat.provider.default.name, defaultChat.termsStatementUrl, defaultChat.privacyStatementUrl);
 		} else {
-			footer = localize({ key: 'settings', comment: ['{Locked="["}', '{Locked="]({1})"}', '{Locked="]({2})"}', '{Locked="]({4})"}', '{Locked="]({5})"}'] }, "By continuing, you agree to {0}'s [Terms]({1}) and [Privacy Statement]({2}). {3} Copilot may show [public code]({4}) suggestions and use your data to improve the product. You can change these [settings]({5}) anytime.", defaultChat.provider.default.name, defaultChat.termsStatementUrl, defaultChat.privacyStatementUrl, defaultChat.provider.default.name, defaultChat.publicCodeMatchesUrl, defaultChat.manageSettingsUrl);
+			termsText = localize('settingsSimple', "By continuing, you agree to {0}'s Terms and Privacy Statement.", defaultChat.provider.default.name);
 		}
-		element.appendChild($('p', undefined, disposables.add(this.markdownRendererService.render(new MarkdownString(footer, { isTrusted: true }))).element));
+		element.appendChild($('p', undefined, disposables.add(this.markdownRendererService.render(new MarkdownString(termsText, { isTrusted: true }))).element));
+
+		// ── Version ───────────────────────────────────────────────────────────
+		const version = element.appendChild($('.chat-setup-version'));
+		version.textContent = `v${product.version ?? ''}`;
 
 		return element;
 	}

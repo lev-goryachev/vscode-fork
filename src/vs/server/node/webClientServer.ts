@@ -93,19 +93,20 @@ const WEB_EXTENSION_PATH = `/web-extension-resource`;
 
 function resolveTalemoBackendUrl(productService: IProductService): string {
 	try {
-		const productBackendUrl = (productService as IProductService & { talemoBackendUrl?: string }).talemoBackendUrl?.trim();
-		if (productBackendUrl) {
-			return productBackendUrl;
-		}
-
+		// Env override wins over product.json (allows local dev to override prod URL).
 		const envBackendUrl = process.env['TALEMO_BACKEND_URL']?.trim();
 		if (envBackendUrl) {
 			return envBackendUrl;
 		}
 
-		return 'http://localhost:61010';
+		const productBackendUrl = (productService as IProductService & { talemoBackendUrl?: string }).talemoBackendUrl?.trim();
+		if (productBackendUrl) {
+			return productBackendUrl;
+		}
+
+		return '';
 	} catch {
-		return 'http://localhost:61010';
+		return '';
 	}
 }
 
@@ -491,7 +492,7 @@ export class WebClientServer {
 			`frame-src 'self' https://*.vscode-cdn.net data:;`,
 			'worker-src \'self\' data: blob:;',
 			'style-src \'self\' \'unsafe-inline\';',
-			`connect-src 'self' ws: wss: https: ${resolveTalemoBackendUrl(this._productService)};`,
+			`connect-src 'self' ws: wss: https: ${resolveTalemoBackendUrl(this._productService)} ${!this._environmentService.isBuilt ? 'http://localhost:*' : ''}`.trimEnd() + ';',
 			'font-src \'self\' blob:;',
 			'manifest-src \'self\';'
 		].join(' ');

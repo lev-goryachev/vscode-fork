@@ -168,4 +168,8 @@ import './contrib/remote/browser/remoteStartEntry.contribution.js';
 // Process Explorer
 import './contrib/processExplorer/browser/processExplorer.web.contribution.js';
 
+// Talemo — billing and AI chat (shared with desktop)
+import '../sessions/contrib/billing/browser/billing.contribution.js';
+import '../sessions/contrib/ai/browser/talemoAI.contribution.js';
+
 //#endregion

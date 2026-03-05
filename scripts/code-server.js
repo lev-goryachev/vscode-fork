@@ -5,6 +5,9 @@ const path = require('path');
 const open = require('open');
 const minimist = require('minimist');
 
+// Load vscode-fork/.env if present; shell-level vars always take precedence.
+try { process.loadEnvFile(path.join(__dirname, '..', '.env')); } catch { /* absent is fine */ }
+
 async function main() {
 
 	const args = minimist(process.argv.slice(2), {
@@ -34,7 +37,7 @@ async function main() {
 
 function startServer(programArgs) {
 	return new Promise((s, e) => {
-		const env = { ...process.env };
+		const env = { ...process.env, VSCODE_DEV: '1' };
 		const entryPoint = path.join(__dirname, '..', 'out', 'server-main.js');
 
 		console.log(`Starting server: ${entryPoint} ${programArgs.join(' ')}`);
