@@ -4,6 +4,11 @@ import { localize } from '../../../../nls.js';
 import { IProductService } from '../../../../platform/product/common/productService.js';
 import { IAuthenticationService } from '../../../../workbench/services/authentication/common/authentication.js';
 import {
+	AuthRequiredError,
+	authedFetch,
+	forceSignIn,
+} from '../../../browser/talemoApi.js';
+import {
 	BillingSection,
 	WalletStatus,
 	CreditPackage,
@@ -13,23 +18,12 @@ import {
 
 const $ = DOM.$;
 
-const BACKEND_LOCAL = 'http://localhost:8000';
-
-/**
- * Thrown when a request fails with 401 and re-authentication either failed
- * or was cancelled by the user. Callers render a sign-in prompt instead of
- * an HTTP error banner so the user never sees raw status codes.
- */
-class AuthRequiredError extends Error {
-	constructor() { super('auth_required'); }
-}
-
-const TALEMO_PROVIDER_ID = 'talemo';
-
 /**
  * Manages content rendering for each billing section.
  * Uses TalemoAuthenticationProvider (id: 'talemo') to get the Supabase JWT.
- * If no session exists, createSession() triggers the login prompt.
+ * All HTTP calls go through authedFetch (talemoApi.ts) which handles 401 →
+ * forceSignIn → retry transparently. AuthRequiredError renders a sign-in prompt
+ * instead of exposing raw HTTP status codes.
  */
 export class BillingContent extends Disposable {
 
@@ -57,80 +51,6 @@ export class BillingContent extends Disposable {
 		this.setVisibility(BillingSection.Overview);
 	}
 
-	private get backendUrl(): string {
-		// In dev mode billing endpoints are not deployed to production yet — use local backend.
-		const quality = this.productService.quality;
-		if (!quality || quality === 'oss') {
-			return BACKEND_LOCAL;
-		}
-		return this.productService.talemoBackendUrl ?? BACKEND_LOCAL;
-	}
-
-	private async getAuthHeaders(): Promise<Record<string, string>> {
-		const headers: Record<string, string> = { 'X-Talemo-Surface': 'desktop' };
-		try {
-			const sessions = await this.authenticationService.getSessions(TALEMO_PROVIDER_ID);
-			if (sessions.length > 0) {
-				headers['Authorization'] = `Bearer ${sessions[0].accessToken}`;
-			}
-		} catch {
-			// provider not yet registered or not signed in — request proceeds without token
-		}
-		return headers;
-	}
-
-	/**
-	 * On any auth failure: show blocking login form.
-	 * Removes stale session only AFTER a new session is successfully created.
-	 * Throws if user cancels login.
-	 */
-	private async forceSignIn(): Promise<void> {
-		if (!this.authenticationService.isAuthenticationProviderRegistered(TALEMO_PROVIDER_ID)) {
-			throw new Error(localize('billing.authNotReady', "Authentication provider not ready. Please retry."));
-		}
-		const existing = await this.authenticationService.getSessions(TALEMO_PROVIDER_ID).catch(() => []);
-		// createSession shows the login form; throws if user cancels
-		await this.authenticationService.createSession(TALEMO_PROVIDER_ID, []);
-		// Only remove old session after new one is confirmed
-		for (const s of existing) {
-			await this.authenticationService.removeSession(TALEMO_PROVIDER_ID, s.id).catch(() => undefined);
-		}
-	}
-
-	/**
-	 * Fetch JSON from the backend, handling 401 by showing the login form
-	 * before retrying. On persistent auth failure throws AuthRequiredError so
-	 * callers can show a sign-in prompt instead of an HTTP error banner.
-	 */
-	private async apiFetch<T>(path: string): Promise<T> {
-		let res = await fetch(`${this.backendUrl}${path}`, {
-			headers: await this.getAuthHeaders(),
-		});
-
-		if (res.status === 401) {
-			// Show login form silently — the loading spinner stays visible behind it.
-			try {
-				await this.forceSignIn();
-			} catch {
-				// User cancelled login or provider not ready — don't show HTTP error.
-				throw new AuthRequiredError();
-			}
-			// Retry with fresh token.
-			res = await fetch(`${this.backendUrl}${path}`, {
-				headers: await this.getAuthHeaders(),
-			});
-			if (res.status === 401) {
-				// Still 401 after re-auth — ask user to sign in again cleanly.
-				throw new AuthRequiredError();
-			}
-		}
-
-		if (!res.ok) {
-			throw new Error(`HTTP ${res.status}: ${await res.text()}`);
-		}
-		return res.json() as Promise<T>;
-	}
-
 	showSection(section: BillingSection): void {
 		this.currentSection = section;
 		this.setVisibility(section);
@@ -156,7 +76,9 @@ export class BillingContent extends Disposable {
 	private async loadOverview(): Promise<void> {
 		this.renderLoading(this.overviewEl);
 		try {
-			const status = await this.apiFetch<WalletStatus>('/billing/status');
+			const status = await authedFetch<WalletStatus>(
+				this.authenticationService, this.productService, '/billing/status',
+			);
 			this.renderOverview(status);
 		} catch (err) {
 			if (err instanceof AuthRequiredError) {
@@ -210,7 +132,6 @@ export class BillingContent extends Disposable {
 			const btn = DOM.append(alert, $('button.billing-btn-primary'));
 			btn.textContent = localize('billing.topUpNow', "Top Up Now");
 			this._register(DOM.addDisposableListener(btn, 'click', () => {
-				// Trigger section switch via custom event - parent editor listens
 				this.overviewEl.dispatchEvent(new CustomEvent('billing:navigate', {
 					bubbles: true, detail: { section: BillingSection.TopUp }
 				}));
@@ -242,7 +163,9 @@ export class BillingContent extends Disposable {
 	private async loadTopUp(): Promise<void> {
 		this.renderLoading(this.topUpEl);
 		try {
-			const packages = await this.apiFetch<CreditPackage[]>('/billing/packages');
+			const packages = await authedFetch<CreditPackage[]>(
+				this.authenticationService, this.productService, '/billing/packages',
+			);
 			this.renderTopUp(packages);
 		} catch (err) {
 			if (err instanceof AuthRequiredError) {
@@ -295,14 +218,14 @@ export class BillingContent extends Disposable {
 		btn.setAttribute('disabled', 'true');
 		btn.textContent = localize('billing.loading', "Loading...");
 		try {
-			const res = await fetch(`${this.backendUrl}/billing/checkout`, {
-				method: 'POST',
-				headers: { 'Content-Type': 'application/json', ...await this.getAuthHeaders() },
-				body: JSON.stringify({ polar_product_id: pkg.polar_product_id }),
-			});
-			if (!res.ok) { throw new Error(`HTTP ${res.status}`); }
-			const data = await res.json() as { checkout_url: string };
-			// Open checkout in default browser (works in both Electron and browser)
+			const data = await authedFetch<{ checkout_url: string }>(
+				this.authenticationService, this.productService, '/billing/checkout',
+				{
+					method: 'POST',
+					headers: { 'Content-Type': 'application/json' },
+					body: JSON.stringify({ polar_product_id: pkg.polar_product_id }),
+				},
+			);
 			if (typeof window !== 'undefined') {
 				window.open(data.checkout_url, '_blank');
 			}
@@ -319,7 +242,9 @@ export class BillingContent extends Disposable {
 	private async loadTransactions(): Promise<void> {
 		this.renderLoading(this.transactionsEl);
 		try {
-			const data = await this.apiFetch<TransactionsResponse>('/billing/transactions?limit=50');
+			const data = await authedFetch<TransactionsResponse>(
+				this.authenticationService, this.productService, '/billing/transactions?limit=50',
+			);
 			this.renderTransactions(data.transactions);
 		} catch (err) {
 			if (err instanceof AuthRequiredError) {
@@ -378,8 +303,8 @@ export class BillingContent extends Disposable {
 	}
 
 	/**
-	 * Shown when authentication failed or was cancelled. Offers a Sign In
-	 * button without exposing raw HTTP status codes to the user.
+	 * Shown when authedFetch throws AuthRequiredError — authentication failed or
+	 * was cancelled. Offers a Sign In button without exposing raw HTTP status codes.
 	 */
 	private renderSignInRequired(container: HTMLElement): void {
 		DOM.clearNode(container);
@@ -388,8 +313,8 @@ export class BillingContent extends Disposable {
 		const btn = DOM.append(container, $('button.billing-btn-primary'));
 		btn.textContent = localize('billing.signIn', "Sign In");
 		this._register(DOM.addDisposableListener(btn, 'click', () => {
-			// Trigger full re-auth then reload the section.
-			void this.forceSignIn()
+			// Explicit user-initiated sign-in, then reload the section.
+			void forceSignIn(this.authenticationService)
 				.then(() => this.loadSection(this.currentSection))
 				.catch(() => undefined);
 		}));
@@ -415,7 +340,7 @@ export class BillingContent extends Disposable {
 	}
 
 	layout(_height: number, _width: number): void {
-		// Content sections scroll naturally; no manual layout required
+		// Content sections scroll naturally; no manual layout required.
 	}
 
 	focus(): void {

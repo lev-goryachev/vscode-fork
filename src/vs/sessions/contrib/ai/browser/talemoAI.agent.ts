@@ -2,12 +2,17 @@
  * Talemo AI — Chat agent implementation (TalemoAgentImpl).
  *
  * Handles the full request lifecycle for a single chat turn:
- *   1. Pre-flight auth check (no-session → forceSignIn with visible feedback).
+ *   1. Pre-flight auth check (no-session → forceSignIn with visible in-chat feedback).
  *   2. Thread resolution: reads ACTIVE_THREAD_KEY from IStorageService; creates
  *      a new thread via POST /ai/threads when absent.
  *   3. POST /ai/chat with SSE streaming.
  *   4. 401 recovery at each network step: shows "_Session expired_" in chat,
  *      triggers forceSignIn, retries once.
+ *
+ * Auth note: The agent uses manual 401 detection (not authedFetch) because it
+ * must emit a visible "session expired" message in the chat panel BEFORE showing
+ * the login modal — a UX requirement unique to the streaming chat context.
+ * All other Talemo API calls (threads list, billing) use authedFetch from talemoApi.ts.
  *
  * Thread binding uses a single stable key (ACTIVE_THREAD_KEY) scoped to
  * StorageScope.APPLICATION so chat history persists across app restarts.
@@ -27,12 +32,12 @@ import {
 } from '../../../../workbench/contrib/chat/common/participants/chatAgents.js';
 import { IAuthenticationService } from '../../../../workbench/services/authentication/common/authentication.js';
 import {
-	ACTIVE_THREAD_KEY,
-	DEFAULT_MODEL,
 	TALEMO_PROVIDER_ID,
+	forceSignIn,
 	getAuthHeaders,
 	getBackendUrl,
-} from './talemoAI.shared.js';
+} from '../../../browser/talemoApi.js';
+import { ACTIVE_THREAD_KEY, DEFAULT_MODEL } from './talemoAI.shared.js';
 
 // ─── TalemoAgentImpl ──────────────────────────────────────────────────────────
 
@@ -45,27 +50,11 @@ export class TalemoAgentImpl implements IChatAgentImplementation {
 	) { }
 
 	/**
-	 * Triggers the login form and waits for the user to complete sign-in.
-	 * Removes stale sessions only after the new session is confirmed, matching
-	 * the same pattern used in BillingContent.forceSignIn.
-	 * Throws if the auth provider is not registered or the user cancels.
-	 */
-	async forceSignIn(): Promise<void> {
-		if (!this.authService.isAuthenticationProviderRegistered(TALEMO_PROVIDER_ID)) {
-			throw new Error('auth_provider_not_ready');
-		}
-		const existing = await this.authService.getSessions(TALEMO_PROVIDER_ID).catch(() => []);
-		await this.authService.createSession(TALEMO_PROVIDER_ID, []);
-		for (const s of existing) {
-			await this.authService.removeSession(TALEMO_PROVIDER_ID, s.id).catch(() => undefined);
-		}
-	}
-
-	/**
 	 * Fetches or creates the active thread.
 	 * Reads ACTIVE_THREAD_KEY from IStorageService (stable across restarts).
-	 * Returns typed result so _doRequest can emit progress before auth recovery.
-	 * Does NOT call forceSignIn internally.
+	 * Returns a typed result so _doRequest can emit progress before auth recovery.
+	 * Uses raw fetch (not authedFetch) to preserve the 401 → _recoverAuth flow
+	 * that shows "Session expired" in the chat panel before the login modal.
 	 */
 	private async _resolveThreadId(
 		backendUrl: string,
@@ -109,7 +98,8 @@ export class TalemoAgentImpl implements IChatAgentImplementation {
 			content: { value: localize('talemo.ai.signingIn', '_Session expired — please sign in to continue..._') },
 		}]);
 		try {
-			await this.forceSignIn();
+			// Delegates to the shared forceSignIn — shows login modal, rotates sessions.
+			await forceSignIn(this.authService);
 			return true;
 		} catch {
 			return false;
@@ -139,6 +129,8 @@ export class TalemoAgentImpl implements IChatAgentImplementation {
 		const { threadId } = threadResult;
 
 		// ── Step 2: send chat request ─────────────────────────────────────────
+		// Raw fetch is required here because SSE streaming starts immediately on
+		// 200 — authedFetch consumes the body as JSON, which would break the stream.
 		const attempt = async (): Promise<Response> => {
 			const headers = await getAuthHeaders(this.authService);
 			return fetch(`${backendUrl}/ai/chat`, {
