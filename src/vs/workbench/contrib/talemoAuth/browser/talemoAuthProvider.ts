@@ -1,6 +1,8 @@
 import { Emitter, Event } from '../../../../base/common/event.js';
 import { Disposable } from '../../../../base/common/lifecycle.js';
 import { IStorageService, StorageScope } from '../../../../platform/storage/common/storage.js';
+import { ICommandService } from '../../../../platform/commands/common/commands.js';
+import { clearStoredTalemoAuth, AUTH_TOKEN_KEY, AUTH_USER_KEY, TALEMO_NATIVE_SIGN_IN_COMMAND } from '../../../../sessions/browser/talemoApi.js';
 import {
 	AuthenticationSession,
 	AuthenticationSessionsChangeEvent,
@@ -11,10 +13,6 @@ import {
 
 const PROVIDER_ID = 'talemo';
 const PROVIDER_LABEL = 'Talemo';
-
-/** Storage keys shared with the login overlay. */
-const AUTH_TOKEN_KEY = 'talemo.auth.accessToken';
-const AUTH_USER_KEY = 'talemo.auth.user';
 
 interface StoredUser {
 	id: string;
@@ -35,6 +33,7 @@ export class TalemoAuthenticationProvider extends Disposable implements IAuthent
 
 	constructor(
 		private readonly storageService: IStorageService,
+		private readonly commandService: ICommandService,
 	) {
 		super();
 		this._register(this.storageService.onDidChangeValue(StorageScope.APPLICATION, AUTH_TOKEN_KEY, this._store)(() => {
@@ -65,18 +64,26 @@ export class TalemoAuthenticationProvider extends Disposable implements IAuthent
 	}
 
 	async createSession(
-		_scopes: string[],
+		scopes: string[],
 		_options: IAuthenticationProviderSessionOptions,
 	): Promise<AuthenticationSession> {
-		/* Login is handled by TalemoAuthOverlay, not by this method.
-		   If createSession is called (e.g. by an extension requesting auth),
-		   we return the existing session or throw. */
 		try {
 			const session = this.readSession();
 			if (session) {
 				return session;
 			}
-			throw new Error('No active Talemo session. Please sign in via the login overlay.');
+
+			await this.commandService.executeCommand(TALEMO_NATIVE_SIGN_IN_COMMAND, undefined, {
+				forceSignInDialog: true,
+				additionalScopes: scopes,
+			});
+
+			const refreshedSession = this.readSession();
+			if (refreshedSession) {
+				return refreshedSession;
+			}
+
+			throw new Error('No active Talemo session after native sign-in flow.');
 		} catch (error: unknown) {
 			const msg = error instanceof Error ? error.message : String(error);
 			throw new Error(`[TalemoAuth] createSession failed: ${msg}`);
@@ -86,8 +93,7 @@ export class TalemoAuthenticationProvider extends Disposable implements IAuthent
 	async removeSession(sessionId: string): Promise<void> {
 		try {
 			const existing = this.readSession();
-			this.storageService.remove(AUTH_TOKEN_KEY, StorageScope.APPLICATION);
-			this.storageService.remove(AUTH_USER_KEY, StorageScope.APPLICATION);
+			clearStoredTalemoAuth(this.storageService);
 			if (existing) {
 				this._onDidChangeSessions.fire({
 					added: undefined,
@@ -133,6 +139,7 @@ export class TalemoAuthenticationProvider extends Disposable implements IAuthent
 export function registerTalemoAuthProvider(
 	authService: IAuthenticationService,
 	storageService: IStorageService,
+	commandService: ICommandService,
 ): TalemoAuthenticationProvider {
 	try {
 		authService.registerDeclaredAuthenticationProvider({
@@ -140,7 +147,7 @@ export function registerTalemoAuthProvider(
 			label: PROVIDER_LABEL,
 		});
 
-		const provider = new TalemoAuthenticationProvider(storageService);
+		const provider = new TalemoAuthenticationProvider(storageService, commandService);
 		authService.registerAuthenticationProvider(PROVIDER_ID, provider);
 		return provider;
 	} catch (error: unknown) {

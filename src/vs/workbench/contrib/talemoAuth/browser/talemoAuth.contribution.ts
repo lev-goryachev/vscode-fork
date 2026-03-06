@@ -7,26 +7,39 @@ import { CommandsRegistry } from '../../../../platform/commands/common/commands.
 import { ServicesAccessor } from '../../../../platform/instantiation/common/instantiation.js';
 import { MenuRegistry, MenuId } from '../../../../platform/actions/common/actions.js';
 import { IAuthenticationService } from '../../../services/authentication/common/authentication.js';
-import { TalemoAuthOverlay } from './talemoAuthOverlay.js';
+import { ICommandService } from '../../../../platform/commands/common/commands.js';
+import {
+	AUTH_REFRESH_TOKEN_KEY,
+	AUTH_TOKEN_KEY,
+	clearStoredTalemoAuth,
+	getStoredTalemoTokenExpiryMs,
+	refreshTalemoSession,
+	resolveTalemoBackend,
+	TALEMO_NATIVE_SIGN_IN_COMMAND,
+} from '../../../../sessions/browser/talemoApi.js';
 
-/** Storage key for the access token. */
-const AUTH_TOKEN_KEY = 'talemo.auth.accessToken';
+const AUTH_REFRESH_LEEWAY_MS = 120_000;
+const AUTH_TRANSITION_GRACE_MS = 250;
 
 /**
- * Checks authentication at workbench startup. If not authenticated, renders
- * TalemoAuthOverlay (our own email/password form) directly over the workbench.
+ * Checks authentication at workbench startup. If not authenticated, opens the
+ * native Talemo sign-in dialog used by the fork chat setup flow.
  */
 class TalemoAuthGate extends Disposable {
 	static readonly ID = 'workbench.contrib.talemoAuthGate';
 
-	private overlay: TalemoAuthOverlay | undefined;
+	private refreshTimer: number | undefined;
+	private incompleteStateTimer: number | undefined;
+	private refreshInFlight = false;
+	private signInPromptPromise: Promise<void> | undefined;
 
 	constructor(
 		@IStorageService private readonly storageService: IStorageService,
 		@IProductService private readonly productService: IProductService,
+		@ICommandService private readonly commandService: ICommandService,
 	) {
 		super();
-		this.checkAuth();
+		void this.checkAuth();
 
 		// Re-check on sign-out (token removed).
 		this._register(
@@ -35,60 +48,187 @@ class TalemoAuthGate extends Disposable {
 			)(() => {
 				const token = this.storageService.get(AUTH_TOKEN_KEY, StorageScope.APPLICATION);
 				if (!token) {
-					this.showLoginOverlay();
+					this.clearRefreshTimer();
+					this.clearIncompleteStateTimer();
+					void this.triggerNativeSignInDialog();
+					return;
+				}
+				void this.checkAuth();
+			}),
+		);
+
+		this._register(
+			this.storageService.onDidChangeValue(
+				StorageScope.APPLICATION, AUTH_REFRESH_TOKEN_KEY, this._store,
+			)(() => {
+				const token = this.storageService.get(AUTH_TOKEN_KEY, StorageScope.APPLICATION);
+				if (token) {
+					void this.checkAuth();
 				}
 			}),
 		);
 	}
 
-	private checkAuth(): void {
+	private async checkAuth(): Promise<void> {
 		const token = this.storageService.get(AUTH_TOKEN_KEY, StorageScope.APPLICATION);
 		if (!token) {
-			this.showLoginOverlay();
+			this.clearIncompleteStateTimer();
+			await this.triggerNativeSignInDialog();
 			return;
 		}
-		// Validate token is still alive; show login overlay on 401.
-		this.validateToken(token);
+
+		const refreshToken = this.storageService.get(AUTH_REFRESH_TOKEN_KEY, StorageScope.APPLICATION);
+		const expiresAtMs = getStoredTalemoTokenExpiryMs(this.storageService);
+		if (!refreshToken || expiresAtMs === undefined) {
+			this.deferIncompleteStateResolution();
+			return;
+		}
+		this.clearIncompleteStateTimer();
+
+		if (Date.now() >= (expiresAtMs - AUTH_REFRESH_LEEWAY_MS)) {
+			await this.refreshBeforeExpiry(expiresAtMs);
+			return;
+		}
+
+		const isValid = await this.validateToken(token);
+		if (!isValid) {
+			return;
+		}
+
+		this.scheduleRefresh(expiresAtMs);
 	}
 
-	private async validateToken(token: string): Promise<void> {
-		const product = this.productService as IProductService & { talemoBackendUrl?: string };
-		const backendUrl = product.talemoBackendUrl?.trim();
+	private async validateToken(token: string): Promise<boolean> {
+		const backendResolution = resolveTalemoBackend(this.productService);
+		const backendUrl = backendResolution.backendUrl.trim();
 		if (!backendUrl) {
-			return; // can't validate without backend URL — assume valid
+			return true;
 		}
 		try {
+			console.info(`[TalemoAuth] validate_token backend=${backendUrl} source=${backendResolution.source}`);
 			const res = await fetch(`${backendUrl}/billing/status`, {
-				headers: { 'Authorization': `Bearer ${token}` },
+				headers: {
+					'Authorization': `Bearer ${token}`,
+					'X-Talemo-Surface': 'desktop',
+				},
 			});
 			if (res.status === 401) {
-				this.storageService.remove(AUTH_TOKEN_KEY, StorageScope.APPLICATION);
-				this.storageService.remove('talemo.auth.user', StorageScope.APPLICATION);
-				this.showLoginOverlay();
+				clearStoredTalemoAuth(this.storageService);
+				await this.triggerNativeSignInDialog();
+				return false;
 			}
+			return true;
 		} catch {
 			// Network error — keep existing token, don't block user
+			return true;
 		}
 	}
 
-	private showLoginOverlay(): void {
-		if (this.overlay) {
-			return; // already showing
+	private scheduleRefresh(expiresAtMs: number): void {
+		this.clearRefreshTimer();
+		const delayMs = Math.max(0, expiresAtMs - Date.now() - AUTH_REFRESH_LEEWAY_MS);
+		this.refreshTimer = window.setTimeout(() => {
+			void this.refreshBeforeExpiry(expiresAtMs);
+		}, delayMs);
+	}
+
+	private clearRefreshTimer(): void {
+		if (this.refreshTimer !== undefined) {
+			window.clearTimeout(this.refreshTimer);
+			this.refreshTimer = undefined;
+		}
+	}
+
+	private deferIncompleteStateResolution(): void {
+		if (this.incompleteStateTimer !== undefined) {
+			return;
 		}
 
-		try {
-			// CSS variables (--vscode-*) are scoped to .monaco-workbench, not body.
-			const container = document.querySelector('.monaco-workbench') as HTMLElement ?? document.body;
-			this.overlay = this._register(new TalemoAuthOverlay(
-				container,
-				this.storageService,
-				this.productService,
-				() => { this.overlay = undefined; },
-			));
-			this.overlay.show();
-		} catch (err: unknown) {
-			console.error('[TalemoAuth] Failed to show login overlay:', err);
+		// During login/refresh the storage-backed auth payload is written across
+		// multiple keys. Give that write a tiny grace window before treating the
+		// state as corrupt and forcing logout.
+		this.incompleteStateTimer = window.setTimeout(() => {
+			this.incompleteStateTimer = undefined;
+
+			const token = this.storageService.get(AUTH_TOKEN_KEY, StorageScope.APPLICATION);
+			const refreshToken = this.storageService.get(AUTH_REFRESH_TOKEN_KEY, StorageScope.APPLICATION);
+			const expiresAtMs = getStoredTalemoTokenExpiryMs(this.storageService);
+			if (token && (!refreshToken || expiresAtMs === undefined)) {
+				console.warn('[TalemoAuth] incomplete_auth_state_after_grace');
+				clearStoredTalemoAuth(this.storageService);
+				void this.triggerNativeSignInDialog();
+			}
+		}, AUTH_TRANSITION_GRACE_MS);
+	}
+
+	private clearIncompleteStateTimer(): void {
+		if (this.incompleteStateTimer !== undefined) {
+			window.clearTimeout(this.incompleteStateTimer);
+			this.incompleteStateTimer = undefined;
 		}
+	}
+
+	private async refreshBeforeExpiry(expectedExpiryMs: number): Promise<void> {
+		if (this.refreshInFlight) {
+			return;
+		}
+
+		const activeToken = this.storageService.get(AUTH_TOKEN_KEY, StorageScope.APPLICATION);
+		if (!activeToken) {
+			await this.triggerNativeSignInDialog();
+			return;
+		}
+
+		const currentExpiryMs = getStoredTalemoTokenExpiryMs(this.storageService);
+		if (currentExpiryMs !== undefined && currentExpiryMs > expectedExpiryMs) {
+			this.scheduleRefresh(currentExpiryMs);
+			return;
+		}
+
+		this.refreshInFlight = true;
+		try {
+			const result = await refreshTalemoSession(this.storageService, this.productService);
+			if (result === 'success') {
+				const nextExpiryMs = getStoredTalemoTokenExpiryMs(this.storageService);
+				if (nextExpiryMs !== undefined) {
+					this.scheduleRefresh(nextExpiryMs);
+				}
+				return;
+			}
+
+			if (result === 'error' && currentExpiryMs !== undefined && Date.now() < currentExpiryMs) {
+				this.scheduleRefresh(currentExpiryMs);
+				return;
+			}
+
+			clearStoredTalemoAuth(this.storageService);
+			await this.triggerNativeSignInDialog();
+		} finally {
+			this.refreshInFlight = false;
+		}
+	}
+
+	private async triggerNativeSignInDialog(): Promise<void> {
+		if (this.signInPromptPromise) {
+			return this.signInPromptPromise;
+		}
+
+		this.signInPromptPromise = (async () => {
+			try {
+				await this.commandService.executeCommand(TALEMO_NATIVE_SIGN_IN_COMMAND);
+			} catch (error: unknown) {
+				console.error('[TalemoAuth] Failed to trigger native sign-in dialog:', error);
+			} finally {
+				this.signInPromptPromise = undefined;
+			}
+		})();
+		return this.signInPromptPromise;
+	}
+
+	override dispose(): void {
+		this.clearRefreshTimer();
+		this.clearIncompleteStateTimer();
+		super.dispose();
 	}
 }
 
@@ -108,10 +248,11 @@ class TalemoAuthProviderContribution extends Disposable {
 	constructor(
 		@IAuthenticationService authService: IAuthenticationService,
 		@IStorageService storageService: IStorageService,
+		@ICommandService commandService: ICommandService,
 	) {
 		super();
 		try {
-			const provider = registerTalemoAuthProvider(authService, storageService);
+			const provider = registerTalemoAuthProvider(authService, storageService, commandService);
 			this._register(provider);
 		} catch (error: unknown) {
 			console.error('[TalemoAuth] Provider contribution failed:', error);
@@ -131,8 +272,7 @@ registerWorkbenchContribution2(
 
 CommandsRegistry.registerCommand('talemo.auth.signOut', async (accessor: ServicesAccessor) => {
 	const storageService = accessor.get(IStorageService);
-	storageService.remove('talemo.auth.user', StorageScope.APPLICATION);
-	storageService.remove(AUTH_TOKEN_KEY, StorageScope.APPLICATION);
+	clearStoredTalemoAuth(storageService);
 });
 
 MenuRegistry.appendMenuItem(MenuId.CommandPalette, {
@@ -142,9 +282,8 @@ MenuRegistry.appendMenuItem(MenuId.CommandPalette, {
 // -- Sign In (manual trigger via Command Palette) -----------------------------
 
 CommandsRegistry.registerCommand('talemo.auth.signIn', async (accessor: ServicesAccessor) => {
-	const storageService = accessor.get(IStorageService);
-	storageService.remove('talemo.auth.user', StorageScope.APPLICATION);
-	storageService.remove(AUTH_TOKEN_KEY, StorageScope.APPLICATION);
+	const commandService = accessor.get(ICommandService);
+	await commandService.executeCommand(TALEMO_NATIVE_SIGN_IN_COMMAND);
 });
 
 MenuRegistry.appendMenuItem(MenuId.CommandPalette, {

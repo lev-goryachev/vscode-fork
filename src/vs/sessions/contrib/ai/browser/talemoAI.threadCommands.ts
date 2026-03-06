@@ -23,7 +23,8 @@
  *--------------------------------------------------------------------------------------------*/
 
 import { localize, localize2 } from '../../../../nls.js';
-import { Action2, registerAction2 } from '../../../../platform/actions/common/actions.js';
+import { Codicon } from '../../../../base/common/codicons.js';
+import { Action2, MenuId, registerAction2 } from '../../../../platform/actions/common/actions.js';
 import { IProductService } from '../../../../platform/product/common/productService.js';
 import { IQuickInputService, IQuickPickItem } from '../../../../platform/quickinput/common/quickInput.js';
 import { IStorageService, StorageScope, StorageTarget } from '../../../../platform/storage/common/storage.js';
@@ -123,6 +124,102 @@ interface ThreadQuickPickItem extends IQuickPickItem {
 	threadId: string;
 }
 
+async function openThreadPicker(accessor: ServicesAccessor): Promise<void> {
+	const quickInputService = accessor.get(IQuickInputService);
+	const storageService = accessor.get(IStorageService);
+	const authService = accessor.get(IAuthenticationService);
+	const productService = accessor.get(IProductService);
+	const chatService = accessor.get(IChatService);
+	const widgetService = accessor.get(IChatWidgetService);
+
+	// Show loading placeholder while fetching the thread list.
+	const pick = quickInputService.createQuickPick<ThreadQuickPickItem>();
+	pick.placeholder = localize('talemo.thread.loading', "Loading threads…");
+	pick.busy = true;
+	pick.show();
+
+	let threads: ThreadSummary[];
+	try {
+		// listThreads uses authedFetch — 401 triggers forceSignIn transparently.
+		threads = await listThreads(authService, storageService, productService);
+	} catch (err) {
+		pick.hide();
+		pick.dispose();
+		const label = err instanceof AuthRequiredError
+			? localize('talemo.thread.fetchAuthError', "$(key) Sign in required to load threads")
+			: localize('talemo.thread.fetchError', "$(error) Could not load threads: {0}", String(err));
+		await quickInputService.pick(
+			[{ label }],
+			{ placeHolder: localize('talemo.thread.error', "Thread fetch failed") },
+		);
+		return;
+	}
+
+	if (!threads.length) {
+		pick.hide();
+		pick.dispose();
+		await quickInputService.pick(
+			[{ label: localize('talemo.thread.noThreads', "$(info) No threads found. Start a chat to create one.") }],
+			{ placeHolder: localize('talemo.thread.empty', "No threads") },
+		);
+		return;
+	}
+
+	const activeId = storageService.get(ACTIVE_THREAD_KEY, StorageScope.APPLICATION);
+	const threadMap = new Map<string, ThreadSummary>(threads.map(t => [t.thread_id, t]));
+
+	// Mark the currently active thread with a checkmark so the user knows where they are.
+	pick.items = threads.map(t => ({
+		threadId: t.thread_id,
+		label: t.title || localize('talemo.thread.untitled', "Untitled conversation"),
+		description: relativeDate(t.updated_at),
+		detail: t.thread_id === activeId
+			? localize('talemo.thread.current', "$(check) current")
+			: t.model,
+	}));
+	pick.placeholder = localize('talemo.thread.selectPlaceholder', "Select a thread to continue");
+	pick.busy = false;
+
+	pick.onDidAccept(async () => {
+		const selected = pick.selectedItems[0];
+		pick.hide();
+		pick.dispose();
+		if (!selected) { return; }
+
+		// 1. Persist the new active thread_id — future chat messages continue it.
+		storageService.store(
+			ACTIVE_THREAD_KEY,
+			selected.threadId,
+			StorageScope.APPLICATION,
+			StorageTarget.MACHINE,
+		);
+
+		// 2. Load message history from Firestore and open the thread in the Chat panel.
+		try {
+			const thread = threadMap.get(selected.threadId)!;
+			// getThreadMessages uses authedFetch — handles 401 transparently.
+			const messages = await getThreadMessages(authService, storageService, productService, selected.threadId);
+			const sessionData = buildChatSession(thread, messages);
+			const modelRef = chatService.loadSessionFromContent(sessionData);
+			if (modelRef) {
+				await widgetService.openSession(modelRef.object.sessionResource, ChatViewPaneTarget);
+			}
+		} catch (err) {
+			// Non-fatal: active thread_id is already stored, so the next chat message
+			// will still use the correct thread. History just won't be pre-loaded.
+			const label = err instanceof AuthRequiredError
+				? localize('talemo.thread.loadAuthError', "$(key) Sign in required to load thread history")
+				: localize('talemo.thread.loadError', "$(warning) Could not load thread history: {0}", String(err));
+			await quickInputService.pick(
+				[{ label }],
+				{ placeHolder: localize('talemo.thread.loadErrorTitle', "History load failed") },
+			);
+		}
+	});
+
+	pick.onDidHide(() => pick.dispose());
+}
+
 class SelectThreadAction extends Action2 {
 
 	constructor() {
@@ -134,99 +231,32 @@ class SelectThreadAction extends Action2 {
 	}
 
 	override async run(accessor: ServicesAccessor): Promise<void> {
-		const quickInputService = accessor.get(IQuickInputService);
-		const storageService = accessor.get(IStorageService);
-		const authService = accessor.get(IAuthenticationService);
-		const productService = accessor.get(IProductService);
-		const chatService = accessor.get(IChatService);
-		const widgetService = accessor.get(IChatWidgetService);
+		return openThreadPicker(accessor);
+	}
+}
 
-		// Show loading placeholder while fetching the thread list.
-		const pick = quickInputService.createQuickPick<ThreadQuickPickItem>();
-		pick.placeholder = localize('talemo.thread.loading', "Loading threads…");
-		pick.busy = true;
-		pick.show();
+class SelectThreadToolbarAction extends Action2 {
 
-		let threads: ThreadSummary[];
-		try {
-			// listThreads uses authedFetch — 401 triggers forceSignIn transparently.
-			threads = await listThreads(authService, productService);
-		} catch (err) {
-			pick.hide();
-			pick.dispose();
-			const label = err instanceof AuthRequiredError
-				? localize('talemo.thread.fetchAuthError', "$(key) Sign in required to load threads")
-				: localize('talemo.thread.fetchError', "$(error) Could not load threads: {0}", String(err));
-			await quickInputService.pick(
-				[{ label }],
-				{ placeHolder: localize('talemo.thread.error', "Thread fetch failed") },
-			);
-			return;
-		}
-
-		if (!threads.length) {
-			pick.hide();
-			pick.dispose();
-			await quickInputService.pick(
-				[{ label: localize('talemo.thread.noThreads', "$(info) No threads found. Start a chat to create one.") }],
-				{ placeHolder: localize('talemo.thread.empty', "No threads") },
-			);
-			return;
-		}
-
-		const activeId = storageService.get(ACTIVE_THREAD_KEY, StorageScope.APPLICATION);
-		const threadMap = new Map<string, ThreadSummary>(threads.map(t => [t.thread_id, t]));
-
-		// Mark the currently active thread with a checkmark so the user knows where they are.
-		pick.items = threads.map(t => ({
-			threadId: t.thread_id,
-			label: t.title || localize('talemo.thread.untitled', "Untitled conversation"),
-			description: relativeDate(t.updated_at),
-			detail: t.thread_id === activeId
-				? localize('talemo.thread.current', "$(check) current")
-				: t.model,
-		}));
-		pick.placeholder = localize('talemo.thread.selectPlaceholder', "Select a thread to continue");
-		pick.busy = false;
-
-		pick.onDidAccept(async () => {
-			const selected = pick.selectedItems[0];
-			pick.hide();
-			pick.dispose();
-			if (!selected) { return; }
-
-			// 1. Persist the new active thread_id — future chat messages continue it.
-			storageService.store(
-				ACTIVE_THREAD_KEY,
-				selected.threadId,
-				StorageScope.APPLICATION,
-				StorageTarget.MACHINE,
-			);
-
-			// 2. Load message history from Firestore and open the thread in the Chat panel.
-			try {
-				const thread = threadMap.get(selected.threadId)!;
-				// getThreadMessages uses authedFetch — handles 401 transparently.
-				const messages = await getThreadMessages(authService, productService, selected.threadId);
-				const sessionData = buildChatSession(thread, messages);
-				const modelRef = chatService.loadSessionFromContent(sessionData);
-				if (modelRef) {
-					await widgetService.openSession(modelRef.object.sessionResource, ChatViewPaneTarget);
-				}
-			} catch (err) {
-				// Non-fatal: active thread_id is already stored, so the next chat message
-				// will still use the correct thread. History just won't be pre-loaded.
-				const label = err instanceof AuthRequiredError
-					? localize('talemo.thread.loadAuthError', "$(key) Sign in required to load thread history")
-					: localize('talemo.thread.loadError', "$(warning) Could not load thread history: {0}", String(err));
-				await quickInputService.pick(
-					[{ label }],
-					{ placeHolder: localize('talemo.thread.loadErrorTitle', "History load failed") },
-				);
-			}
+	constructor() {
+		super({
+			id: 'talemo.selectThread.toolbar',
+			title: localize2('talemo.selectThreadToolbar', "Conversation History"),
+			icon: Codicon.history,
+			f1: false,
+			menu: [{
+				id: MenuId.ChatTitleBarMenu,
+				group: 'navigation',
+				order: 2,
+			}, {
+				id: MenuId.ChatViewSessionTitleToolbar,
+				group: 'navigation',
+				order: 2,
+			}],
 		});
+	}
 
-		pick.onDidHide(() => pick.dispose());
+	override async run(accessor: ServicesAccessor): Promise<void> {
+		return openThreadPicker(accessor);
 	}
 }
 
@@ -254,5 +284,6 @@ class NewThreadAction extends Action2 {
 
 export function registerTalemoThreadCommands(): void {
 	registerAction2(SelectThreadAction);
+	registerAction2(SelectThreadToolbarAction);
 	registerAction2(NewThreadAction);
 }

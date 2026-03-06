@@ -9,9 +9,8 @@
 export const DEFAULT_MODEL = 'openai/gpt-4o-mini';
 
 /**
- * Stable IStorageService key for the currently active thread.
- * Scoped to StorageScope.APPLICATION so it persists across app restarts.
- * All VS Code chat sessions share this thread until the user explicitly
- * switches via "Talemo: Select Thread" (talemoAI.threadCommands.ts).
+ * Runtime cache key for the backend thread bound to the currently opened local
+ * fork chat session. Canonical ownership stays in the backend plus the
+ * per-session Talemo binding persisted with the local chat session state.
  */
 export const ACTIVE_THREAD_KEY = 'talemo.thread.active';

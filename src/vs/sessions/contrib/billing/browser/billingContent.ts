@@ -2,6 +2,7 @@ import * as DOM from '../../../../base/browser/dom.js';
 import { Disposable } from '../../../../base/common/lifecycle.js';
 import { localize } from '../../../../nls.js';
 import { IProductService } from '../../../../platform/product/common/productService.js';
+import { IStorageService } from '../../../../platform/storage/common/storage.js';
 import { IAuthenticationService } from '../../../../workbench/services/authentication/common/authentication.js';
 import {
 	AuthRequiredError,
@@ -36,6 +37,7 @@ export class BillingContent extends Disposable {
 	constructor(
 		parent: HTMLElement,
 		@IProductService private readonly productService: IProductService,
+		@IStorageService private readonly storageService: IStorageService,
 		@IAuthenticationService private readonly authenticationService: IAuthenticationService,
 	) {
 		super();
@@ -77,7 +79,7 @@ export class BillingContent extends Disposable {
 		this.renderLoading(this.overviewEl);
 		try {
 			const status = await authedFetch<WalletStatus>(
-				this.authenticationService, this.productService, '/billing/status',
+				this.authenticationService, this.storageService, this.productService, '/billing/status',
 			);
 			this.renderOverview(status);
 		} catch (err) {
@@ -164,7 +166,7 @@ export class BillingContent extends Disposable {
 		this.renderLoading(this.topUpEl);
 		try {
 			const packages = await authedFetch<CreditPackage[]>(
-				this.authenticationService, this.productService, '/billing/packages',
+				this.authenticationService, this.storageService, this.productService, '/billing/packages',
 			);
 			this.renderTopUp(packages);
 		} catch (err) {
@@ -219,7 +221,7 @@ export class BillingContent extends Disposable {
 		btn.textContent = localize('billing.loading', "Loading...");
 		try {
 			const data = await authedFetch<{ checkout_url: string }>(
-				this.authenticationService, this.productService, '/billing/checkout',
+				this.authenticationService, this.storageService, this.productService, '/billing/checkout',
 				{
 					method: 'POST',
 					headers: { 'Content-Type': 'application/json' },
@@ -243,7 +245,7 @@ export class BillingContent extends Disposable {
 		this.renderLoading(this.transactionsEl);
 		try {
 			const data = await authedFetch<TransactionsResponse>(
-				this.authenticationService, this.productService, '/billing/transactions?limit=50',
+				this.authenticationService, this.storageService, this.productService, '/billing/transactions?limit=50',
 			);
 			this.renderTransactions(data.transactions);
 		} catch (err) {
@@ -314,7 +316,7 @@ export class BillingContent extends Disposable {
 		btn.textContent = localize('billing.signIn', "Sign In");
 		this._register(DOM.addDisposableListener(btn, 'click', () => {
 			// Explicit user-initiated sign-in, then reload the section.
-			void forceSignIn(this.authenticationService)
+			void forceSignIn(this.authenticationService, this.storageService)
 				.then(() => this.loadSection(this.currentSection))
 				.catch(() => undefined);
 		}));

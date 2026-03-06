@@ -26,7 +26,8 @@ import { ChatSetupController } from './chatSetupController.js';
 import { IChatSetupResult, ChatSetupAnonymous, InstallChatEvent, InstallChatClassification, ChatSetupStrategy, ChatSetupResultValue } from './chatSetup.js';
 import { IDefaultAccountService } from '../../../../../platform/defaultAccount/common/defaultAccount.js';
 import { IHostService } from '../../../../services/host/browser/host.js';
-import { IStorageService, StorageScope, StorageTarget } from '../../../../../platform/storage/common/storage.js';
+import { IStorageService } from '../../../../../platform/storage/common/storage.js';
+import { loginTalemoWithPassword, resolveTalemoBackend } from '../../../../../sessions/browser/talemoApi.js';
 
 const defaultChat = {
 	publicCodeMatchesUrl: product.defaultChatAgent?.publicCodeMatchesUrl ?? '',
@@ -299,8 +300,6 @@ export class ChatSetup {
 		signInBtn.textContent = localize('signInButton', "Sign in");
 		signInBtn.type = 'button';
 
-		const loginUrl = `${(product as any).talemoBackendUrl ?? 'http://localhost:8000'}/auth/login`;
-
 		const doSignIn = async () => {
 			const email = emailInput.value.trim();
 			const password = passwordInput.value;
@@ -315,22 +314,9 @@ export class ChatSetup {
 			errorMsg.style.display = 'none';
 
 			try {
-				const response = await fetch(loginUrl, {
-					method: 'POST',
-					headers: { 'Content-Type': 'application/json' },
-					body: JSON.stringify({ email, password }),
-				});
-
-				if (!response.ok) {
-					const body = await response.text().catch(() => '');
-					throw new Error(`${response.status}: ${body.slice(0, 120)}`);
-				}
-
-				const data: { access_token: string; refresh_token: string; user: { id: string; email: string } } = await response.json();
-				// Store in IStorageService — same keys read by TalemoAuthenticationProvider.
-				this.storageService.store('talemo.auth.accessToken', data.access_token, StorageScope.APPLICATION, StorageTarget.MACHINE);
-				this.storageService.store('talemo.auth.user', JSON.stringify(data.user), StorageScope.APPLICATION, StorageTarget.MACHINE);
-
+				const backendResolution = resolveTalemoBackend(product);
+				this.logService.info(`[TalemoAuth] native_dialog_login backend=${backendResolution.backendUrl} source=${backendResolution.source}`);
+				await loginTalemoWithPassword(this.storageService, product, email, password);
 				resolveEmailAuth(ChatSetupStrategy.SetupWithEmailPassword);
 			} catch (err) {
 				errorMsg.textContent = localize('emailSignInFailed', "Sign-in failed: {0}", String(err));

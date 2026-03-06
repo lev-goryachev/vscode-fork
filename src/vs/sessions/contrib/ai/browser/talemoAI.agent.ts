@@ -3,8 +3,9 @@
  *
  * Handles the full request lifecycle for a single chat turn:
  *   1. Pre-flight auth check (no-session → forceSignIn with visible in-chat feedback).
- *   2. Thread resolution: reads ACTIVE_THREAD_KEY from IStorageService; creates
- *      a new thread via POST /ai/threads when absent.
+ *   2. Thread resolution: restores a per-session Talemo thread binding first,
+ *      then falls back to ACTIVE_THREAD_KEY as a runtime cache, and creates a
+ *      new thread via POST /ai/threads when no binding exists.
  *   3. POST /ai/chat with SSE streaming.
  *   4. 401 recovery at each network step: shows "_Session expired_" in chat,
  *      triggers forceSignIn, retries once.
@@ -14,16 +15,18 @@
  * the login modal — a UX requirement unique to the streaming chat context.
  * All other Talemo API calls (threads list, billing) use authedFetch from talemoApi.ts.
  *
- * Thread binding uses a single stable key (ACTIVE_THREAD_KEY) scoped to
- * StorageScope.APPLICATION so chat history persists across app restarts.
- * Users switch threads via "Talemo: Select Thread" (talemoAI.threadCommands.ts).
+ * Backend thread ownership stays canonical. The fork only persists a local
+ * session-to-thread binding so reopening a native Sessions item continues the
+ * correct backend conversation without a duplicate Talemo history UI.
  *--------------------------------------------------------------------------------------------*/
 
 import { CancellationToken } from '../../../../base/common/cancellation.js';
 import { localize } from '../../../../nls.js';
 import { IProductService } from '../../../../platform/product/common/productService.js';
 import { IStorageService, StorageScope, StorageTarget } from '../../../../platform/storage/common/storage.js';
+import { IChatWidgetService } from '../../../../workbench/contrib/chat/browser/chat.js';
 import { IChatProgress } from '../../../../workbench/contrib/chat/common/chatService/chatService.js';
+import { IChatService } from '../../../../workbench/contrib/chat/common/chatService/chatService.js';
 import {
 	IChatAgentHistoryEntry,
 	IChatAgentImplementation,
@@ -36,8 +39,14 @@ import {
 	forceSignIn,
 	getAuthHeaders,
 	getBackendUrl,
+	refreshTalemoSession,
 } from '../../../browser/talemoApi.js';
 import { ACTIVE_THREAD_KEY, DEFAULT_MODEL } from './talemoAI.shared.js';
+import {
+	clearThreadBindingForSession,
+	getThreadIdFromSessionModel,
+	persistThreadBindingForSession,
+} from './talemoAI.sessionBinding.js';
 
 // ─── TalemoAgentImpl ──────────────────────────────────────────────────────────
 
@@ -47,40 +56,75 @@ export class TalemoAgentImpl implements IChatAgentImplementation {
 		private readonly authService: IAuthenticationService,
 		private readonly productService: IProductService,
 		private readonly storageService: IStorageService,
+		private readonly chatService: IChatService,
+		private readonly chatWidgetService: IChatWidgetService,
 	) { }
 
 	/**
-	 * Fetches or creates the active thread.
-	 * Reads ACTIVE_THREAD_KEY from IStorageService (stable across restarts).
+	 * Resolve or create the backend thread bound to the current fork-local chat
+	 * session. The persisted per-session binding is canonical on the client;
+	 * ACTIVE_THREAD_KEY remains only a runtime cache for the currently opened
+	 * session.
 	 * Returns a typed result so _doRequest can emit progress before auth recovery.
 	 * Uses raw fetch (not authedFetch) to preserve the 401 → _recoverAuth flow
 	 * that shows "Session expired" in the chat panel before the login modal.
 	 */
+	private _getSessionThreadId(sessionResource: IChatAgentRequest['sessionResource']): string | undefined {
+		const boundThreadId = getThreadIdFromSessionModel(this.chatService.getSession(sessionResource));
+		if (boundThreadId) {
+			this.storageService.store(ACTIVE_THREAD_KEY, boundThreadId, StorageScope.APPLICATION, StorageTarget.MACHINE);
+			return boundThreadId;
+		}
+		return this.storageService.get(ACTIVE_THREAD_KEY, StorageScope.APPLICATION);
+	}
+
+	private _persistThreadBinding(sessionResource: IChatAgentRequest['sessionResource'], threadId: string): void {
+		persistThreadBindingForSession(
+			this.chatService,
+			this.chatWidgetService,
+			this.storageService,
+			sessionResource,
+			threadId,
+		);
+	}
+
+	private _clearThreadBinding(sessionResource: IChatAgentRequest['sessionResource']): void {
+		clearThreadBindingForSession(
+			this.chatService,
+			this.chatWidgetService,
+			this.storageService,
+			sessionResource,
+		);
+	}
+
 	private async _resolveThreadId(
+		request: IChatAgentRequest,
 		backendUrl: string,
 		model: string,
+		title?: string,
 	): Promise<{ threadId: string } | { status: 401 } | { status: 'error' }> {
-		const cached = this.storageService.get(ACTIVE_THREAD_KEY, StorageScope.APPLICATION);
+		const cached = this._getSessionThreadId(request.sessionResource);
 		if (cached) {
 			return { threadId: cached };
 		}
 		try {
 			const headers = await getAuthHeaders(this.authService);
+			const body: Record<string, string> = { model };
+			if (title) {
+				// Persist a human-readable preview of the first user message so the
+				// thread list is usable and matches the title the user sees in chat.
+				body['title'] = title;
+			}
 			const res = await fetch(`${backendUrl}/ai/threads`, {
 				method: 'POST',
 				headers: { 'Content-Type': 'application/json', ...headers },
-				body: JSON.stringify({ model }),
+				body: JSON.stringify(body),
 			});
 			if (res.status === 401) { return { status: 401 }; }
 			if (!res.ok) { return { status: 'error' }; }
 
 			const data = await res.json() as { thread_id: string };
-			this.storageService.store(
-				ACTIVE_THREAD_KEY,
-				data.thread_id,
-				StorageScope.APPLICATION,
-				StorageTarget.MACHINE,
-			);
+			this._persistThreadBinding(request.sessionResource, data.thread_id);
 			return { threadId: data.thread_id };
 		} catch {
 			return { status: 'error' };
@@ -92,17 +136,22 @@ export class TalemoAgentImpl implements IChatAgentImplementation {
 	 * login form so the user understands why the panel paused.
 	 * Returns true on successful re-auth, false on cancel or provider error.
 	 */
-	private async _recoverAuth(progress: (parts: IChatProgress[]) => void): Promise<boolean> {
+	private async _recoverAuth(progress: (parts: IChatProgress[]) => void): Promise<'silent' | 'interactive' | 'failed'> {
+		const refreshResult = await refreshTalemoSession(this.storageService, this.productService);
+		if (refreshResult === 'success') {
+			return 'silent';
+		}
+
 		progress([{
 			kind: 'markdownContent',
 			content: { value: localize('talemo.ai.signingIn', '_Session expired — please sign in to continue..._') },
 		}]);
 		try {
 			// Delegates to the shared forceSignIn — shows login modal, rotates sessions.
-			await forceSignIn(this.authService);
-			return true;
+			await forceSignIn(this.authService, this.storageService);
+			return 'interactive';
 		} catch {
-			return false;
+			return 'failed';
 		}
 	}
 
@@ -111,17 +160,18 @@ export class TalemoAgentImpl implements IChatAgentImplementation {
 		request: IChatAgentRequest,
 		progress: (parts: IChatProgress[]) => void,
 		token: CancellationToken,
-	): Promise<'ok' | 'auth' | 'error'> {
+	): Promise<'ok' | 'auth' | 'error' | 'retry_after_auth'> {
 		const backendUrl = getBackendUrl(this.productService);
 		const model = request.userSelectedModelId ?? DEFAULT_MODEL;
+		const title = request.message.replace(/\s+/g, ' ').trim().slice(0, 80) || undefined;
 
 		// ── Step 1: resolve active thread ─────────────────────────────────────
-		let threadResult = await this._resolveThreadId(backendUrl, model);
+		let threadResult = await this._resolveThreadId(request, backendUrl, model, title);
 
 		if ('status' in threadResult && threadResult.status === 401) {
 			const recovered = await this._recoverAuth(progress);
-			if (!recovered) { return 'auth'; }
-			threadResult = await this._resolveThreadId(backendUrl, model);
+			if (recovered === 'failed') { return 'auth'; }
+			threadResult = await this._resolveThreadId(request, backendUrl, model, title);
 		}
 		if ('status' in threadResult) {
 			return threadResult.status === 401 ? 'auth' : 'error';
@@ -148,12 +198,39 @@ export class TalemoAgentImpl implements IChatAgentImplementation {
 
 		if (response.status === 401) {
 			const recovered = await this._recoverAuth(progress);
-			if (!recovered) { return 'auth'; }
-			try { response = await attempt(); } catch (err) {
-				progress([{ kind: 'markdownContent', content: { value: localize('talemo.ai.networkError', "Network error: {0}", String(err)) } }]);
-				return 'error';
+			if (recovered === 'failed') { return 'auth'; }
+			if (recovered === 'silent') {
+				try { response = await attempt(); } catch (err) {
+					progress([{ kind: 'markdownContent', content: { value: localize('talemo.ai.networkError', "Network error: {0}", String(err)) } }]);
+					return 'error';
+				}
+				if (response.status === 401) { return 'auth'; }
+			} else {
+				progress([{
+					kind: 'markdownContent',
+					content: {
+						value: localize(
+							'talemo.ai.resendAfterAuth',
+							'\n\n_Session restored. Please send your message again._',
+						),
+					},
+				}]);
+				return 'retry_after_auth';
 			}
-			if (response.status === 401) { return 'auth'; }
+		}
+
+		if (response.status === 403 || response.status === 404) {
+			this._clearThreadBinding(request.sessionResource);
+			progress([{
+				kind: 'markdownContent',
+				content: {
+					value: localize(
+						'talemo.ai.threadUnavailable',
+						"This conversation thread is no longer available. Start a new chat session or send your message again to create a new thread.",
+					),
+				},
+			}]);
+			return 'error';
 		}
 
 		if (!response.ok) {
