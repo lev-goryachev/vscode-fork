@@ -18,7 +18,7 @@
 import { localize, localize2 } from '../../../../nls.js';
 import { Action2, registerAction2 } from '../../../../platform/actions/common/actions.js';
 import { IProductService } from '../../../../platform/product/common/productService.js';
-import { IQuickInputService, IQuickPickItem } from '../../../../platform/quickinput/common/quickInput.js';
+import { IQuickInputService, IQuickPickItem, QuickPickItemKind } from '../../../../platform/quickinput/common/quickInput.js';
 import { IStorageService, StorageScope, StorageTarget } from '../../../../platform/storage/common/storage.js';
 import { ServicesAccessor } from '../../../../platform/instantiation/common/instantiation.js';
 import { IAuthenticationService } from '../../../../workbench/services/authentication/common/authentication.js';
@@ -39,6 +39,18 @@ interface ThreadSummary {
 
 interface ThreadListResponse {
 	threads: ThreadSummary[];
+	next_cursor: string | null;
+}
+
+interface MessageItem {
+	message_id: string;
+	role: 'user' | 'assistant' | 'system';
+	content: string;
+	created_at: string;
+}
+
+interface MessageListResponse {
+	messages: MessageItem[];
 	next_cursor: string | null;
 }
 
@@ -72,6 +84,51 @@ async function fetchThreads(
 	}
 	const data = await res.json() as ThreadListResponse;
 	return data.threads ?? [];
+}
+
+/** Fetch recent messages for a specific thread (up to 50, oldest first). */
+async function fetchMessages(
+	authService: IAuthenticationService,
+	productService: IProductService,
+	threadId: string,
+): Promise<MessageItem[]> {
+	const backendUrl = getBackendUrl(productService);
+	const headers = await getAuthHeaders(authService);
+	const res = await fetch(`${backendUrl}/ai/threads/${threadId}/messages?limit=50`, { headers });
+	if (!res.ok) { return []; }
+	const data = await res.json() as MessageListResponse;
+	return data.messages ?? [];
+}
+
+/**
+ * Show a read-only QuickPick viewer with the thread's message history.
+ * User dismisses with Escape; selecting an item does nothing.
+ */
+async function showHistoryViewer(
+	quickInputService: IQuickInputService,
+	messages: MessageItem[],
+	threadTitle: string,
+): Promise<void> {
+	const items: IQuickPickItem[] = [
+		{
+			// Visual separator header — not selectable
+			label: localize('talemo.thread.historyHeader', "$(history) {0} messages", messages.length),
+			kind: QuickPickItemKind.Separator,
+		},
+		...messages.map(m => ({
+			label: m.role === 'user'
+				? localize('talemo.thread.you', "$(account) You")
+				: localize('talemo.thread.ai', "$(hubot) Talemo AI"),
+			detail: m.content.length > 220 ? `${m.content.slice(0, 220)}…` : m.content,
+			alwaysShow: true,
+		})),
+	];
+
+	await quickInputService.pick(items, {
+		placeHolder: localize('talemo.thread.historyPlaceholder', "Thread: {0} — press Escape to start chatting", threadTitle),
+		canPickMany: false,
+		matchOnDetail: false,
+	});
 }
 
 // ─── "Talemo: Select Thread" ──────────────────────────────────────────────────
@@ -140,17 +197,29 @@ class SelectThreadAction extends Action2 {
 		pick.placeholder = localize('talemo.thread.selectPlaceholder', "Select a thread to continue");
 		pick.busy = false;
 
-		pick.onDidAccept(() => {
+		pick.onDidAccept(async () => {
 			const selected = pick.selectedItems[0];
 			pick.hide();
 			pick.dispose();
 			if (!selected) { return; }
+
 			storageService.store(
 				ACTIVE_THREAD_KEY,
 				selected.threadId,
 				StorageScope.APPLICATION,
 				StorageTarget.MACHINE,
 			);
+
+			// Fetch and display the thread's message history so the user can
+			// read past messages before continuing the conversation.
+			try {
+				const messages = await fetchMessages(authService, productService, selected.threadId);
+				if (messages.length > 0) {
+					await showHistoryViewer(quickInputService, messages, selected.label);
+				}
+			} catch {
+				// History viewer is optional — failure must not block thread switching.
+			}
 		});
 
 		pick.onDidHide(() => pick.dispose());
