@@ -5,8 +5,9 @@
  *
  *   "Talemo: Select Thread"  (talemo.selectThread)
  *     Fetches GET /ai/threads, shows a QuickPick with thread titles and last-
- *     activity timestamps. Selecting an item stores its thread_id as the active
- *     thread (ACTIVE_THREAD_KEY) so subsequent chat messages continue that thread.
+ *     activity timestamps. Selecting an item loads the full message history into
+ *     a VS Code chat session and opens it in the Chat panel. The thread_id is
+ *     stored as ACTIVE_THREAD_KEY so subsequent messages continue in Firestore.
  *
  *   "Talemo: New Thread"  (talemo.newThread)
  *     Clears ACTIVE_THREAD_KEY. The next chat message will call POST /ai/threads
@@ -18,10 +19,14 @@
 import { localize, localize2 } from '../../../../nls.js';
 import { Action2, registerAction2 } from '../../../../platform/actions/common/actions.js';
 import { IProductService } from '../../../../platform/product/common/productService.js';
-import { IQuickInputService, IQuickPickItem, QuickPickItemKind } from '../../../../platform/quickinput/common/quickInput.js';
+import { IQuickInputService, IQuickPickItem } from '../../../../platform/quickinput/common/quickInput.js';
 import { IStorageService, StorageScope, StorageTarget } from '../../../../platform/storage/common/storage.js';
 import { ServicesAccessor } from '../../../../platform/instantiation/common/instantiation.js';
 import { IAuthenticationService } from '../../../../workbench/services/authentication/common/authentication.js';
+import { generateUuid } from '../../../../base/common/uuid.js';
+import { ChatAgentLocation, ISerializableChatData3, ISerializableChatRequestData } from '../../../../workbench/contrib/chat/common/model/chatModel.js';
+import { ChatViewPaneTarget, IChatWidgetService } from '../../../../workbench/contrib/chat/browser/chat.js';
+import { IChatService } from '../../../../workbench/contrib/chat/common/chatService/chatService.js';
 import {
 	ACTIVE_THREAD_KEY,
 	getAuthHeaders,
@@ -34,7 +39,9 @@ interface ThreadSummary {
 	thread_id: string;
 	title: string;
 	model: string;
-	updated_at: string;  // ISO-8601
+	/** Unix ms — returned by the backend as a number, not an ISO string. */
+	updated_at: number;
+	created_at: number;
 }
 
 interface ThreadListResponse {
@@ -42,24 +49,20 @@ interface ThreadListResponse {
 	next_cursor: string | null;
 }
 
-interface MessageItem {
+/** Shape of each item in GET /ai/threads/{thread_id}/messages. */
+interface MessageRecord {
 	message_id: string;
-	role: 'user' | 'assistant' | 'system';
+	role: 'user' | 'assistant';
 	content: string;
-	created_at: string;
-}
-
-interface MessageListResponse {
-	messages: MessageItem[];
-	next_cursor: string | null;
+	created_at: number; // Unix ms
 }
 
 // ─── helpers ──────────────────────────────────────────────────────────────────
 
-/** Format ISO date to a human-readable relative label ("3 days ago", "just now", …). */
-function relativeDate(iso: string): string {
+/** Format Unix-ms timestamp to a human-readable relative label ("3d ago", "just now", …). */
+function relativeDate(unixMs: number): string {
 	try {
-		const diffMs = Date.now() - new Date(iso).getTime();
+		const diffMs = Date.now() - unixMs;
 		const diffMin = Math.floor(diffMs / 60_000);
 		if (diffMin < 1) { return localize('talemo.thread.justNow', "just now"); }
 		if (diffMin < 60) { return localize('talemo.thread.minutesAgo', "{0}m ago", diffMin); }
@@ -86,49 +89,80 @@ async function fetchThreads(
 	return data.threads ?? [];
 }
 
-/** Fetch recent messages for a specific thread (up to 50, oldest first). */
+/** Fetch up to 100 messages for a thread (oldest-first). */
 async function fetchMessages(
 	authService: IAuthenticationService,
 	productService: IProductService,
 	threadId: string,
-): Promise<MessageItem[]> {
+): Promise<MessageRecord[]> {
 	const backendUrl = getBackendUrl(productService);
 	const headers = await getAuthHeaders(authService);
-	const res = await fetch(`${backendUrl}/ai/threads/${threadId}/messages?limit=50`, { headers });
-	if (!res.ok) { return []; }
-	const data = await res.json() as MessageListResponse;
+	const res = await fetch(`${backendUrl}/ai/threads/${threadId}/messages?limit=100`, { headers });
+	if (!res.ok) {
+		throw new Error(`Failed to fetch messages: HTTP ${res.status}`);
+	}
+	const data = await res.json() as { messages: MessageRecord[] };
 	return data.messages ?? [];
 }
 
 /**
- * Show a read-only QuickPick viewer with the thread's message history.
- * User dismisses with Escape; selecting an item does nothing.
+ * Convert a flat list of role-tagged messages into ISerializableChatRequestData[] pairs.
+ *
+ * VS Code's chat model stores history as "turns" (request + response). Each
+ * consecutive user→assistant block becomes one ISerializableChatRequestData.
+ * Orphaned user messages (no following assistant) get response: undefined.
  */
-async function showHistoryViewer(
-	quickInputService: IQuickInputService,
-	messages: MessageItem[],
-	threadTitle: string,
-): Promise<void> {
-	const items: IQuickPickItem[] = [
-		{
-			// Visual separator header — not selectable
-			label: localize('talemo.thread.historyHeader', "$(history) {0} messages", messages.length),
-			kind: QuickPickItemKind.Separator,
-		},
-		...messages.map(m => ({
-			label: m.role === 'user'
-				? localize('talemo.thread.you', "$(account) You")
-				: localize('talemo.thread.ai', "$(hubot) Talemo AI"),
-			detail: m.content.length > 220 ? `${m.content.slice(0, 220)}…` : m.content,
-			alwaysShow: true,
-		})),
-	];
+function messagesToRequests(messages: MessageRecord[]): ISerializableChatRequestData[] {
+	const requests: ISerializableChatRequestData[] = [];
+	let i = 0;
+	while (i < messages.length) {
+		const msg = messages[i];
+		if (msg.role !== 'user') {
+			// Skip leading or consecutive assistant messages without a user prompt.
+			i++;
+			continue;
+		}
+		const userMsg = msg;
+		const nextMsg = messages[i + 1];
+		const assistantMsg = nextMsg?.role === 'assistant' ? nextMsg : undefined;
 
-	await quickInputService.pick(items, {
-		placeHolder: localize('talemo.thread.historyPlaceholder', "Thread: {0} — press Escape to start chatting", threadTitle),
-		canPickMany: false,
-		matchOnDetail: false,
-	});
+		requests.push({
+			requestId: userMsg.message_id,
+			message: userMsg.content,
+			// No attached files or variables — plain text from Talemo sessions.
+			variableData: { variables: [] },
+			response: assistantMsg
+				? [{ value: assistantMsg.content }]   // IMarkdownString shape
+				: undefined,
+			timestamp: userMsg.created_at,
+		});
+
+		i += assistantMsg ? 2 : 1;
+	}
+	return requests;
+}
+
+/**
+ * Build a VS Code serializable chat session from Firestore thread data.
+ *
+ * This is consumed by IChatService.loadSessionFromContent() which hydrates a
+ * ChatModel that VS Code can display in the Chat panel — identical to the
+ * "Import Chat" flow used by chatImportExport.ts.
+ */
+function buildChatSession(thread: ThreadSummary, messages: MessageRecord[]): ISerializableChatData3 {
+	return {
+		version: 3,
+		// Generate a new VS Code session ID each time so loadSessionFromContent
+		// always creates a fresh model (avoids stale state from prior loads).
+		sessionId: generateUuid(),
+		creationDate: thread.created_at,
+		// Use the Firestore thread title as the VS Code session title.
+		customTitle: thread.title || undefined,
+		initialLocation: ChatAgentLocation.Chat,
+		requests: messagesToRequests(messages),
+		// Displayed next to AI responses in the chat panel.
+		responderUsername: 'Talemo',
+	};
 }
 
 // ─── "Talemo: Select Thread" ──────────────────────────────────────────────────
@@ -152,8 +186,10 @@ class SelectThreadAction extends Action2 {
 		const storageService = accessor.get(IStorageService);
 		const authService = accessor.get(IAuthenticationService);
 		const productService = accessor.get(IProductService);
+		const chatService = accessor.get(IChatService);
+		const widgetService = accessor.get(IChatWidgetService);
 
-		// Show loading placeholder while fetching.
+		// Show loading placeholder while fetching thread list.
 		const pick = quickInputService.createQuickPick<ThreadQuickPickItem>();
 		pick.placeholder = localize('talemo.thread.loading', "Loading threads…");
 		pick.busy = true;
@@ -165,7 +201,6 @@ class SelectThreadAction extends Action2 {
 		} catch (err) {
 			pick.hide();
 			pick.dispose();
-			// Re-show with error item so the user sees what went wrong.
 			await quickInputService.pick(
 				[{ label: localize('talemo.thread.fetchError', "$(error) Could not load threads: {0}", String(err)) }],
 				{ placeHolder: localize('talemo.thread.error', "Thread fetch failed") },
@@ -185,11 +220,12 @@ class SelectThreadAction extends Action2 {
 
 		const activeId = storageService.get(ACTIVE_THREAD_KEY, StorageScope.APPLICATION);
 
+		// Build list items — mark the currently active thread with a checkmark.
+		const threadMap = new Map<string, ThreadSummary>(threads.map(t => [t.thread_id, t]));
 		pick.items = threads.map(t => ({
 			threadId: t.thread_id,
 			label: t.title || localize('talemo.thread.untitled', "Untitled conversation"),
 			description: relativeDate(t.updated_at),
-			// Mark the currently active thread so user knows which one they're on.
 			detail: t.thread_id === activeId
 				? localize('talemo.thread.current', "$(check) current")
 				: t.model,
@@ -203,6 +239,7 @@ class SelectThreadAction extends Action2 {
 			pick.dispose();
 			if (!selected) { return; }
 
+			// 1. Persist the new active thread_id so future chat messages continue it.
 			storageService.store(
 				ACTIVE_THREAD_KEY,
 				selected.threadId,
@@ -210,15 +247,25 @@ class SelectThreadAction extends Action2 {
 				StorageTarget.MACHINE,
 			);
 
-			// Fetch and display the thread's message history so the user can
-			// read past messages before continuing the conversation.
+			// 2. Load message history from Firestore and open the thread in the
+			//    VS Code Chat panel so the user can see and continue the conversation.
 			try {
+				const thread = threadMap.get(selected.threadId)!;
 				const messages = await fetchMessages(authService, productService, selected.threadId);
-				if (messages.length > 0) {
-					await showHistoryViewer(quickInputService, messages, selected.label);
+				const sessionData = buildChatSession(thread, messages);
+				const modelRef = chatService.loadSessionFromContent(sessionData);
+				if (modelRef) {
+					// Open the reconstructed session in the Chat side panel.
+					await widgetService.openSession(modelRef.object.sessionResource, ChatViewPaneTarget);
 				}
-			} catch {
-				// History viewer is optional — failure must not block thread switching.
+			} catch (err) {
+				// Non-fatal: active thread_id is already stored, so the next chat
+				// message will still use the correct thread. History just won't be visible.
+				// A follow-up error message informs the user.
+				await quickInputService.pick(
+					[{ label: localize('talemo.thread.loadError', "$(warning) Could not load thread history: {0}", String(err)) }],
+					{ placeHolder: localize('talemo.thread.loadErrorTitle', "History load failed") },
+				);
 			}
 		});
 

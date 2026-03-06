@@ -66,14 +66,10 @@ export class TalemoAgentImpl implements IChatAgentImplementation {
 	 * Reads ACTIVE_THREAD_KEY from IStorageService (stable across restarts).
 	 * Returns typed result so _doRequest can emit progress before auth recovery.
 	 * Does NOT call forceSignIn internally.
-	 *
-	 * @param title Optional thread title derived from the first user message so
-	 *   threads get a meaningful name instead of the default "New conversation".
 	 */
 	private async _resolveThreadId(
 		backendUrl: string,
 		model: string,
-		title?: string,
 	): Promise<{ threadId: string } | { status: 401 } | { status: 'error' }> {
 		const cached = this.storageService.get(ACTIVE_THREAD_KEY, StorageScope.APPLICATION);
 		if (cached) {
@@ -81,12 +77,10 @@ export class TalemoAgentImpl implements IChatAgentImplementation {
 		}
 		try {
 			const headers = await getAuthHeaders(this.authService);
-			const body: Record<string, string> = { model };
-			if (title) { body['title'] = title; }
 			const res = await fetch(`${backendUrl}/ai/threads`, {
 				method: 'POST',
 				headers: { 'Content-Type': 'application/json', ...headers },
-				body: JSON.stringify(body),
+				body: JSON.stringify({ model }),
 			});
 			if (res.status === 401) { return { status: 401 }; }
 			if (!res.ok) { return { status: 'error' }; }
@@ -132,15 +126,12 @@ export class TalemoAgentImpl implements IChatAgentImplementation {
 		const model = request.userSelectedModelId ?? DEFAULT_MODEL;
 
 		// ── Step 1: resolve active thread ─────────────────────────────────────
-		// Pass the first 60 chars of the user message as title so newly created
-		// threads get a meaningful name instead of the default "New conversation".
-		const title = request.message.slice(0, 60).trimEnd();
-		let threadResult = await this._resolveThreadId(backendUrl, model, title);
+		let threadResult = await this._resolveThreadId(backendUrl, model);
 
 		if ('status' in threadResult && threadResult.status === 401) {
 			const recovered = await this._recoverAuth(progress);
 			if (!recovered) { return 'auth'; }
-			threadResult = await this._resolveThreadId(backendUrl, model, title);
+			threadResult = await this._resolveThreadId(backendUrl, model);
 		}
 		if ('status' in threadResult) {
 			return threadResult.status === 401 ? 'auth' : 'error';
