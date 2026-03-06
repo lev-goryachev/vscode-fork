@@ -15,6 +15,15 @@ const $ = DOM.$;
 
 const BACKEND_LOCAL = 'http://localhost:8000';
 
+/**
+ * Thrown when a request fails with 401 and re-authentication either failed
+ * or was cancelled by the user. Callers render a sign-in prompt instead of
+ * an HTTP error banner so the user never sees raw status codes.
+ */
+class AuthRequiredError extends Error {
+	constructor() { super('auth_required'); }
+}
+
 const TALEMO_PROVIDER_ID = 'talemo';
 
 /**
@@ -88,16 +97,34 @@ export class BillingContent extends Disposable {
 		}
 	}
 
+	/**
+	 * Fetch JSON from the backend, handling 401 by showing the login form
+	 * before retrying. On persistent auth failure throws AuthRequiredError so
+	 * callers can show a sign-in prompt instead of an HTTP error banner.
+	 */
 	private async apiFetch<T>(path: string): Promise<T> {
 		let res = await fetch(`${this.backendUrl}${path}`, {
 			headers: await this.getAuthHeaders(),
 		});
+
 		if (res.status === 401) {
-			await this.forceSignIn();
+			// Show login form silently — the loading spinner stays visible behind it.
+			try {
+				await this.forceSignIn();
+			} catch {
+				// User cancelled login or provider not ready — don't show HTTP error.
+				throw new AuthRequiredError();
+			}
+			// Retry with fresh token.
 			res = await fetch(`${this.backendUrl}${path}`, {
 				headers: await this.getAuthHeaders(),
 			});
+			if (res.status === 401) {
+				// Still 401 after re-auth — ask user to sign in again cleanly.
+				throw new AuthRequiredError();
+			}
 		}
+
 		if (!res.ok) {
 			throw new Error(`HTTP ${res.status}: ${await res.text()}`);
 		}
@@ -132,7 +159,11 @@ export class BillingContent extends Disposable {
 			const status = await this.apiFetch<WalletStatus>('/billing/status');
 			this.renderOverview(status);
 		} catch (err) {
-			this.renderError(this.overviewEl, err);
+			if (err instanceof AuthRequiredError) {
+				this.renderSignInRequired(this.overviewEl);
+			} else {
+				this.renderError(this.overviewEl, err);
+			}
 		}
 	}
 
@@ -214,7 +245,11 @@ export class BillingContent extends Disposable {
 			const packages = await this.apiFetch<CreditPackage[]>('/billing/packages');
 			this.renderTopUp(packages);
 		} catch (err) {
-			this.renderError(this.topUpEl, err);
+			if (err instanceof AuthRequiredError) {
+				this.renderSignInRequired(this.topUpEl);
+			} else {
+				this.renderError(this.topUpEl, err);
+			}
 		}
 	}
 
@@ -287,7 +322,11 @@ export class BillingContent extends Disposable {
 			const data = await this.apiFetch<TransactionsResponse>('/billing/transactions?limit=50');
 			this.renderTransactions(data.transactions);
 		} catch (err) {
-			this.renderError(this.transactionsEl, err);
+			if (err instanceof AuthRequiredError) {
+				this.renderSignInRequired(this.transactionsEl);
+			} else {
+				this.renderError(this.transactionsEl, err);
+			}
 		}
 	}
 
@@ -336,6 +375,24 @@ export class BillingContent extends Disposable {
 		DOM.clearNode(container);
 		const spinner = DOM.append(container, $('.billing-spinner'));
 		spinner.textContent = localize('billing.loading', "Loading...");
+	}
+
+	/**
+	 * Shown when authentication failed or was cancelled. Offers a Sign In
+	 * button without exposing raw HTTP status codes to the user.
+	 */
+	private renderSignInRequired(container: HTMLElement): void {
+		DOM.clearNode(container);
+		const el = DOM.append(container, $('.billing-sign-in-required'));
+		el.textContent = localize('billing.signInRequired', "Sign in to view billing information.");
+		const btn = DOM.append(container, $('button.billing-btn-primary'));
+		btn.textContent = localize('billing.signIn', "Sign In");
+		this._register(DOM.addDisposableListener(btn, 'click', () => {
+			// Trigger full re-auth then reload the section.
+			void this.forceSignIn()
+				.then(() => this.loadSection(this.currentSection))
+				.catch(() => undefined);
+		}));
 	}
 
 	private renderError(container: HTMLElement, err: unknown): void {
