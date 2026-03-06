@@ -24,7 +24,8 @@ import { IStorageService, StorageScope, StorageTarget } from '../../../../platfo
 import { ServicesAccessor } from '../../../../platform/instantiation/common/instantiation.js';
 import { IAuthenticationService } from '../../../../workbench/services/authentication/common/authentication.js';
 import { generateUuid } from '../../../../base/common/uuid.js';
-import { ChatAgentLocation, ISerializableChatData3, ISerializableChatRequestData } from '../../../../workbench/contrib/chat/common/model/chatModel.js';
+import { ISerializableChatData3, ISerializableChatRequestData } from '../../../../workbench/contrib/chat/common/model/chatModel.js';
+import { ChatAgentLocation } from '../../../../workbench/contrib/chat/common/constants.js';
 import { ChatViewPaneTarget, IChatWidgetService } from '../../../../workbench/contrib/chat/browser/chat.js';
 import { IChatService } from '../../../../workbench/contrib/chat/common/chatService/chatService.js';
 import {
