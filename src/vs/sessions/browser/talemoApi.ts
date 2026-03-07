@@ -26,6 +26,7 @@ export const AUTH_USER_KEY = 'talemo.auth.user';
 export const AUTH_REFRESH_TOKEN_KEY = 'talemo.auth.refreshToken';
 export const AUTH_TOKEN_EXPIRES_AT_KEY = 'talemo.auth.accessTokenExpiresAtUnixMs';
 const REAUTH_TIMEOUT_MS = 180_000;
+type TalemoProductLike = Pick<IProductService, 'quality'> & { talemoBackendUrl?: string };
 
 /**
  * Normalize a backend origin into a stable fetch base URL.
@@ -74,7 +75,7 @@ function readBackendUrlFromSandboxUserEnv(): string | undefined {
  * - Packaged / non-dev quality: prefer explicit overrides, then product manifest,
  *   and only then fall back to localhost as a final fail-fast-safe default.
  */
-export function resolveTalemoBackend(productService: IProductService): { backendUrl: string; source: string } {
+export function resolveTalemoBackend(productService: TalemoProductLike): { backendUrl: string; source: string } {
 	const envBackendUrl = normalizeBackendUrl(processEnv['TALEMO_BACKEND_URL']);
 	if (envBackendUrl) {
 		return { backendUrl: envBackendUrl, source: 'processEnv' };
@@ -101,7 +102,7 @@ export function resolveTalemoBackend(productService: IProductService): { backend
 /**
  * Returns the Talemo backend origin for the current runtime.
  */
-export function getBackendUrl(productService: IProductService): string {
+export function getBackendUrl(productService: TalemoProductLike): string {
 	return resolveTalemoBackend(productService).backendUrl;
 }
 
@@ -175,7 +176,7 @@ export function storeTalemoAuthPayload(
  */
 export async function loginTalemoWithPassword(
 	storageService: IStorageService,
-	productService: IProductService,
+	productService: TalemoProductLike,
 	email: string,
 	password: string,
 ): Promise<void> {
