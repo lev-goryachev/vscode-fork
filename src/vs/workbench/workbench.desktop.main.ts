@@ -186,9 +186,11 @@ import './contrib/mcp/electron-browser/mcp.contribution.js';
 import './contrib/policyExport/electron-browser/policyExport.contribution.js';
 
 // Talemo: Billing & Credits settings page
+// eslint-disable-next-line local/code-import-patterns
 import '../sessions/contrib/billing/browser/billing.contribution.js';
 
 // Talemo: AI chat agent
+// eslint-disable-next-line local/code-import-patterns
 import '../sessions/contrib/ai/browser/talemoAI.contribution.js';
 
 //#endregion

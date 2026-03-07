@@ -21,12 +21,12 @@
  *--------------------------------------------------------------------------------------------*/
 
 import { CancellationToken } from '../../../../base/common/cancellation.js';
+import { hasKey } from '../../../../base/common/types.js';
 import { localize } from '../../../../nls.js';
 import { IProductService } from '../../../../platform/product/common/productService.js';
 import { IStorageService, StorageScope, StorageTarget } from '../../../../platform/storage/common/storage.js';
 import { IChatWidgetService } from '../../../../workbench/contrib/chat/browser/chat.js';
-import { IChatProgress } from '../../../../workbench/contrib/chat/common/chatService/chatService.js';
-import { IChatService } from '../../../../workbench/contrib/chat/common/chatService/chatService.js';
+import { IChatProgress, IChatService } from '../../../../workbench/contrib/chat/common/chatService/chatService.js';
 import {
 	IChatAgentHistoryEntry,
 	IChatAgentImplementation,
@@ -168,12 +168,12 @@ export class TalemoAgentImpl implements IChatAgentImplementation {
 		// ── Step 1: resolve active thread ─────────────────────────────────────
 		let threadResult = await this._resolveThreadId(request, backendUrl, model, title);
 
-		if ('status' in threadResult && threadResult.status === 401) {
+		if (!hasKey(threadResult, { threadId: true }) && threadResult.status === 401) {
 			const recovered = await this._recoverAuth(progress);
 			if (recovered === 'failed') { return 'auth'; }
 			threadResult = await this._resolveThreadId(request, backendUrl, model, title);
 		}
-		if ('status' in threadResult) {
+		if (!hasKey(threadResult, { threadId: true })) {
 			return threadResult.status === 401 ? 'auth' : 'error';
 		}
 		const { threadId } = threadResult;

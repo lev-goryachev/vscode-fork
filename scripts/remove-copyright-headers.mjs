@@ -34,7 +34,9 @@ function walk(dir) {
   for (const e of entries) {
     const full = path.join(dir, e.name);
     if (e.isDirectory()) {
-      if (!SKIP_DIRS.has(e.name)) walk(full);
+      if (!SKIP_DIRS.has(e.name)) {
+        walk(full);
+      }
     } else if (e.isFile()) {
       const ext = path.extname(e.name);
       if (EXTENSIONS.has(ext)) {

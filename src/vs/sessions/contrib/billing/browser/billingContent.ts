@@ -1,4 +1,5 @@
 import * as DOM from '../../../../base/browser/dom.js';
+import { mainWindow } from '../../../../base/browser/window.js';
 import { Disposable } from '../../../../base/common/lifecycle.js';
 import { localize } from '../../../../nls.js';
 import { IProductService } from '../../../../platform/product/common/productService.js';
@@ -228,9 +229,7 @@ export class BillingContent extends Disposable {
 					body: JSON.stringify({ polar_product_id: pkg.polar_product_id }),
 				},
 			);
-			if (typeof window !== 'undefined') {
-				window.open(data.checkout_url, '_blank');
-			}
+			void mainWindow.open(data.checkout_url, '_blank');
 		} catch (err) {
 			this.showInlineError(btn, err);
 		} finally {
@@ -335,7 +334,11 @@ export class BillingContent extends Disposable {
 	private showInlineError(ref: HTMLElement, err: unknown): void {
 		const parent = ref.parentElement;
 		if (!parent) { return; }
-		parent.querySelector('.billing-inline-error')?.remove();
+		for (const child of Array.from(parent.children)) {
+			if (child.classList.contains('billing-inline-error')) {
+				child.remove();
+			}
+		}
 		const errorEl = DOM.append(parent, $('.billing-inline-error'));
 		const msg = err instanceof Error ? err.message : String(err);
 		errorEl.textContent = msg;

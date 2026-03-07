@@ -169,7 +169,9 @@ import './contrib/remote/browser/remoteStartEntry.contribution.js';
 import './contrib/processExplorer/browser/processExplorer.web.contribution.js';
 
 // Talemo — billing and AI chat (shared with desktop)
+// eslint-disable-next-line local/code-import-patterns
 import '../sessions/contrib/billing/browser/billing.contribution.js';
+// eslint-disable-next-line local/code-import-patterns
 import '../sessions/contrib/ai/browser/talemoAI.contribution.js';
 
 //#endregion

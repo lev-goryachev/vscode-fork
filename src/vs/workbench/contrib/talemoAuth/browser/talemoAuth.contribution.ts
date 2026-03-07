@@ -1,13 +1,13 @@
+import { mainWindow } from '../../../../base/browser/window.js';
 import { Disposable } from '../../../../base/common/lifecycle.js';
-import { IStorageService, StorageScope } from '../../../../platform/storage/common/storage.js';
+import { MenuId, MenuRegistry } from '../../../../platform/actions/common/actions.js';
+import { CommandsRegistry, ICommandService } from '../../../../platform/commands/common/commands.js';
+import { ServicesAccessor } from '../../../../platform/instantiation/common/instantiation.js';
 import { IProductService } from '../../../../platform/product/common/productService.js';
+import { IStorageService, StorageScope } from '../../../../platform/storage/common/storage.js';
 import { registerWorkbenchContribution2, WorkbenchPhase } from '../../../common/contributions.js';
 import { registerTalemoAuthProvider } from './talemoAuthProvider.js';
-import { CommandsRegistry } from '../../../../platform/commands/common/commands.js';
-import { ServicesAccessor } from '../../../../platform/instantiation/common/instantiation.js';
-import { MenuRegistry, MenuId } from '../../../../platform/actions/common/actions.js';
 import { IAuthenticationService } from '../../../services/authentication/common/authentication.js';
-import { ICommandService } from '../../../../platform/commands/common/commands.js';
 import {
 	AUTH_REFRESH_TOKEN_KEY,
 	AUTH_TOKEN_KEY,
@@ -127,14 +127,14 @@ class TalemoAuthGate extends Disposable {
 	private scheduleRefresh(expiresAtMs: number): void {
 		this.clearRefreshTimer();
 		const delayMs = Math.max(0, expiresAtMs - Date.now() - AUTH_REFRESH_LEEWAY_MS);
-		this.refreshTimer = window.setTimeout(() => {
+		this.refreshTimer = mainWindow.setTimeout(() => {
 			void this.refreshBeforeExpiry(expiresAtMs);
 		}, delayMs);
 	}
 
 	private clearRefreshTimer(): void {
 		if (this.refreshTimer !== undefined) {
-			window.clearTimeout(this.refreshTimer);
+			mainWindow.clearTimeout(this.refreshTimer);
 			this.refreshTimer = undefined;
 		}
 	}
@@ -147,7 +147,7 @@ class TalemoAuthGate extends Disposable {
 		// During login/refresh the storage-backed auth payload is written across
 		// multiple keys. Give that write a tiny grace window before treating the
 		// state as corrupt and forcing logout.
-		this.incompleteStateTimer = window.setTimeout(() => {
+		this.incompleteStateTimer = mainWindow.setTimeout(() => {
 			this.incompleteStateTimer = undefined;
 
 			const token = this.storageService.get(AUTH_TOKEN_KEY, StorageScope.APPLICATION);
@@ -163,7 +163,7 @@ class TalemoAuthGate extends Disposable {
 
 	private clearIncompleteStateTimer(): void {
 		if (this.incompleteStateTimer !== undefined) {
-			window.clearTimeout(this.incompleteStateTimer);
+			mainWindow.clearTimeout(this.incompleteStateTimer);
 			this.incompleteStateTimer = undefined;
 		}
 	}
