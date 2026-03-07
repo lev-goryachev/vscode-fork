@@ -41,6 +41,7 @@ import {
 	getBackendUrl,
 	refreshTalemoSession,
 } from '../../../browser/talemoApi.js';
+import { ITalemoFileToolEvent, TalemoWorkspaceFileMirror } from './talemoAI.fileMirror.js';
 import { ACTIVE_THREAD_KEY, DEFAULT_MODEL } from './talemoAI.shared.js';
 import {
 	clearThreadBindingForSession,
@@ -59,6 +60,7 @@ export class TalemoAgentImpl implements IChatAgentImplementation {
 		private readonly storageService: IStorageService,
 		private readonly chatService: IChatService,
 		private readonly chatWidgetService: IChatWidgetService,
+		private readonly fileMirror: TalemoWorkspaceFileMirror,
 	) { }
 
 	/**
@@ -244,7 +246,11 @@ export class TalemoAgentImpl implements IChatAgentImplementation {
 		}
 
 		// ── Step 3: stream SSE response ───────────────────────────────────────
-		await streamTalemoChatResponse(response, progress, token);
+		await streamTalemoChatResponse(response, progress, token, {
+			onFileToolResult: async (event: ITalemoFileToolEvent) => {
+				await this.fileMirror.apply(event);
+			},
+		});
 		return 'ok';
 	}
 

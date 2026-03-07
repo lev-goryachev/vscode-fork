@@ -25,7 +25,7 @@ import { IOpenerService } from '../../../../../../platform/opener/common/opener.
 import { IStorageService, StorageScope, StorageTarget } from '../../../../../../platform/storage/common/storage.js';
 import { ITelemetryService } from '../../../../../../platform/telemetry/common/telemetry.js';
 import { defaultButtonStyles } from '../../../../../../platform/theme/browser/defaultStyles.js';
-import { editorBackground } from '../../../../../../platform/theme/common/colorRegistry.js';
+import { editorBackground, inputBackground } from '../../../../../../platform/theme/common/colorRegistry.js';
 import { ChatViewTitleControl } from './chatViewTitleControl.js';
 import { IThemeService } from '../../../../../../platform/theme/common/themeService.js';
 import { IViewPaneOptions, ViewPane } from '../../../../../browser/parts/views/viewPane.js';
@@ -527,7 +527,7 @@ export class ChatViewPane extends ViewPane implements IViewWelcomeDelegate {
 				listForeground: SIDE_BAR_FOREGROUND,
 				listBackground: locationBasedColors.background,
 				overlayBackground: locationBasedColors.overlayBackground,
-				inputEditorBackground: locationBasedColors.background,
+				inputEditorBackground: inputBackground,
 				resultEditorBackground: editorBackground,
 			}));
 		this._widget.render(chatControlsContainer);

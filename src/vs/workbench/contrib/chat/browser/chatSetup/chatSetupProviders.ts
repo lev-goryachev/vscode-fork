@@ -49,10 +49,29 @@ import { CommandsRegistry } from '../../../../../platform/commands/common/comman
 import { IDefaultAccountService } from '../../../../../platform/defaultAccount/common/defaultAccount.js';
 import { IHostService } from '../../../../services/host/browser/host.js';
 
+const defaultChatProvider = {
+	default: {
+		id: product.defaultChatAgent?.provider?.default?.id ?? '',
+		name: product.defaultChatAgent?.provider?.default?.name ?? 'Talemo',
+	},
+	enterprise: {
+		id: product.defaultChatAgent?.provider?.enterprise?.id ?? product.defaultChatAgent?.provider?.default?.id ?? '',
+		name: product.defaultChatAgent?.provider?.enterprise?.name ?? product.defaultChatAgent?.provider?.default?.name ?? 'Talemo',
+	},
+	apple: {
+		id: product.defaultChatAgent?.provider?.apple?.id ?? product.defaultChatAgent?.provider?.default?.id ?? '',
+		name: product.defaultChatAgent?.provider?.apple?.name ?? product.defaultChatAgent?.provider?.default?.name ?? 'Talemo',
+	},
+	google: {
+		id: product.defaultChatAgent?.provider?.google?.id ?? product.defaultChatAgent?.provider?.default?.id ?? '',
+		name: product.defaultChatAgent?.provider?.google?.name ?? product.defaultChatAgent?.provider?.default?.name ?? 'Talemo',
+	},
+};
+
 const defaultChat = {
 	extensionId: product.defaultChatAgent?.extensionId ?? '',
 	chatExtensionId: product.defaultChatAgent?.chatExtensionId ?? '',
-	provider: product.defaultChatAgent?.provider ?? { default: { id: '', name: '' }, enterprise: { id: '', name: '' }, apple: { id: '', name: '' }, google: { id: '', name: '' } },
+	provider: defaultChatProvider,
 	outputChannelId: product.defaultChatAgent?.chatExtensionOutputId ?? '',
 };
 

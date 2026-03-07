@@ -78,7 +78,21 @@ interface IMcpRegistryResponse {
 	readonly mcp_registries: ReadonlyArray<IMcpRegistryProvider>;
 }
 
+function normalizeDefaultChatProviders(defaultChatAgent: IDefaultChatAgent) {
+	return {
+		default: {
+			id: defaultChatAgent.provider?.default?.id ?? '',
+			name: defaultChatAgent.provider?.default?.name ?? 'Talemo',
+		},
+		enterprise: {
+			id: defaultChatAgent.provider?.enterprise?.id ?? defaultChatAgent.provider?.default?.id ?? '',
+			name: defaultChatAgent.provider?.enterprise?.name ?? defaultChatAgent.provider?.default?.name ?? 'Talemo',
+		},
+	};
+}
+
 function toDefaultAccountConfig(defaultChatAgent: IDefaultChatAgent): IDefaultAccountConfig {
+	const providers = normalizeDefaultChatProviders(defaultChatAgent);
 	return {
 		preferredExtensions: [
 			defaultChatAgent.chatExtensionId,
@@ -86,12 +100,12 @@ function toDefaultAccountConfig(defaultChatAgent: IDefaultChatAgent): IDefaultAc
 		],
 		authenticationProvider: {
 			default: {
-				id: defaultChatAgent.provider.default.id,
-				name: defaultChatAgent.provider.default.name,
+				id: providers.default.id,
+				name: providers.default.name,
 			},
 			enterprise: {
-				id: defaultChatAgent.provider.enterprise.id,
-				name: defaultChatAgent.provider.enterprise.name,
+				id: providers.enterprise.id,
+				name: providers.enterprise.name,
 			},
 			enterpriseProviderConfig: `${defaultChatAgent.completionsAdvancedSetting}.authProvider`,
 			enterpriseProviderUriSetting: defaultChatAgent.providerUriSetting,

@@ -10,8 +10,8 @@ import { ITelemetryService } from '../../../../../../platform/telemetry/common/t
 import { defaultButtonStyles } from '../../../../../../platform/theme/browser/defaultStyles.js';
 import { ChatEntitlement, ChatEntitlementContextKeys, IChatEntitlementService } from '../../../../../services/chat/common/chatEntitlementService.js';
 import { ChatContextKeys } from '../../../common/actions/chatContextKeys.js';
-import { CHAT_SETUP_ACTION_ID } from '../../actions/chatActions.js';
 import { ChatInputPartWidgetsRegistry, IChatInputPartWidget } from './chatInputPartWidgets.js';
+import { TALEMO_NATIVE_SIGN_IN_COMMAND } from '../../../../../../sessions/browser/talemoApi.js';
 import './media/chatStatusWidget.css';
 
 const $ = dom.$;
@@ -74,7 +74,7 @@ export class ChatStatusWidget extends Disposable implements IChatInputPartWidget
 		this.actionButton.element.classList.add('chat-status-button');
 
 		if (enabledSku === 'anonymous') {
-			const message = localize('chat.anonymousRateLimited.message', "You've reached the limit for chat messages. Sign in to use Copilot Free.");
+			const message = localize('chat.anonymousRateLimited.message', "You've reached the limit for chat messages. Sign in to use Talemo.");
 			const buttonLabel = localize('chat.anonymousRateLimited.signIn', "Sign In");
 			this.messageElement.textContent = message;
 			this.actionButton.label = buttonLabel;
@@ -89,12 +89,16 @@ export class ChatStatusWidget extends Disposable implements IChatInputPartWidget
 
 		this._register(this.actionButton.onDidClick(async () => {
 			const commandId = this.chatEntitlementService.anonymous
-				? CHAT_SETUP_ACTION_ID
+				? TALEMO_NATIVE_SIGN_IN_COMMAND
 				: 'workbench.action.chat.upgradePlan';
 			this.telemetryService.publicLog2<WorkbenchActionExecutedEvent, WorkbenchActionExecutedClassification>('workbenchActionExecuted', {
 				id: commandId,
 				from: 'chatStatusWidget'
 			});
+			if (commandId === TALEMO_NATIVE_SIGN_IN_COMMAND) {
+				await this.commandService.executeCommand(commandId, undefined, { forceSignInDialog: true });
+				return;
+			}
 			await this.commandService.executeCommand(commandId);
 		}));
 

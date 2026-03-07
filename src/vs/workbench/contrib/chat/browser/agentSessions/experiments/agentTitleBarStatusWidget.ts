@@ -41,10 +41,10 @@ import { LayoutSettings } from '../../../../../services/layout/browser/layoutSer
 import { ChatConfiguration } from '../../../common/constants.js';
 import { ChatEntitlement, IChatEntitlementService } from '../../../../../services/chat/common/chatEntitlementService.js';
 import { IChatWidgetService } from '../../chat.js';
+import { TALEMO_NATIVE_SIGN_IN_COMMAND } from '../../../../../../sessions/browser/talemoApi.js';
 
 // Action IDs
 const TOGGLE_CHAT_ACTION_ID = 'workbench.action.chat.toggle';
-const CHAT_SETUP_ACTION_ID = 'workbench.action.chat.triggerSetup';
 const OPEN_CHAT_QUOTA_EXCEEDED_DIALOG = 'workbench.action.chat.openQuotaExceededDialog';
 const QUICK_OPEN_ACTION_ID = 'workbench.action.quickOpenWithModes';
 
@@ -724,8 +724,8 @@ export class AgentTitleBarStatusWidget extends BaseActionViewItem {
 
 		if (chatSentiment.installed && !chatSentiment.disabled) {
 			if (signedOut && !anonymous) {
-				primaryActionId = CHAT_SETUP_ACTION_ID;
-				primaryActionTitle = localize('signInToChatSetup', "Sign in to use AI features...");
+				primaryActionId = TALEMO_NATIVE_SIGN_IN_COMMAND;
+				primaryActionTitle = localize('signInToTalemo', "Sign in to use Talemo");
 				primaryActionIcon = Codicon.chatSparkleError;
 			} else if (chatQuotaExceeded && free) {
 				primaryActionId = OPEN_CHAT_QUOTA_EXCEEDED_DIALOG;

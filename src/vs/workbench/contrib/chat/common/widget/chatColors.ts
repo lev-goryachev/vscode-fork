@@ -7,13 +7,13 @@ import { badgeBackground, badgeForeground, contrastBorder, editorBackground, edi
 // This allows themes to customize it while maintaining independence from debug mode changes.
 export const agentStatusIndicatorBackground = registerColor(
 	'agentStatusIndicator.background',
-	{ dark: Color.white.transparent(0.05), light: Color.black.transparent(0.05), hcDark: null, hcLight: null },
+	{ dark: Color.white.transparent(0.05), light: Color.fromHex('#0C1018').transparent(0.05), hcDark: null, hcLight: null },
 	localize('agentStatusIndicator.background', 'Background color of the agent status indicator in the titlebar.')
 );
 
 export const chatRequestBorder = registerColor(
 	'chat.requestBorder',
-	{ dark: new Color(new RGBA(255, 255, 255, 0.10)), light: new Color(new RGBA(0, 0, 0, 0.10)), hcDark: contrastBorder, hcLight: contrastBorder, },
+	{ dark: new Color(new RGBA(255, 255, 255, 0.10)), light: Color.fromHex('#0C1018').transparent(0.10), hcDark: contrastBorder, hcLight: contrastBorder, },
 	localize('chat.requestBorder', 'The border color of a chat request.')
 );
 
@@ -31,13 +31,13 @@ export const chatSlashCommandBackground = registerColor(
 
 export const chatSlashCommandForeground = registerColor(
 	'chat.slashCommandForeground',
-	{ dark: '#85b6ff', light: '#26569e', hcDark: Color.black, hcLight: badgeForeground },
+	{ dark: '#85b6ff', light: '#4348EF', hcDark: Color.black, hcLight: badgeForeground },
 	localize('chat.slashCommandForeground', 'The foreground color of a chat slash command.')
 );
 
 export const chatAvatarBackground = registerColor(
 	'chat.avatarBackground',
-	{ dark: '#1f1f1f', light: '#f2f2f2', hcDark: Color.black, hcLight: Color.white, },
+	{ dark: '#1f1f1f', light: '#E6EDF4', hcDark: Color.black, hcLight: Color.white, },
 	localize('chat.avatarBackground', 'The background color of a chat avatar.')
 );
 
@@ -58,7 +58,7 @@ export const chatEditedFileForeground = registerColor(
 	localize('chat.editedFileForeground', 'The foreground color of a chat edited file in the edited file list.')
 );
 
-export const chatRequestCodeBorder = registerColor('chat.requestCodeBorder', { dark: '#004972B8', light: '#0e639c40', hcDark: null, hcLight: null }, localize('chat.requestCodeBorder', 'Border color of code blocks within the chat request bubble.'), true);
+export const chatRequestCodeBorder = registerColor('chat.requestCodeBorder', { dark: '#004972B8', light: '#7175F340', hcDark: null, hcLight: null }, localize('chat.requestCodeBorder', 'Border color of code blocks within the chat request bubble.'), true);
 
 export const chatRequestBubbleBackground = registerColor('chat.requestBubbleBackground', { light: transparent(editorSelectionBackground, 0.3), dark: transparent(editorSelectionBackground, 0.3), hcDark: null, hcLight: null }, localize('chat.requestBubbleBackground', "Background color of the chat request bubble."), true);
 
@@ -80,5 +80,5 @@ export const chatLinesRemovedForeground = registerColor(
 
 export const chatThinkingShimmer = registerColor(
 	'chat.thinkingShimmer',
-	{ dark: '#ffffff', light: '#000000', hcDark: '#ffffff', hcLight: '#000000' },
+	{ dark: '#ffffff', light: '#0C1018', hcDark: '#ffffff', hcLight: '#0C1018' },
 	localize('chat.thinkingShimmer', 'Shimmer highlight for thinking/working labels.'), true);

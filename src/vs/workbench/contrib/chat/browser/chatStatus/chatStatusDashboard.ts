@@ -43,8 +43,23 @@ import { Color } from '../../../../../base/common/color.js';
 import { IViewsService } from '../../../../services/views/common/viewsService.js';
 import { ChatViewId } from '../chat.js';
 import { isCompletionsEnabled } from '../../../../../editor/common/services/completionsEnablement.js';
+import { TALEMO_NATIVE_SIGN_IN_COMMAND } from '../../../../../sessions/browser/talemoApi.js';
 
-const defaultChat = product.defaultChatAgent;
+const defaultChat = {
+	...product.defaultChatAgent,
+	provider: {
+		default: {
+			id: product.defaultChatAgent?.provider?.default?.id ?? '',
+			name: product.defaultChatAgent?.provider?.default?.name ?? 'Talemo',
+		},
+		enterprise: {
+			id: product.defaultChatAgent?.provider?.enterprise?.id ?? product.defaultChatAgent?.provider?.default?.id ?? '',
+			name: product.defaultChatAgent?.provider?.enterprise?.name ?? product.defaultChatAgent?.provider?.default?.name ?? 'Talemo',
+		},
+	},
+	termsStatementUrl: product.defaultChatAgent?.termsStatementUrl ?? '',
+	privacyStatementUrl: product.defaultChatAgent?.privacyStatementUrl ?? '',
+};
 
 interface ISettingsAccessor {
 	readSetting: () => boolean;
@@ -325,35 +340,30 @@ export class ChatStatusDashboard extends DomWidget {
 				let descriptionText: string | MarkdownString;
 				let descriptionClass = '.description';
 				if (newUser && anonymousUser) {
-					descriptionText = new MarkdownString(localize({ key: 'activeDescriptionAnonymous', comment: ['{Locked="]({2})"}', '{Locked="]({3})"}'] }, "By continuing with {0} Copilot, you agree to {1}'s [Terms]({2}) and [Privacy Statement]({3})", defaultChat.provider.default.name, defaultChat.provider.default.name, defaultChat.termsStatementUrl, defaultChat.privacyStatementUrl), { isTrusted: true });
+					descriptionText = new MarkdownString(localize({ key: 'activeDescriptionAnonymous', comment: ['{Locked="]({2})"}', '{Locked="]({3})"}'] }, "By continuing with {0}, you agree to {1}'s [Terms]({2}) and [Privacy Statement]({3})", defaultChat.provider.default.name, defaultChat.provider.default.name, defaultChat.termsStatementUrl, defaultChat.privacyStatementUrl), { isTrusted: true });
 					descriptionClass = `${descriptionClass}.terms`;
 				} else if (newUser) {
-					descriptionText = localize('activateDescription', "Set up Copilot to use AI features.");
+					descriptionText = localize('activateDescription', "Sign in to use Talemo.");
 				} else if (anonymousUser) {
-					descriptionText = localize('enableMoreDescription', "Sign in to enable more Copilot AI features.");
+					descriptionText = localize('enableMoreDescription', "Sign in to use Talemo.");
 				} else if (disabled) {
-					descriptionText = localize('enableDescription', "Enable Copilot to use AI features.");
+					descriptionText = localize('enableDescription', "Sign in to use Talemo.");
 				} else {
-					descriptionText = localize('signInDescription', "Sign in to use Copilot AI features.");
+					descriptionText = localize('signInDescription', "Sign in to use Talemo.");
 				}
 
 				let buttonLabel: string;
 				if (newUser) {
-					buttonLabel = localize('enableAIFeatures', "Use AI Features");
+					buttonLabel = localize('enableAIFeatures', "Sign in to use Talemo");
 				} else if (anonymousUser) {
-					buttonLabel = localize('enableMoreAIFeatures', "Enable more AI Features");
+					buttonLabel = localize('enableMoreAIFeatures', "Sign in to use Talemo");
 				} else if (disabled) {
-					buttonLabel = localize('enableCopilotButton', "Enable AI Features");
+					buttonLabel = localize('enableCopilotButton', "Sign in to use Talemo");
 				} else {
-					buttonLabel = localize('signInToUseAIFeatures', "Sign in to use AI Features");
+					buttonLabel = localize('signInToUseAIFeatures', "Sign in to use Talemo");
 				}
 
-				let commandId: string;
-				if (newUser && anonymousUser) {
-					commandId = 'workbench.action.chat.triggerSetupAnonymousWithoutDialog';
-				} else {
-					commandId = 'workbench.action.chat.triggerSetup';
-				}
+				const commandId = TALEMO_NATIVE_SIGN_IN_COMMAND;
 
 				if (typeof descriptionText === 'string') {
 					this.element.appendChild($(`div${descriptionClass}`, undefined, descriptionText));
@@ -363,7 +373,7 @@ export class ChatStatusDashboard extends DomWidget {
 
 				const button = this._store.add(new Button(this.element, { ...defaultButtonStyles, hoverDelegate: nativeHoverDelegate }));
 				button.label = buttonLabel;
-				this._store.add(button.onDidClick(() => this.runCommandAndClose(commandId)));
+				this._store.add(button.onDidClick(() => this.runCommandAndClose(commandId, undefined, { forceSignInDialog: true })));
 			}
 		}
 	}

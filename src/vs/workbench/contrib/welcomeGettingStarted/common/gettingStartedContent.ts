@@ -17,7 +17,12 @@ interface IGettingStartedContentProvider {
 const defaultChat = {
 	documentationUrl: product.defaultChatAgent?.documentationUrl ?? '',
 	manageSettingsUrl: product.defaultChatAgent?.manageSettingsUrl ?? '',
-	provider: product.defaultChatAgent?.provider ?? { default: { name: '' } },
+	provider: {
+		default: {
+			id: product.defaultChatAgent?.provider?.default?.id ?? '',
+			name: product.defaultChatAgent?.provider?.default?.name ?? 'Talemo',
+		},
+	},
 	publicCodeMatchesUrl: product.defaultChatAgent?.publicCodeMatchesUrl ?? '',
 	termsStatementUrl: product.defaultChatAgent?.termsStatementUrl ?? '',
 	privacyStatementUrl: product.defaultChatAgent?.privacyStatementUrl ?? ''

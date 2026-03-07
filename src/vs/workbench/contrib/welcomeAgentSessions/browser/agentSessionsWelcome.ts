@@ -690,7 +690,11 @@ export class AgentSessionsWelcomePage extends EditorPane {
 			return;
 		}
 
-		const providers = this.productService.defaultChatAgent?.provider;
+		const providers = {
+			default: {
+				name: this.productService.defaultChatAgent?.provider?.default?.name ?? 'Talemo',
+			},
+		};
 		if (!providers || !providers.default || !this.productService.defaultChatAgent?.termsStatementUrl || !this.productService.defaultChatAgent?.privacyStatementUrl) {
 			return;
 		}

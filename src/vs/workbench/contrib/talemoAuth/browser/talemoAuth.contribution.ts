@@ -215,7 +215,9 @@ class TalemoAuthGate extends Disposable {
 
 		this.signInPromptPromise = (async () => {
 			try {
-				await this.commandService.executeCommand(TALEMO_NATIVE_SIGN_IN_COMMAND);
+				await this.commandService.executeCommand(TALEMO_NATIVE_SIGN_IN_COMMAND, undefined, {
+					forceSignInDialog: true,
+				});
 			} catch (error: unknown) {
 				console.error('[TalemoAuth] Failed to trigger native sign-in dialog:', error);
 			} finally {
@@ -283,7 +285,9 @@ MenuRegistry.appendMenuItem(MenuId.CommandPalette, {
 
 CommandsRegistry.registerCommand('talemo.auth.signIn', async (accessor: ServicesAccessor) => {
 	const commandService = accessor.get(ICommandService);
-	await commandService.executeCommand(TALEMO_NATIVE_SIGN_IN_COMMAND);
+	await commandService.executeCommand(TALEMO_NATIVE_SIGN_IN_COMMAND, undefined, {
+		forceSignInDialog: true,
+	});
 });
 
 MenuRegistry.appendMenuItem(MenuId.CommandPalette, {

@@ -21,6 +21,18 @@
 	}
 }
 
+/*
+ * Auxiliary bar globally paints Monaco surfaces with the sidebar background.
+ * For the chat input we need the input background instead, otherwise the
+ * embedded editor looks like a dirty inset block in web.
+ */
+.chat-viewpane.chat-view-location-auxiliarybar .chat-controls-container .interactive-session .interactive-input-part .chat-editor-container .interactive-input-editor .monaco-editor,
+.chat-viewpane.chat-view-location-auxiliarybar .chat-controls-container .interactive-session .interactive-input-part .chat-editor-container .interactive-input-editor .monaco-editor .overflow-guard,
+.chat-viewpane.chat-view-location-auxiliarybar .chat-controls-container .interactive-session .interactive-input-part .chat-editor-container .interactive-input-editor .monaco-editor .margin,
+.chat-viewpane.chat-view-location-auxiliarybar .chat-controls-container .interactive-session .interactive-input-part .chat-editor-container .interactive-input-editor .monaco-editor .monaco-editor-background {
+	background-color: var(--vscode-input-background) !important;
+}
+
 /* Sessions control: either sidebar or stacked */
 .chat-viewpane.has-sessions-control .agent-sessions-container {
 	display: flex;

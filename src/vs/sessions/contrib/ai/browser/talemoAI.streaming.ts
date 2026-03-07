@@ -7,6 +7,18 @@
 
 import { CancellationToken } from '../../../../base/common/cancellation.js';
 import { IChatProgress } from '../../../../workbench/contrib/chat/common/chatService/chatService.js';
+import { ITalemoFileToolEvent } from './talemoAI.fileMirror.js';
+
+interface ITalemoStreamEvent {
+	type: string;
+	text?: string;
+	code?: string;
+	message?: string;
+}
+
+interface ITalemoStreamOptions {
+	onFileToolResult?: (event: ITalemoFileToolEvent) => Promise<void> | void;
+}
 
 /**
  * Stream backend SSE events into the VS Code chat progress sink.
@@ -15,6 +27,7 @@ export async function streamTalemoChatResponse(
 	response: Response,
 	progress: (parts: IChatProgress[]) => void,
 	token: CancellationToken,
+	options?: ITalemoStreamOptions,
 ): Promise<void> {
 	const reader = response.body?.getReader();
 	if (!reader) {
@@ -41,7 +54,7 @@ export async function streamTalemoChatResponse(
 					continue;
 				}
 
-				let event: { type: string; text?: string; code?: string; message?: string };
+				let event: ITalemoStreamEvent;
 				try {
 					event = JSON.parse(trimmed.slice(6));
 				} catch {
@@ -50,6 +63,8 @@ export async function streamTalemoChatResponse(
 
 				if (event.type === 'chunk' && event.text) {
 					progress([{ kind: 'markdownContent', content: { value: event.text } }]);
+				} else if (event.type === 'file_tool_result') {
+					await options?.onFileToolResult?.(event as ITalemoFileToolEvent);
 				} else if (event.type === 'error') {
 					progress([{ kind: 'markdownContent', content: { value: `\n\n${event.message ?? event.code}` } }]);
 					break;

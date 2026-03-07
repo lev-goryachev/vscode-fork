@@ -18,8 +18,10 @@
 import { Disposable } from '../../../../base/common/lifecycle.js';
 import { localize } from '../../../../nls.js';
 import { ExtensionIdentifier } from '../../../../platform/extensions/common/extensions.js';
+import { IFileService } from '../../../../platform/files/common/files.js';
 import { IProductService } from '../../../../platform/product/common/productService.js';
 import { IStorageService, StorageScope } from '../../../../platform/storage/common/storage.js';
+import { IWorkspaceContextService } from '../../../../platform/workspace/common/workspace.js';
 import { IWorkbenchContribution, registerWorkbenchContribution2, WorkbenchPhase } from '../../../../workbench/common/contributions.js';
 import { ChatAgentLocation, ChatModeKind } from '../../../../workbench/contrib/chat/common/constants.js';
 import { IChatWidgetService } from '../../../../workbench/contrib/chat/browser/chat.js';
@@ -27,6 +29,7 @@ import { IChatService } from '../../../../workbench/contrib/chat/common/chatServ
 import { IChatAgentService } from '../../../../workbench/contrib/chat/common/participants/chatAgents.js';
 import { IAuthenticationService } from '../../../../workbench/services/authentication/common/authentication.js';
 import { TalemoAgentImpl } from './talemoAI.agent.js';
+import { TalemoWorkspaceFileMirror } from './talemoAI.fileMirror.js';
 import { ACTIVE_THREAD_KEY } from './talemoAI.shared.js';
 import { registerTalemoSessionBindingContrib } from './talemoAI.sessionBinding.js';
 import { registerTalemoSessionOpenerParticipant } from './talemoAI.sessionOpener.js';
@@ -46,10 +49,20 @@ export class TalemoAIContribution extends Disposable implements IWorkbenchContri
 		@IAuthenticationService authenticationService: IAuthenticationService,
 		@IProductService productService: IProductService,
 		@IStorageService storageService: IStorageService,
+		@IFileService fileService: IFileService,
+		@IWorkspaceContextService workspaceContextService: IWorkspaceContextService,
 	) {
 		super();
 
-		const impl = new TalemoAgentImpl(authenticationService, productService, storageService, chatService, chatWidgetService);
+		const fileMirror = new TalemoWorkspaceFileMirror(fileService, workspaceContextService);
+		const impl = new TalemoAgentImpl(
+			authenticationService,
+			productService,
+			storageService,
+			chatService,
+			chatWidgetService,
+			fileMirror,
+		);
 
 		this._register(chatAgentService.registerDynamicAgent(
 			{

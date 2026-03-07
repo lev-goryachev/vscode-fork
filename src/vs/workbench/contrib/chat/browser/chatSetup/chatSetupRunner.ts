@@ -29,15 +29,38 @@ import { IHostService } from '../../../../services/host/browser/host.js';
 import { IStorageService } from '../../../../../platform/storage/common/storage.js';
 import { loginTalemoWithPassword, resolveTalemoBackend } from '../../../../../sessions/browser/talemoApi.js';
 
+const defaultChatProvider = {
+	default: {
+		id: product.defaultChatAgent?.provider?.default?.id ?? '',
+		name: product.defaultChatAgent?.provider?.default?.name ?? 'Talemo',
+	},
+	enterprise: {
+		id: product.defaultChatAgent?.provider?.enterprise?.id ?? product.defaultChatAgent?.provider?.default?.id ?? '',
+		name: product.defaultChatAgent?.provider?.enterprise?.name ?? product.defaultChatAgent?.provider?.default?.name ?? 'Talemo',
+	},
+	apple: {
+		id: product.defaultChatAgent?.provider?.apple?.id ?? product.defaultChatAgent?.provider?.default?.id ?? '',
+		name: product.defaultChatAgent?.provider?.apple?.name ?? product.defaultChatAgent?.provider?.default?.name ?? 'Talemo',
+	},
+	google: {
+		id: product.defaultChatAgent?.provider?.google?.id ?? product.defaultChatAgent?.provider?.default?.id ?? '',
+		name: product.defaultChatAgent?.provider?.google?.name ?? product.defaultChatAgent?.provider?.default?.name ?? 'Talemo',
+	},
+};
+
 const defaultChat = {
 	publicCodeMatchesUrl: product.defaultChatAgent?.publicCodeMatchesUrl ?? '',
-	provider: product.defaultChatAgent?.provider ?? { default: { id: '', name: '' }, enterprise: { id: '', name: '' }, apple: { id: '', name: '' }, google: { id: '', name: '' } },
+	provider: defaultChatProvider,
 	manageSettingsUrl: product.defaultChatAgent?.manageSettingsUrl ?? '',
 	completionsRefreshTokenCommand: product.defaultChatAgent?.completionsRefreshTokenCommand ?? '',
 	chatRefreshTokenCommand: product.defaultChatAgent?.chatRefreshTokenCommand ?? '',
 	termsStatementUrl: product.defaultChatAgent?.termsStatementUrl ?? '',
 	privacyStatementUrl: product.defaultChatAgent?.privacyStatementUrl ?? ''
 };
+
+function shouldUseInlineCredentialsOnly(forceSignInDialog: boolean | undefined): boolean {
+	return Boolean(forceSignInDialog);
+}
 
 export class ChatSetup {
 
@@ -192,6 +215,7 @@ export class ChatSetup {
 				icon: Codicon.copilotLarge,
 				alignment: DialogContentsAlignment.Vertical,
 				cancelId: buttons.length,     // points past last button → no natural cancel
+				disableDefaultAction: true,
 				disableCloseButton: true,     // hide the X
 				renderFooter: footer => footer.appendChild(
 					this.createDialogFooter(disposables, options, resolveEmailAuth)
@@ -218,9 +242,12 @@ export class ChatSetup {
 	private getButtons(options?: { forceSignInDialog?: boolean; forceAnonymous?: ChatSetupAnonymous }): Array<[string, ChatSetupStrategy, { styleButton?: (button: IButton) => void } | undefined]> {
 		type ContinueWithButton = [string, ChatSetupStrategy, { styleButton?: (button: IButton) => void } | undefined];
 		const styleButton = (...classes: string[]) => ({ styleButton: (button: IButton) => button.element.classList.add(...classes) });
+		const useInlineCredentialsOnly = shouldUseInlineCredentialsOnly(options?.forceSignInDialog);
 
 		let buttons: Array<ContinueWithButton>;
-		if (!options?.forceAnonymous && (this.context.state.entitlement === ChatEntitlement.Unknown || options?.forceSignInDialog)) {
+		if (useInlineCredentialsOnly) {
+			buttons = [];
+		} else if (!options?.forceAnonymous && (this.context.state.entitlement === ChatEntitlement.Unknown || options?.forceSignInDialog)) {
 			const defaultProviderButton: ContinueWithButton = [localize('continueWith', "Continue with {0}", defaultChat.provider.default.name), ChatSetupStrategy.SetupWithoutEnterpriseProvider, styleButton('continue-button', 'default')];
 			const defaultProviderLink: ContinueWithButton = [defaultProviderButton[0], defaultProviderButton[1], styleButton('link-button')];
 
@@ -246,7 +273,7 @@ export class ChatSetup {
 				]);
 			}
 		} else {
-			buttons = [[localize('setupAIButton', "Use AI Features"), ChatSetupStrategy.DefaultSetup, undefined]];
+			buttons = [[localize('setupAIButton', "Use Talemo"), ChatSetupStrategy.DefaultSetup, undefined]];
 		}
 
 		return buttons;

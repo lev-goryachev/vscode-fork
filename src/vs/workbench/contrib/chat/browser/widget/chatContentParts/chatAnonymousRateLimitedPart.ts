@@ -11,6 +11,7 @@ import { defaultButtonStyles } from '../../../../../../platform/theme/browser/de
 import { IChatEntitlementService } from '../../../../../services/chat/common/chatEntitlementService.js';
 import { IChatErrorDetailsPart, IChatRendererContent } from '../../../common/model/chatViewModel.js';
 import { IChatContentPart } from './chatContentParts.js';
+import { TALEMO_NATIVE_SIGN_IN_COMMAND } from '../../../../../../sessions/browser/talemoApi.js';
 
 export class ChatAnonymousRateLimitedPart extends Disposable implements IChatContentPart {
 
@@ -32,17 +33,17 @@ export class ChatAnonymousRateLimitedPart extends Disposable implements IChatCon
 		const messageContainer = append(this.domNode, $('.chat-rate-limited-message'));
 
 		const message = append(messageContainer, $('div'));
-		message.textContent = localize('anonymousRateLimited', "Continue the conversation by signing in. Your free account gets 50 premium requests a month plus access to more models and AI features.");
+		message.textContent = localize('anonymousRateLimited', "Continue the conversation by signing in to Talemo.");
 
 		const signInButton = this._register(new Button(messageContainer, { ...defaultButtonStyles, supportIcons: true }));
-		signInButton.label = localize('enableMoreAIFeatures', "Enable more AI features");
+		signInButton.label = localize('enableMoreAIFeatures', "Sign in to use Talemo");
 		signInButton.element.classList.add('chat-rate-limited-button');
 
 		this._register(signInButton.onDidClick(async () => {
-			const commandId = 'workbench.action.chat.triggerSetup';
+			const commandId = TALEMO_NATIVE_SIGN_IN_COMMAND;
 			telemetryService.publicLog2<WorkbenchActionExecutedEvent, WorkbenchActionExecutedClassification>('workbenchActionExecuted', { id: commandId, from: 'chat-response' });
 
-			await commandService.executeCommand(commandId);
+			await commandService.executeCommand(commandId, undefined, { forceSignInDialog: true });
 		}));
 	}
 

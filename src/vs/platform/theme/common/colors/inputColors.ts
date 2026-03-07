@@ -13,7 +13,7 @@ import { listHoverBackground } from './listColors.js';
 // ----- input
 
 export const inputBackground = registerColor('input.background',
-	{ dark: '#3C3C3C', light: Color.white, hcDark: Color.black, hcLight: Color.white },
+	{ dark: '#3C3C3C', light: '#F8FAFC', hcDark: Color.black, hcLight: Color.white },
 	nls.localize('inputBoxBackground', "Input box background."));
 
 export const inputForeground = registerColor('input.foreground',
@@ -25,7 +25,7 @@ export const inputBorder = registerColor('input.border',
 	nls.localize('inputBoxBorder', "Input box border."));
 
 export const inputActiveOptionBorder = registerColor('inputOption.activeBorder',
-	{ dark: '#007ACC', light: '#007ACC', hcDark: contrastBorder, hcLight: contrastBorder },
+	{ dark: '#7175F3', light: '#7175F3', hcDark: contrastBorder, hcLight: contrastBorder },
 	nls.localize('inputBoxActiveOptionBorder', "Border color of activated options in input fields."));
 
 export const inputActiveOptionHoverBackground = registerColor('inputOption.hoverBackground',
@@ -37,7 +37,7 @@ export const inputActiveOptionBackground = registerColor('inputOption.activeBack
 	nls.localize('inputOption.activeBackground', "Background hover color of options in input fields."));
 
 export const inputActiveOptionForeground = registerColor('inputOption.activeForeground',
-	{ dark: Color.white, light: Color.black, hcDark: foreground, hcLight: foreground },
+	{ dark: Color.white, light: '#0C1018', hcDark: foreground, hcLight: foreground },
 	nls.localize('inputOption.activeForeground', "Foreground color of activated options in input fields."));
 
 export const inputPlaceholderForeground = registerColor('input.placeholderForeground',
@@ -56,7 +56,7 @@ export const inputValidationInfoForeground = registerColor('inputValidation.info
 	nls.localize('inputValidationInfoForeground', "Input validation foreground color for information severity."));
 
 export const inputValidationInfoBorder = registerColor('inputValidation.infoBorder',
-	{ dark: '#007acc', light: '#007acc', hcDark: contrastBorder, hcLight: contrastBorder },
+	{ dark: '#7175F3', light: '#7175F3', hcDark: contrastBorder, hcLight: contrastBorder },
 	nls.localize('inputValidationInfoBorder', "Input validation border color for information severity."));
 
 export const inputValidationWarningBackground = registerColor('inputValidation.warningBackground',
@@ -87,7 +87,7 @@ export const inputValidationErrorBorder = registerColor('inputValidation.errorBo
 // ----- select
 
 export const selectBackground = registerColor('dropdown.background',
-	{ dark: '#3C3C3C', light: Color.white, hcDark: Color.black, hcLight: Color.white },
+	{ dark: '#3C3C3C', light: '#E6EDF4', hcDark: Color.black, hcLight: Color.white },
 	nls.localize('dropdownBackground', "Dropdown background."));
 
 export const selectListBackground = registerColor('dropdown.listBackground',
@@ -99,7 +99,7 @@ export const selectForeground = registerColor('dropdown.foreground',
 	nls.localize('dropdownForeground', "Dropdown foreground."));
 
 export const selectBorder = registerColor('dropdown.border',
-	{ dark: selectBackground, light: '#CECECE', hcDark: contrastBorder, hcLight: contrastBorder },
+	{ dark: selectBackground, light: '#C2D4E5', hcDark: contrastBorder, hcLight: contrastBorder },
 	nls.localize('dropdownBorder', "Dropdown border."));
 
 

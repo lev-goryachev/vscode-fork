@@ -305,6 +305,10 @@ class NewChatWidget extends Disposable {
 			padding: { top: 8, bottom: 2 },
 			wrappingStrategy: 'advanced',
 			stickyScroll: { enabled: false },
+			// Keep the welcome input visually aligned with the light-theme container instead of
+			// inheriting Monaco's focused line highlight tint.
+			renderLineHighlight: 'none',
+			renderLineHighlightOnlyWhenFocus: false,
 			renderWhitespace: 'none',
 		};
 

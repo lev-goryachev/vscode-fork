@@ -19,6 +19,7 @@ import { MANAGE_CHAT_COMMAND_ID } from '../../../common/constants.js';
 import { ILanguageModelChatMetadataAndIdentifier } from '../../../common/languageModels.js';
 import { DEFAULT_MODEL_PICKER_CATEGORY } from '../../../common/widget/input/modelPickerWidget.js';
 import { ChatInputPickerActionViewItem, IChatInputPickerOptions } from './chatInputPickerActionItem.js';
+import { TALEMO_NATIVE_SIGN_IN_COMMAND } from '../../../../../../sessions/browser/talemoApi.js';
 
 export interface IModelPickerDelegate {
 	readonly currentModel: IObservable<ILanguageModelChatMetadataAndIdentifier | undefined>;
@@ -123,7 +124,11 @@ function getModelPickerActionBarActionProvider(commandService: ICommandService, 
 					tooltip: isNewOrAnonymousUser ? localize('chat.moreModels.tooltip', "Add Language Models") : localize('chat.morePremiumModels.tooltip', "Add Premium Models"),
 					class: undefined,
 					run: () => {
-						const commandId = isNewOrAnonymousUser ? 'workbench.action.chat.triggerSetup' : 'workbench.action.chat.upgradePlan';
+						const commandId = isNewOrAnonymousUser ? TALEMO_NATIVE_SIGN_IN_COMMAND : 'workbench.action.chat.upgradePlan';
+						if (commandId === TALEMO_NATIVE_SIGN_IN_COMMAND) {
+							commandService.executeCommand(commandId, undefined, { forceSignInDialog: true });
+							return;
+						}
 						commandService.executeCommand(commandId);
 					}
 				});

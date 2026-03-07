@@ -27,9 +27,28 @@ import { ChatSetupAnonymous, ChatSetupStep, ChatSetupResultValue, InstallChatEve
 import { IDefaultAccount } from '../../../../../base/common/defaultAccount.js';
 import { IDefaultAccountService } from '../../../../../platform/defaultAccount/common/defaultAccount.js';
 
+const defaultChatProvider = {
+	default: {
+		id: product.defaultChatAgent?.provider?.default?.id ?? '',
+		name: product.defaultChatAgent?.provider?.default?.name ?? 'Talemo',
+	},
+	enterprise: {
+		id: product.defaultChatAgent?.provider?.enterprise?.id ?? product.defaultChatAgent?.provider?.default?.id ?? '',
+		name: product.defaultChatAgent?.provider?.enterprise?.name ?? product.defaultChatAgent?.provider?.default?.name ?? 'Talemo',
+	},
+	apple: {
+		id: product.defaultChatAgent?.provider?.apple?.id ?? product.defaultChatAgent?.provider?.default?.id ?? '',
+		name: product.defaultChatAgent?.provider?.apple?.name ?? product.defaultChatAgent?.provider?.default?.name ?? 'Talemo',
+	},
+	google: {
+		id: product.defaultChatAgent?.provider?.google?.id ?? product.defaultChatAgent?.provider?.default?.id ?? '',
+		name: product.defaultChatAgent?.provider?.google?.name ?? product.defaultChatAgent?.provider?.default?.name ?? 'Talemo',
+	},
+};
+
 const defaultChat = {
 	chatExtensionId: product.defaultChatAgent?.chatExtensionId ?? '',
-	provider: product.defaultChatAgent?.provider ?? { default: { id: '', name: '' }, enterprise: { id: '', name: '' }, apple: { id: '', name: '' }, google: { id: '', name: '' } },
+	provider: defaultChatProvider,
 	providerUriSetting: product.defaultChatAgent?.providerUriSetting ?? '',
 	completionsAdvancedSetting: product.defaultChatAgent?.completionsAdvancedSetting ?? '',
 };

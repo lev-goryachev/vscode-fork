@@ -189,6 +189,9 @@ import './contrib/policyExport/electron-browser/policyExport.contribution.js';
 // eslint-disable-next-line local/code-import-patterns
 import '../sessions/contrib/billing/browser/billing.contribution.js';
 
+// Talemo: Auth gate + Accounts provider
+import './contrib/talemoAuth/browser/talemoAuth.contribution.js';
+
 // Talemo: AI chat agent
 // eslint-disable-next-line local/code-import-patterns
 import '../sessions/contrib/ai/browser/talemoAI.contribution.js';

@@ -27,6 +27,7 @@ import { PANEL_BORDER } from '../../../../common/theme.js';
 import { DisposableStore, MutableDisposable } from '../../../../../base/common/lifecycle.js';
 import { IContextKey, IContextKeyService } from '../../../../../platform/contextkey/common/contextkey.js';
 import { CONTEXT_MODELS_EDITOR } from '../../common/constants.js';
+import { TALEMO_NATIVE_SIGN_IN_COMMAND } from '../../../../../sessions/browser/talemoApi.js';
 
 const $ = DOM.$;
 
@@ -372,21 +373,25 @@ export class ChatManagementEditor extends EditorPane {
 				buttonLabel = localize('upgradeToCopilotPro', 'Upgrade to Copilot Pro');
 				commandId = 'workbench.action.chat.upgradePlan';
 			} else if (newUser) {
-				buttonLabel = localize('enableAIFeatures', "Use AI Features");
-				commandId = newUser && anonymousUser ? 'workbench.action.chat.triggerSetupAnonymousWithoutDialog' : 'workbench.action.chat.triggerSetup';
+				buttonLabel = localize('enableAIFeatures', "Sign in to use Talemo");
+				commandId = TALEMO_NATIVE_SIGN_IN_COMMAND;
 			} else if (anonymousUser) {
-				buttonLabel = localize('enableMoreAIFeatures', "Enable more AI Features");
-				commandId = 'workbench.action.chat.triggerSetup';
+				buttonLabel = localize('enableMoreAIFeatures', "Sign in to use Talemo");
+				commandId = TALEMO_NATIVE_SIGN_IN_COMMAND;
 			} else if (disabled) {
-				buttonLabel = localize('enableCopilotButton', "Enable AI Features");
-				commandId = 'workbench.action.chat.triggerSetup';
+				buttonLabel = localize('enableCopilotButton', "Sign in to use Talemo");
+				commandId = TALEMO_NATIVE_SIGN_IN_COMMAND;
 			} else {
-				buttonLabel = localize('signInToUseAIFeatures', "Sign in to use AI Features");
-				commandId = 'workbench.action.chat.triggerSetup';
+				buttonLabel = localize('signInToUseAIFeatures', "Sign in to use Talemo");
+				commandId = TALEMO_NATIVE_SIGN_IN_COMMAND;
 			}
 
 			this.actionButton.label = buttonLabel;
 			this.actionButtonClickListener.value = this.actionButton.onDidClick(() => {
+				if (commandId === TALEMO_NATIVE_SIGN_IN_COMMAND) {
+					this.commandService.executeCommand(commandId, undefined, { forceSignInDialog: true });
+					return;
+				}
 				this.commandService.executeCommand(commandId);
 			});
 		} else {
