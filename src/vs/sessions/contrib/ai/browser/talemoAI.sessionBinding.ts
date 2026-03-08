@@ -47,6 +47,25 @@ export function getThreadIdFromSessionModel(model: IChatModel | undefined): stri
 	}
 }
 
+export async function resolveThreadIdForSessionResource(
+	chatService: IChatService,
+	sessionResource: URI,
+): Promise<string | undefined> {
+	const existingRef = chatService.getActiveSessionReference(sessionResource);
+	const acquiredRef = existingRef ?? await chatService.getOrRestoreSession(sessionResource);
+	const shouldDispose = !existingRef;
+
+	try {
+		return getThreadIdFromSessionModel(acquiredRef?.object);
+	} catch {
+		return undefined;
+	} finally {
+		if (shouldDispose) {
+			acquiredRef?.dispose();
+		}
+	}
+}
+
 function updateModelBinding(model: IChatModel | undefined, threadId: string | undefined): void {
 	if (!model) {
 		return;

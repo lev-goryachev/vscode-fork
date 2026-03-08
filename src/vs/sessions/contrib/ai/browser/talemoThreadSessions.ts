@@ -34,7 +34,7 @@ import { TALEMO_SESSION_BINDING_KEY } from './talemoAI.sessionBinding.js';
 export const TALEMO_THREAD_SESSION_SCHEME = 'talemo-thread';
 export const TALEMO_THREAD_PROVIDER_LABEL = 'Talemo';
 
-function getThreadResource(threadId: string): URI {
+export function getThreadResource(threadId: string): URI {
 	return URI.from({
 		scheme: TALEMO_THREAD_SESSION_SCHEME,
 		path: `/${threadId}`,

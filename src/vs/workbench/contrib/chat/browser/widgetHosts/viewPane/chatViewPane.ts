@@ -59,6 +59,8 @@ import { HoverPosition } from '../../../../../../base/browser/ui/hover/hoverWidg
 import { IAgentSession } from '../../agentSessions/agentSessionsModel.js';
 import { IChatEntitlementService } from '../../../../../services/chat/common/chatEntitlementService.js';
 import { IWorkbenchEnvironmentService } from '../../../../../services/environment/common/environmentService.js';
+import { resolveThreadIdForSessionResource } from '../../../../../../sessions/contrib/ai/browser/talemoAI.sessionBinding.js';
+import { getThreadResource } from '../../../../../../sessions/contrib/ai/browser/talemoThreadSessions.js';
 
 interface IChatViewPaneState extends Partial<IChatModelInputState> {
 	/**
@@ -240,7 +242,7 @@ export class ChatViewPane extends ViewPane implements IViewWelcomeDelegate {
 			if (!this._widget?.viewModel && !this.restoringSession) {
 				const sessionResource = this.getTransferredOrPersistedSessionInfo();
 				this.restoringSession =
-					(sessionResource ? this.chatService.getOrRestoreSession(sessionResource) : Promise.resolve(undefined)).then(async modelRef => {
+					(sessionResource ? this.resolveCanonicalSessionResource(sessionResource).then(resource => resource ? this.chatService.getOrRestoreSession(resource) : undefined) : Promise.resolve(undefined)).then(async modelRef => {
 						if (!this._widget) {
 							return; // renderBody has not been called yet
 						}
@@ -275,6 +277,19 @@ export class ChatViewPane extends ViewPane implements IViewWelcomeDelegate {
 		}
 
 		return this.viewState.sessionId ? LocalChatSessionUri.forSession(this.viewState.sessionId) : undefined;
+	}
+
+	private async resolveCanonicalSessionResource(sessionResource: URI | undefined): Promise<URI | undefined> {
+		if (!sessionResource || sessionResource.scheme !== LocalChatSessionUri.scheme) {
+			return sessionResource;
+		}
+
+		try {
+			const threadId = await resolveThreadIdForSessionResource(this.chatService, sessionResource);
+			return threadId ? getThreadResource(threadId) : sessionResource;
+		} catch {
+			return sessionResource;
+		}
 	}
 
 	protected override renderBody(parent: HTMLElement): void {
@@ -764,12 +779,13 @@ export class ChatViewPane extends ViewPane implements IViewWelcomeDelegate {
 				queue = this.showModel(undefined, false).then(() => { });
 			}, 100);
 
-			const sessionType = getChatSessionType(sessionResource);
+			const resolvedSessionResource = (await this.resolveCanonicalSessionResource(sessionResource)) ?? sessionResource;
+			const sessionType = getChatSessionType(resolvedSessionResource);
 			if (sessionType !== localChatSessionType) {
-				await this.chatSessionsService.canResolveChatSession(sessionResource);
+				await this.chatSessionsService.canResolveChatSession(resolvedSessionResource);
 			}
 
-			const newModelRef = await this.chatService.loadSessionForResource(sessionResource, ChatAgentLocation.Chat, CancellationToken.None);
+			const newModelRef = await this.chatService.loadSessionForResource(resolvedSessionResource, ChatAgentLocation.Chat, CancellationToken.None);
 			clearWidget.dispose();
 			await queue;
 

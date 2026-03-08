@@ -12,7 +12,7 @@ import { convertLegacyChatSessionTiming, IChatDetail, IChatService, ResponseMode
 import { ChatSessionStatus, IChatSessionItem, IChatSessionItemController, IChatSessionsService, localChatSessionType } from '../../common/chatSessionsService.js';
 import { getChatSessionType } from '../../common/model/chatUri.js';
 import { ILogService } from '../../../../../platform/log/common/log.js';
-import { getThreadIdFromSessionModel } from '../../../../../sessions/contrib/ai/browser/talemoAI.sessionBinding.js';
+import { resolveThreadIdForSessionResource } from '../../../../../sessions/contrib/ai/browser/talemoAI.sessionBinding.js';
 
 export class LocalAgentsSessionsController extends Disposable implements IChatSessionItemController, IWorkbenchContribution {
 
@@ -69,7 +69,7 @@ export class LocalAgentsSessionsController extends Disposable implements IChatSe
 		const sessionsByResource = new ResourceSet();
 
 		for (const sessionDetail of await this.chatService.getLiveSessionItems()) {
-			const talemoThreadId = isWeb ? await this.getLiveTalemoThreadId(sessionDetail.sessionResource) : undefined;
+			const talemoThreadId = isWeb ? await this.getTalemoThreadId(sessionDetail.sessionResource) : undefined;
 			if (talemoThreadId) {
 				continue;
 			}
@@ -95,7 +95,7 @@ export class LocalAgentsSessionsController extends Disposable implements IChatSe
 		try {
 			const historyItems = await this.chatService.getHistorySessionItems();
 			const filteredHistory = await Promise.all(historyItems.map(async history => {
-				const talemoThreadId = isWeb ? await this.getLiveTalemoThreadId(history.sessionResource) : undefined;
+				const talemoThreadId = isWeb ? await this.getTalemoThreadId(history.sessionResource) : undefined;
 				if (talemoThreadId) {
 					return undefined;
 				}
@@ -108,10 +108,9 @@ export class LocalAgentsSessionsController extends Disposable implements IChatSe
 		}
 	}
 
-	private async getLiveTalemoThreadId(sessionResource: IChatDetail['sessionResource']): Promise<string | undefined> {
+	private async getTalemoThreadId(sessionResource: IChatDetail['sessionResource']): Promise<string | undefined> {
 		try {
-			const liveModel = this.chatService.getSession(sessionResource);
-			return getThreadIdFromSessionModel(liveModel);
+			return await resolveThreadIdForSessionResource(this.chatService, sessionResource);
 		} catch {
 			return undefined;
 		}
