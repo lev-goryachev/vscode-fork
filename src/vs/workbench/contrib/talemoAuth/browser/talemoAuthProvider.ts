@@ -2,7 +2,7 @@ import { Emitter, Event } from '../../../../base/common/event.js';
 import { Disposable } from '../../../../base/common/lifecycle.js';
 import { IStorageService, StorageScope } from '../../../../platform/storage/common/storage.js';
 import { ICommandService } from '../../../../platform/commands/common/commands.js';
-import { clearStoredTalemoAuth, AUTH_TOKEN_KEY, AUTH_USER_KEY, TALEMO_NATIVE_SIGN_IN_COMMAND } from '../../../../sessions/browser/talemoApi.js';
+import { clearStoredTalemoAuth, AUTH_TOKEN_KEY, AUTH_USER_KEY, promptTalemoNativeSignIn, TALEMO_PROVIDER_ID } from '../../../../sessions/browser/talemoApi.js';
 import {
 	AuthenticationSession,
 	AuthenticationSessionsChangeEvent,
@@ -11,7 +11,6 @@ import {
 	IAuthenticationService,
 } from '../../../services/authentication/common/authentication.js';
 
-const PROVIDER_ID = 'talemo';
 const PROVIDER_LABEL = 'Talemo';
 
 interface StoredUser {
@@ -24,7 +23,7 @@ interface StoredUser {
  * exposes it to the Accounts UI via IAuthenticationProvider.
  */
 export class TalemoAuthenticationProvider extends Disposable implements IAuthenticationProvider {
-	readonly id = PROVIDER_ID;
+	readonly id = TALEMO_PROVIDER_ID;
 	readonly label = PROVIDER_LABEL;
 	readonly supportsMultipleAccounts = false;
 
@@ -73,10 +72,7 @@ export class TalemoAuthenticationProvider extends Disposable implements IAuthent
 				return session;
 			}
 
-			await this.commandService.executeCommand(TALEMO_NATIVE_SIGN_IN_COMMAND, undefined, {
-				forceSignInDialog: true,
-				additionalScopes: scopes,
-			});
+			await promptTalemoNativeSignIn(this.commandService, { additionalScopes: scopes });
 
 			const refreshedSession = this.readSession();
 			if (refreshedSession) {
@@ -143,12 +139,12 @@ export function registerTalemoAuthProvider(
 ): TalemoAuthenticationProvider {
 	try {
 		authService.registerDeclaredAuthenticationProvider({
-			id: PROVIDER_ID,
+			id: TALEMO_PROVIDER_ID,
 			label: PROVIDER_LABEL,
 		});
 
 		const provider = new TalemoAuthenticationProvider(storageService, commandService);
-		authService.registerAuthenticationProvider(PROVIDER_ID, provider);
+		authService.registerAuthenticationProvider(TALEMO_PROVIDER_ID, provider);
 		return provider;
 	} catch (error: unknown) {
 		console.error('[TalemoAuth] Provider registration failed:', error);
