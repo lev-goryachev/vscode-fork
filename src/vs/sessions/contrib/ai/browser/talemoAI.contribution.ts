@@ -16,6 +16,7 @@
  *--------------------------------------------------------------------------------------------*/
 
 import { Disposable } from '../../../../base/common/lifecycle.js';
+import { isWeb } from '../../../../base/common/platform.js';
 import { localize } from '../../../../nls.js';
 import { ExtensionIdentifier } from '../../../../platform/extensions/common/extensions.js';
 import { IFileService } from '../../../../platform/files/common/files.js';
@@ -26,6 +27,7 @@ import { IWorkbenchContribution, registerWorkbenchContribution2, WorkbenchPhase 
 import { ChatAgentLocation, ChatModeKind } from '../../../../workbench/contrib/chat/common/constants.js';
 import { IChatWidgetService } from '../../../../workbench/contrib/chat/browser/chat.js';
 import { IChatService } from '../../../../workbench/contrib/chat/common/chatService/chatService.js';
+import { IChatSessionsService } from '../../../../workbench/contrib/chat/common/chatSessionsService.js';
 import { IChatAgentService } from '../../../../workbench/contrib/chat/common/participants/chatAgents.js';
 import { IAuthenticationService } from '../../../../workbench/services/authentication/common/authentication.js';
 import { TalemoAgentImpl } from './talemoAI.agent.js';
@@ -33,6 +35,7 @@ import { TalemoWorkspaceFileMirror } from './talemoAI.fileMirror.js';
 import { ACTIVE_THREAD_KEY } from './talemoAI.shared.js';
 import { registerTalemoSessionBindingContrib } from './talemoAI.sessionBinding.js';
 import { registerTalemoSessionOpenerParticipant } from './talemoAI.sessionOpener.js';
+import { TALEMO_THREAD_SESSION_SCHEME, TalemoThreadSessionsController } from './talemoThreadSessions.js';
 
 const AGENT_ID = 'talemo';
 
@@ -46,6 +49,7 @@ export class TalemoAIContribution extends Disposable implements IWorkbenchContri
 		@IChatAgentService chatAgentService: IChatAgentService,
 		@IChatWidgetService chatWidgetService: IChatWidgetService,
 		@IChatService chatService: IChatService,
+		@IChatSessionsService chatSessionsService: IChatSessionsService,
 		@IAuthenticationService authenticationService: IAuthenticationService,
 		@IProductService productService: IProductService,
 		@IStorageService storageService: IStorageService,
@@ -71,6 +75,7 @@ export class TalemoAIContribution extends Disposable implements IWorkbenchContri
 				fullName: 'Talemo AI',
 				description: localize('talemo.ai.description', "Your AI assistant, powered by Talemo."),
 				isDefault: true,
+				isCore: true,
 				metadata: {},
 				slashCommands: [],
 				disambiguation: [],
@@ -83,6 +88,17 @@ export class TalemoAIContribution extends Disposable implements IWorkbenchContri
 			},
 			impl,
 		));
+
+		if (isWeb) {
+			const threadSessionsController = this._register(new TalemoThreadSessionsController(
+				authenticationService,
+				storageService,
+				productService,
+				chatService,
+			));
+			this._register(chatSessionsService.registerChatSessionItemController(TALEMO_THREAD_SESSION_SCHEME, threadSessionsController));
+			this._register(chatSessionsService.registerChatSessionContentProvider(TALEMO_THREAD_SESSION_SCHEME, threadSessionsController));
+		}
 
 		this._register(registerTalemoSessionOpenerParticipant());
 

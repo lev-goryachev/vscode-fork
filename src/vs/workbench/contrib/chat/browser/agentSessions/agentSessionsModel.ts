@@ -496,12 +496,13 @@ export class AgentSessionsModel extends Disposable implements IAgentSessionsMode
 			for (const session of providerSessions) {
 				let icon: ThemeIcon;
 				let providerLabel: string;
+				const metadataProviderLabel = typeof session.metadata?.['providerLabel'] === 'string' ? session.metadata['providerLabel'] : undefined;
 				const agentSessionProvider = getAgentSessionProvider(chatSessionType);
 				if (agentSessionProvider !== undefined) {
 					providerLabel = getAgentSessionProviderName(agentSessionProvider);
 					icon = getAgentSessionProviderIcon(agentSessionProvider);
 				} else {
-					providerLabel = mapSessionContributionToType.get(chatSessionType)?.name ?? chatSessionType;
+					providerLabel = metadataProviderLabel ?? mapSessionContributionToType.get(chatSessionType)?.name ?? chatSessionType;
 					icon = session.iconPath ?? Codicon.terminal;
 				}
 
