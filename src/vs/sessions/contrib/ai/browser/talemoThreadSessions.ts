@@ -28,6 +28,7 @@ import {
 import { ISerializableChatModelInputState } from '../../../../workbench/contrib/chat/common/model/chatModel.js';
 import { IAuthenticationService } from '../../../../workbench/services/authentication/common/authentication.js';
 import { MessageRecord, ThreadSummary, getThreadMessages, listThreads } from '../../../browser/talemoApi.js';
+import { TalemoRealtimeClient } from '../../../browser/talemoRealtime.js';
 import { TALEMO_SESSION_BINDING_KEY } from './talemoAI.sessionBinding.js';
 
 export const TALEMO_THREAD_SESSION_SCHEME = 'talemo-thread';
@@ -143,6 +144,7 @@ export class TalemoThreadSessionsController extends Disposable implements IChatS
 		@IStorageService private readonly storageService: IStorageService,
 		@IProductService private readonly productService: IProductService,
 		@IChatService private readonly chatService: IChatService,
+		private readonly realtimeClient: TalemoRealtimeClient,
 	) {
 		super();
 
@@ -154,6 +156,22 @@ export class TalemoThreadSessionsController extends Disposable implements IChatS
 			if (e.providerId === 'talemo') {
 				void this.refresh(CancellationToken.None);
 			}
+		}));
+
+		this._register(this.realtimeClient.onDidRuntimeEvent(event => {
+			if (
+				event.event_type === 'thread.created' ||
+				event.event_type === 'thread.deleted' ||
+				event.event_type === 'thread.summary.updated' ||
+				event.event_type === 'chat.run.completed' ||
+				event.event_type === 'chat.run.failed'
+			) {
+				void this.refresh(CancellationToken.None);
+			}
+		}));
+
+		this._register(this.realtimeClient.onDidReconnect(() => {
+			void this.refresh(CancellationToken.None);
 		}));
 	}
 

@@ -530,7 +530,12 @@ export class AgentSessionsModel extends Disposable implements IAgentSessionsMode
 		}
 
 		for (const [, session] of this._sessions) {
-			if (!resolvedProviders.has(session.providerType) && (isBuiltInAgentSessionProvider(session.providerType) || mapSessionContributionToType.has(session.providerType))) {
+			// Partial provider refreshes must not evict sessions that are still backed by
+			// a registered chat session provider. Talemo thread-backed sessions rely on a
+			// custom content provider scheme rather than a built-in provider enum, so a
+			// local-only refresh should preserve them until their own provider refreshes.
+			const isKnownCustomProvider = this.chatSessionsService.getContentProviderSchemes().includes(session.providerType);
+			if (!resolvedProviders.has(session.providerType) && (isBuiltInAgentSessionProvider(session.providerType) || mapSessionContributionToType.has(session.providerType) || isKnownCustomProvider)) {
 				sessions.set(session.resource, session); // fill in existing sessions for providers that did not resolve if they are known or built-in
 			}
 		}

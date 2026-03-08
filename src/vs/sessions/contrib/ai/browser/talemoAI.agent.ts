@@ -21,6 +21,8 @@
  *--------------------------------------------------------------------------------------------*/
 
 import { CancellationToken } from '../../../../base/common/cancellation.js';
+import { MarkdownString } from '../../../../base/common/htmlContent.js';
+import { DisposableStore } from '../../../../base/common/lifecycle.js';
 import { hasKey } from '../../../../base/common/types.js';
 import { localize } from '../../../../nls.js';
 import { IProductService } from '../../../../platform/product/common/productService.js';
@@ -35,6 +37,7 @@ import {
 } from '../../../../workbench/contrib/chat/common/participants/chatAgents.js';
 import { IAuthenticationService } from '../../../../workbench/services/authentication/common/authentication.js';
 import {
+	AuthRequiredError,
 	TALEMO_PROVIDER_ID,
 	forceSignIn,
 	getAuthHeaders,
@@ -42,13 +45,12 @@ import {
 	refreshTalemoSession,
 } from '../../../browser/talemoApi.js';
 import { ITalemoFileToolEvent, TalemoWorkspaceFileMirror } from './talemoAI.fileMirror.js';
+import { ITalemoRuntimeEventEnvelope, TalemoRealtimeClient } from '../../../browser/talemoRealtime.js';
 import { ACTIVE_THREAD_KEY, DEFAULT_MODEL } from './talemoAI.shared.js';
 import {
-	clearThreadBindingForSession,
 	getThreadIdFromSessionModel,
 	persistThreadBindingForSession,
 } from './talemoAI.sessionBinding.js';
-import { streamTalemoChatResponse } from './talemoAI.streaming.js';
 
 // ─── TalemoAgentImpl ──────────────────────────────────────────────────────────
 
@@ -61,6 +63,7 @@ export class TalemoAgentImpl implements IChatAgentImplementation {
 		private readonly chatService: IChatService,
 		private readonly chatWidgetService: IChatWidgetService,
 		private readonly fileMirror: TalemoWorkspaceFileMirror,
+		private readonly realtimeClient: TalemoRealtimeClient,
 	) { }
 
 	/**
@@ -88,15 +91,6 @@ export class TalemoAgentImpl implements IChatAgentImplementation {
 			this.storageService,
 			sessionResource,
 			threadId,
-		);
-	}
-
-	private _clearThreadBinding(sessionResource: IChatAgentRequest['sessionResource']): void {
-		clearThreadBindingForSession(
-			this.chatService,
-			this.chatWidgetService,
-			this.storageService,
-			sessionResource,
 		);
 	}
 
@@ -158,7 +152,61 @@ export class TalemoAgentImpl implements IChatAgentImplementation {
 		}
 	}
 
-	/** Runs thread resolution + chat request + SSE streaming. */
+	private async _consumeRuntimeRun(
+		runId: string,
+		progress: (parts: IChatProgress[]) => void,
+		token: CancellationToken,
+	): Promise<'ok' | 'error'> {
+		return new Promise<'ok' | 'error'>(resolve => {
+			const disposables = new DisposableStore();
+			const finish = (result: 'ok' | 'error') => {
+				disposables.dispose();
+				resolve(result);
+			};
+
+			disposables.add(this.realtimeClient.onDidRuntimeEvent((event: ITalemoRuntimeEventEnvelope) => {
+				if (event.run_id !== runId) {
+					return;
+				}
+
+				switch (event.event_type) {
+					case 'chat.message.delta':
+						progress([{ kind: 'markdownContent', content: new MarkdownString(String(event.payload.delta ?? '')) }]);
+						return;
+					case 'tool.file.result':
+						void this.fileMirror.apply(event.payload as unknown as ITalemoFileToolEvent);
+						return;
+					case 'file.created':
+					case 'file.updated':
+					case 'file.renamed':
+					case 'file.moved':
+					case 'file.duplicated':
+					case 'file.deleted':
+						void this.fileMirror.applyRuntimeEvent(
+							event.event_type,
+							event.payload as Parameters<TalemoWorkspaceFileMirror['applyRuntimeEvent']>[1],
+						);
+						return;
+					case 'chat.run.failed':
+						progress([{
+							kind: 'markdownContent',
+							content: new MarkdownString(`\n\n${String(event.payload.message ?? event.payload.code ?? 'Chat failed')}`),
+						}]);
+						finish('error');
+						return;
+					case 'chat.run.completed':
+						finish('ok');
+						return;
+					default:
+						return;
+				}
+			}));
+
+			disposables.add(token.onCancellationRequested(() => finish('error')));
+		});
+	}
+
+	/** Runs thread resolution + chat request through the shared Socket.io runtime. */
 	private async _doRequest(
 		request: IChatAgentRequest,
 		progress: (parts: IChatProgress[]) => void,
@@ -181,77 +229,54 @@ export class TalemoAgentImpl implements IChatAgentImplementation {
 		}
 		const { threadId } = threadResult;
 
-		// ── Step 2: send chat request ─────────────────────────────────────────
-		// Raw fetch is required here because SSE streaming starts immediately on
-		// 200 — authedFetch consumes the body as JSON, which would break the stream.
-		const attempt = async (): Promise<Response> => {
-			const headers = await getAuthHeaders(this.authService);
-			return fetch(`${backendUrl}/ai/chat`, {
-				method: 'POST',
-				headers: { 'Content-Type': 'application/json', ...headers },
-				body: JSON.stringify({ message: request.message, thread_id: threadId, model }),
+		// ── Step 2: subscribe and start runtime chat turn ─────────────────────
+		const attempt = async (): Promise<string> => {
+			await this.realtimeClient.subscribe('tenant');
+			await this.realtimeClient.subscribe('workspace');
+			await this.realtimeClient.subscribe('thread', threadId);
+			return this.realtimeClient.startChatRun({
+				message: request.message,
+				thread_id: threadId,
+				model,
 			});
 		};
 
-		let response: Response;
-		try { response = await attempt(); } catch (err) {
-			progress([{ kind: 'markdownContent', content: { value: localize('talemo.ai.networkError', "Network error: {0}", String(err)) } }]);
-			return 'error';
-		}
-
-		if (response.status === 401) {
-			const recovered = await this._recoverAuth(progress);
-			if (recovered === 'failed') { return 'auth'; }
-			if (recovered === 'silent') {
-				try { response = await attempt(); } catch (err) {
-					progress([{ kind: 'markdownContent', content: { value: localize('talemo.ai.networkError', "Network error: {0}", String(err)) } }]);
-					return 'error';
+		let runId: string;
+		try {
+			runId = await attempt();
+		} catch (err) {
+			if (err instanceof AuthRequiredError) {
+				const recovered = await this._recoverAuth(progress);
+				if (recovered === 'failed') { return 'auth'; }
+				if (recovered === 'interactive') {
+					progress([{
+						kind: 'markdownContent',
+						content: {
+							value: localize(
+								'talemo.ai.resendAfterAuth',
+								'\n\n_Session restored. Please send your message again._',
+							),
+						},
+					}]);
+					return 'retry_after_auth';
 				}
-				if (response.status === 401) { return 'auth'; }
+				try {
+					runId = await attempt();
+				} catch {
+					return 'auth';
+				}
 			} else {
-				progress([{
-					kind: 'markdownContent',
-					content: {
-						value: localize(
-							'talemo.ai.resendAfterAuth',
-							'\n\n_Session restored. Please send your message again._',
-						),
-					},
-				}]);
-				return 'retry_after_auth';
+				const message = String(err);
+				const markdown = message.includes('Insufficient credits')
+					? localize('talemo.ai.credits', "Insufficient credits. Top up in **Settings -> Billing**.")
+					: localize('talemo.ai.networkError', "Network error: {0}", message);
+				progress([{ kind: 'markdownContent', content: { value: markdown } }]);
+				return 'error';
 			}
 		}
 
-		if (response.status === 403 || response.status === 404) {
-			this._clearThreadBinding(request.sessionResource);
-			progress([{
-				kind: 'markdownContent',
-				content: {
-					value: localize(
-						'talemo.ai.threadUnavailable',
-						"This conversation thread is no longer available. Start a new chat session or send your message again to create a new thread.",
-					),
-				},
-			}]);
-			return 'error';
-		}
-
-		if (!response.ok) {
-			const body = await response.text().catch(() => '');
-			const msg = response.status === 402
-				? localize('talemo.ai.credits', "Insufficient credits. Top up in **Settings -> Billing**.")
-				: localize('talemo.ai.error', "Error {0}: {1}", response.status, body.slice(0, 200));
-			progress([{ kind: 'markdownContent', content: { value: msg } }]);
-			return 'error';
-		}
-
-		// ── Step 3: stream SSE response ───────────────────────────────────────
-		await streamTalemoChatResponse(response, progress, token, {
-			onFileToolResult: async (event: ITalemoFileToolEvent) => {
-				await this.fileMirror.apply(event);
-			},
-		});
-		return 'ok';
+		// ── Step 3: stream runtime events ──────────────────────────────────────
+		return this._consumeRuntimeRun(runId!, progress, token);
 	}
 
 	async invoke(
@@ -269,7 +294,7 @@ export class TalemoAgentImpl implements IChatAgentImplementation {
 
 		if (!hasSessions) {
 			const recovered = await this._recoverAuth(progress);
-			if (!recovered) {
+			if (recovered === 'failed') {
 				progress([{ kind: 'markdownContent', content: { value: '\n\n' + localize('talemo.ai.signInRequired', 'Please sign in to use Talemo AI.') } }]);
 				return {};
 			}

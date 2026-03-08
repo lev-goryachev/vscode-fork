@@ -231,6 +231,20 @@ export class BillingEditor extends EditorPane {
 		this.billingContent = this.editorDisposables.add(
 			this.instantiationService.createInstance(BillingContent, this.contentContainer)
 		);
+		this.editorDisposables.add(DOM.addDisposableListener(this.contentContainer, 'billing:navigate', (event: globalThis.Event) => {
+			const customEvent = event as CustomEvent<{ section?: BillingSection }>;
+			const nextSection = customEvent.detail?.section;
+			if (!nextSection || !this.sections.some(section => section.id === nextSection)) {
+				return;
+			}
+
+			const nextIndex = this.sections.findIndex(section => section.id === nextSection);
+			if (nextIndex >= 0) {
+				this.sectionsList.setSelection([nextIndex]);
+				this.sectionsList.reveal(nextIndex);
+			}
+			this.selectSection(nextSection);
+		}));
 		this.billingContent.showSection(this.selectedSection);
 	}
 

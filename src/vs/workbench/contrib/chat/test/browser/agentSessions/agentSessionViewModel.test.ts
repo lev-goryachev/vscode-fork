@@ -603,6 +603,57 @@ suite('AgentSessions', () => {
 			});
 		});
 
+		test('should preserve sessions from registered content providers during unrelated partial resolve', async () => {
+			return runWithFakedTimers({}, async () => {
+				let localItems: IChatSessionItem[] = [];
+				let talemoItems: IChatSessionItem[] = [];
+
+				const localController: IChatSessionItemController = {
+					onDidChangeChatSessionItems: Event.None,
+					refresh: async () => {
+						localItems = [{
+							resource: LocalChatSessionUri.forSession('local-session'),
+							label: 'Local Session',
+							timing: makeNewSessionTiming()
+						}];
+					},
+					get items() { return localItems; }
+				};
+
+				const talemoController: IChatSessionItemController = {
+					onDidChangeChatSessionItems: Event.None,
+					refresh: async () => {
+						talemoItems = [{
+							resource: URI.parse('talemo-thread:/thread-1'),
+							label: 'Talemo Thread',
+							timing: makeNewSessionTiming(),
+							metadata: {
+								providerLabel: 'Talemo'
+							}
+						}];
+					},
+					get items() { return talemoItems; }
+				};
+
+				mockChatSessionsService.registerChatSessionItemController(localChatSessionType, localController);
+				mockChatSessionsService.registerChatSessionItemController('talemo-thread', talemoController);
+				mockChatSessionsService.registerChatSessionContentProvider('talemo-thread', {
+					provideChatSessionContent: async () => {
+						throw new Error('Not used in this test');
+					}
+				});
+
+				viewModel = createViewModel();
+
+				await viewModel.resolve(undefined);
+				assert.strictEqual(viewModel.sessions.length, 2);
+
+				await viewModel.resolve(localChatSessionType);
+				assert.strictEqual(viewModel.sessions.length, 2);
+				assert.ok(viewModel.sessions.some(session => session.providerType === 'talemo-thread'));
+			});
+		});
+
 		test('should accumulate providers when resolve is called with different provider types', async () => {
 			return runWithFakedTimers({}, async () => {
 				let resolveCount = 0;

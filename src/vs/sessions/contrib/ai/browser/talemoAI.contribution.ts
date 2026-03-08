@@ -30,6 +30,7 @@ import { IChatService } from '../../../../workbench/contrib/chat/common/chatServ
 import { IChatSessionsService } from '../../../../workbench/contrib/chat/common/chatSessionsService.js';
 import { IChatAgentService } from '../../../../workbench/contrib/chat/common/participants/chatAgents.js';
 import { IAuthenticationService } from '../../../../workbench/services/authentication/common/authentication.js';
+import { TalemoRealtimeClient } from '../../../browser/talemoRealtime.js';
 import { TalemoAgentImpl } from './talemoAI.agent.js';
 import { TalemoWorkspaceFileMirror } from './talemoAI.fileMirror.js';
 import { ACTIVE_THREAD_KEY } from './talemoAI.shared.js';
@@ -59,6 +60,41 @@ export class TalemoAIContribution extends Disposable implements IWorkbenchContri
 		super();
 
 		const fileMirror = new TalemoWorkspaceFileMirror(fileService, workspaceContextService);
+		const realtimeClient = this._register(new TalemoRealtimeClient(
+			authenticationService,
+			productService,
+		));
+
+		this._register(realtimeClient.onDidRuntimeEvent(event => {
+			if (event.event_type === 'tool.file.result') {
+				void fileMirror.apply(event.payload as unknown as Parameters<TalemoWorkspaceFileMirror['apply']>[0]);
+				return;
+			}
+
+			if (event.event_type.startsWith('file.')) {
+				void fileMirror.applyRuntimeEvent(
+					event.event_type,
+					event.payload as Parameters<TalemoWorkspaceFileMirror['applyRuntimeEvent']>[1],
+				);
+			}
+		}));
+
+		const ensureRealtimeBaseline = async (): Promise<void> => {
+			try {
+				await realtimeClient.subscribe('tenant');
+				await realtimeClient.subscribe('workspace');
+			} catch {
+				// Auth is established lazily by the shared realtime client.
+			}
+		};
+
+		void ensureRealtimeBaseline();
+		this._register(authenticationService.onDidChangeSessions(e => {
+			if (e.providerId === 'talemo') {
+				void ensureRealtimeBaseline();
+			}
+		}));
+
 		const impl = new TalemoAgentImpl(
 			authenticationService,
 			productService,
@@ -66,6 +102,7 @@ export class TalemoAIContribution extends Disposable implements IWorkbenchContri
 			chatService,
 			chatWidgetService,
 			fileMirror,
+			realtimeClient,
 		);
 
 		this._register(chatAgentService.registerDynamicAgent(
@@ -95,6 +132,7 @@ export class TalemoAIContribution extends Disposable implements IWorkbenchContri
 				storageService,
 				productService,
 				chatService,
+				realtimeClient,
 			));
 			this._register(chatSessionsService.registerChatSessionItemController(TALEMO_THREAD_SESSION_SCHEME, threadSessionsController));
 			this._register(chatSessionsService.registerChatSessionContentProvider(TALEMO_THREAD_SESSION_SCHEME, threadSessionsController));
@@ -126,5 +164,8 @@ registerTalemoSessionBindingContrib();
 registerWorkbenchContribution2(
 	TalemoAIContribution.ID,
 	TalemoAIContribution,
-	WorkbenchPhase.AfterRestored,
+	// Register Talemo session providers before chat state restore runs, otherwise
+	// web cold-start can try to reopen talemo-thread resources before the scheme
+	// provider exists and fail with "Can not find provider for talemo-thread".
+	WorkbenchPhase.BlockRestore,
 );

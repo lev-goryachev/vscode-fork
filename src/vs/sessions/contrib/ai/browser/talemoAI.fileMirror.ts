@@ -24,6 +24,16 @@ export interface ITalemoFileToolEvent {
 	};
 }
 
+export interface ITalemoRuntimeFilePayload {
+	path?: string;
+	source_path?: string;
+	destination_path?: string;
+	updated_content?: string;
+	file?: {
+		path?: string;
+	};
+}
+
 export class TalemoWorkspaceFileMirror {
 
 	constructor(
@@ -53,6 +63,62 @@ export class TalemoWorkspaceFileMirror {
 					return;
 				case 'delete_file':
 					await this.applyDelete(event);
+					return;
+				default:
+					return;
+			}
+		} catch {
+			return;
+		}
+	}
+
+	async applyRuntimeEvent(eventType: string, payload: ITalemoRuntimeFilePayload): Promise<void> {
+		try {
+			switch (eventType) {
+				case 'file.created':
+					await this.applyCreate({
+						type: 'file_tool_result',
+						operation: 'create_empty_text_file',
+						status: 'success',
+						updated_content: payload.updated_content,
+						target_file: { path: payload.file?.path ?? payload.path },
+					});
+					return;
+				case 'file.updated':
+					await this.applySave({
+						type: 'file_tool_result',
+						operation: 'save_text_file',
+						status: 'success',
+						updated_content: payload.updated_content,
+						target_file: { path: payload.file?.path ?? payload.path },
+					});
+					return;
+				case 'file.renamed':
+				case 'file.moved':
+					await this.applyMove({
+						type: 'file_tool_result',
+						operation: 'move_file',
+						status: 'success',
+						source_path: payload.source_path,
+						target_file: { path: payload.file?.path ?? payload.destination_path },
+					});
+					return;
+				case 'file.duplicated':
+					await this.applyCopy({
+						type: 'file_tool_result',
+						operation: 'duplicate_file',
+						status: 'success',
+						source_path: payload.source_path,
+						target_file: { path: payload.file?.path ?? payload.destination_path },
+					});
+					return;
+				case 'file.deleted':
+					await this.applyDelete({
+						type: 'file_tool_result',
+						operation: 'delete_file',
+						status: 'success',
+						path: payload.path,
+					});
 					return;
 				default:
 					return;
