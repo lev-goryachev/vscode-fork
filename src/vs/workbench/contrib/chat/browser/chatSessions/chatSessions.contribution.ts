@@ -9,7 +9,6 @@ import { Schemas } from '../../../../../base/common/network.js';
 import * as resources from '../../../../../base/common/resources.js';
 import { ThemeIcon } from '../../../../../base/common/themables.js';
 import { URI, UriComponents } from '../../../../../base/common/uri.js';
-import { generateUuid } from '../../../../../base/common/uuid.js';
 import { localize, localize2 } from '../../../../../nls.js';
 import { Action2, IMenuService, MenuId, MenuItemAction, MenuRegistry, registerAction2 } from '../../../../../platform/actions/common/actions.js';
 import { ContextKeyExpr, IContextKey, IContextKeyService } from '../../../../../platform/contextkey/common/contextkey.js';
@@ -42,10 +41,10 @@ import { ChatViewPane } from '../widgetHosts/viewPane/chatViewPane.js';
 import { AgentSessionProviders, backgroundAgentDisplayName, getAgentSessionProviderName } from '../agentSessions/agentSessions.js';
 import { BugIndicatingError, isCancellationError } from '../../../../../base/common/errors.js';
 import { IEditorGroupsService } from '../../../../services/editor/common/editorGroupsService.js';
-import { LocalChatSessionUri } from '../../common/model/chatUri.js';
 import { assertNever } from '../../../../../base/common/assert.js';
 import { ICommandService } from '../../../../../platform/commands/common/commands.js';
 import { Target } from '../../common/promptSyntax/service/promptsService.js';
+import { getDraftResourceForChatSessionType } from './chatSessionDraftResource.js';
 
 const extensionPoint = ExtensionsRegistry.registerExtensionPoint<IChatSessionsExtensionPoint[]>({
 	extensionPoint: 'chatSessions',
@@ -1286,20 +1285,7 @@ export function getResourceForNewChatSession(options: NewChatSessionOpenOptions)
 		return URI.revive(options.chatResource);
 	}
 
-	const isRemoteSession = options.type !== AgentSessionProviders.Local;
-	if (isRemoteSession) {
-		return URI.from({
-			scheme: options.type,
-			path: `/untitled-${generateUuid()}`,
-		});
-	}
-
-	const isEditorPosition = options.position === ChatSessionPosition.Editor;
-	if (isEditorPosition) {
-		return ChatEditorInput.getNewEditorUri();
-	}
-
-	return LocalChatSessionUri.forSession(generateUuid());
+	return getDraftResourceForChatSessionType(options.type, options.position === ChatSessionPosition.Editor);
 }
 
 function isAgentSessionProviderType(type: string): boolean {

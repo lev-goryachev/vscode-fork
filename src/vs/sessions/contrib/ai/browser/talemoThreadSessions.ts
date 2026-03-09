@@ -30,8 +30,9 @@ import { IAuthenticationService } from '../../../../workbench/services/authentic
 import { MessageRecord, ThreadSummary, getThreadMessages, listThreads } from '../../../browser/talemoApi.js';
 import { TalemoRealtimeClient } from '../../../browser/talemoRealtime.js';
 import { TALEMO_SESSION_BINDING_KEY } from './talemoAI.sessionBinding.js';
+import { TALEMO_THREAD_SESSION_SCHEME } from './talemoAI.shared.js';
 
-export const TALEMO_THREAD_SESSION_SCHEME = 'talemo-thread';
+export { TALEMO_THREAD_SESSION_SCHEME } from './talemoAI.shared.js';
 export const TALEMO_THREAD_PROVIDER_LABEL = 'Talemo';
 
 export function getThreadResource(threadId: string): URI {
@@ -43,7 +44,10 @@ export function getThreadResource(threadId: string): URI {
 
 function getThreadIdFromResource(resource: URI): string | undefined {
 	const threadId = resource.path.replace(/^\/+/, '').trim();
-	return threadId || undefined;
+	if (!threadId || threadId.startsWith('untitled-')) {
+		return undefined;
+	}
+	return threadId;
 }
 
 function toSessionTiming(thread: ThreadSummary) {
@@ -98,7 +102,7 @@ function toHistory(messages: MessageRecord[], model: string): IChatSessionHistor
 	return history;
 }
 
-function createThreadInputState(threadId: string): ISerializableChatModelInputState {
+function createThreadInputState(threadId?: string): ISerializableChatModelInputState {
 	return {
 		attachments: [],
 		mode: {
@@ -108,9 +112,11 @@ function createThreadInputState(threadId: string): ISerializableChatModelInputSt
 		selectedModel: undefined,
 		inputText: '',
 		selections: [],
-		contrib: {
-			[TALEMO_SESSION_BINDING_KEY]: { threadId },
-		},
+		contrib: threadId
+			? {
+				[TALEMO_SESSION_BINDING_KEY]: { threadId },
+			}
+			: {},
 	};
 }
 
@@ -187,12 +193,19 @@ export class TalemoThreadSessionsController extends Disposable implements IChatS
 	}
 
 	async provideChatSessionContent(sessionResource: URI, _token: CancellationToken): Promise<IChatSession> {
-		try {
-			const threadId = getThreadIdFromResource(sessionResource);
-			if (!threadId) {
-				throw new Error(`Missing Talemo thread id for resource '${sessionResource.toString()}'`);
-			}
+		const threadId = getThreadIdFromResource(sessionResource);
+		if (!threadId) {
+			return new TalemoThreadChatSession(
+				sessionResource,
+				[],
+				{
+					editingSession: undefined,
+					inputState: createThreadInputState(),
+				},
+			);
+		}
 
+		try {
 			const threads = await listThreads(this.authService, this.storageService, this.productService);
 			const thread = threads.find(candidate => candidate.thread_id === threadId);
 			if (!thread) {
@@ -224,7 +237,7 @@ export class TalemoThreadSessionsController extends Disposable implements IChatS
 				}],
 				{
 					editingSession: undefined,
-					inputState: createThreadInputState(getThreadIdFromResource(sessionResource) ?? ''),
+					inputState: createThreadInputState(),
 				},
 			);
 		}

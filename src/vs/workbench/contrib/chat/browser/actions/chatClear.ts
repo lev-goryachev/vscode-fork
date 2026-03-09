@@ -1,7 +1,7 @@
 import { Schemas } from '../../../../../base/common/network.js';
-import { generateUuid } from '../../../../../base/common/uuid.js';
 import { ServicesAccessor } from '../../../../../platform/instantiation/common/instantiation.js';
 import { IEditorService } from '../../../../services/editor/common/editorService.js';
+import { getDraftResourceForChatSessionType } from '../chatSessions/chatSessionDraftResource.js';
 import { IChatEditorOptions } from '../widgetHosts/editor/chatEditor.js';
 import { ChatEditorInput } from '../widgetHosts/editor/chatEditorInput.js';
 
@@ -17,7 +17,7 @@ export async function clearChatEditor(accessor: ServicesAccessor, chatEditorInpu
 		// If we have a contributed session, make sure we create an untitled session for it.
 		// Otherwise create a generic new chat editor.
 		const resource = chatEditorInput.sessionResource && chatEditorInput.sessionResource.scheme !== Schemas.vscodeLocalChatSession
-			? chatEditorInput.sessionResource.with({ path: `/untitled-${generateUuid()}` })
+			? getDraftResourceForChatSessionType(chatEditorInput.sessionResource.scheme, true)
 			: ChatEditorInput.getNewEditorUri();
 
 		// A chat editor can only be open in one group

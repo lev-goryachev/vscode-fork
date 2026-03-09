@@ -61,8 +61,8 @@ import { ChatEditorInput, showClearEditingSessionConfirmation } from '../widgetH
 import { convertBufferToScreenshotVariable } from '../attachments/chatScreenshotContext.js';
 import { getChatSessionType, LocalChatSessionUri } from '../../common/model/chatUri.js';
 import { localChatSessionType } from '../../common/chatSessionsService.js';
-import { generateUuid } from '../../../../../base/common/uuid.js';
 import { ChatViewPane } from '../widgetHosts/viewPane/chatViewPane.js';
+import { getDraftResourceForChatSessionType } from '../chatSessions/chatSessionDraftResource.js';
 
 export const CHAT_CATEGORY = localize2('chat.category', 'Chat');
 
@@ -1523,8 +1523,9 @@ export async function clearChatSessionPreservingType(widget: IChatWidget, viewsS
 	const currentResource = widget.viewModel?.model.sessionResource;
 	const newSessionType = sessionType ?? (currentResource ? getChatSessionType(currentResource) : localChatSessionType);
 	if (isIChatViewViewContext(widget.viewContext) && newSessionType !== localChatSessionType) {
-		// For the sidebar, we need to explicitly load a session with the same type
-		const newResource = URI.from({ scheme: newSessionType, path: `/untitled-${generateUuid()}` });
+		// Contributed providers can override whether a fresh chat starts as a local
+		// draft or as a provider-owned session resource.
+		const newResource = getDraftResourceForChatSessionType(newSessionType, false);
 		const view = await viewsService.openView(ChatViewId) as ChatViewPane;
 		await view.loadSession(newResource);
 	} else {

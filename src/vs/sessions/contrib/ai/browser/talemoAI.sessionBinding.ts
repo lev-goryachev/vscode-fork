@@ -27,7 +27,11 @@ function isTalemoSessionBinding(value: unknown): value is ITalemoSessionBinding 
 		return false;
 	}
 	const candidate = value as Partial<ITalemoSessionBinding>;
-	return typeof candidate.threadId === 'string' && candidate.threadId.length > 0;
+	return (
+		typeof candidate.threadId === 'string' &&
+		candidate.threadId.length > 0 &&
+		!candidate.threadId.startsWith('untitled-')
+	);
 }
 
 function getThreadIdFromContrib(contrib: Readonly<Record<string, unknown>> | undefined): string | undefined {
