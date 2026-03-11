@@ -10,10 +10,3 @@ export const DEFAULT_MODEL = 'openai/gpt-4o-mini';
 
 /** Canonical URI scheme for backend-owned Talemo thread sessions. */
 export const TALEMO_THREAD_SESSION_SCHEME = 'talemo-thread';
-
-/**
- * Runtime cache key for the backend thread bound to the currently opened local
- * fork chat session. Canonical ownership stays in the backend plus the
- * per-session Talemo binding persisted with the local chat session state.
- */
-export const ACTIVE_THREAD_KEY = 'talemo.thread.active';

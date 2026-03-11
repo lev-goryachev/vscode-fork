@@ -252,6 +252,30 @@ suite('ChatService', () => {
 		assert.deepStrictEqual(retrieved2.getRequests()[0]?.message.text, 'request 2');
 	});
 
+	test('discardSession prevents local draft from reappearing after disposal', async () => {
+		const testService = createChatService();
+		const sessionRef = testService.startSession(ChatAgentLocation.Chat);
+		const session = sessionRef.object as ChatModel;
+		session.addRequest({ parts: [], text: 'draft request' }, { variables: [] }, 0);
+
+		await testService.discardSession(session.sessionResource);
+
+		const liveSessions = await testService.getLiveSessionItems();
+		assert.strictEqual(liveSessions.some(item => item.sessionResource.toString() === session.sessionResource.toString()), false);
+
+		sessionRef.dispose();
+		await testService.waitForModelDisposals();
+
+		const testServiceAfterRestart = createChatService();
+		const restored = await testServiceAfterRestart.getOrRestoreSession(session.sessionResource);
+		assert.strictEqual(restored, undefined);
+		assert.strictEqual(
+			testFileService.writeOperations.some(op => op.content.includes('draft request')),
+			false,
+			'Discarded sessions must not be persisted during disposal',
+		);
+	});
+
 	test('addCompleteRequest', async () => {
 		const testService = createChatService();
 

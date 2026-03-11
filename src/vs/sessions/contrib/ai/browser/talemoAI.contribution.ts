@@ -16,12 +16,12 @@
  *--------------------------------------------------------------------------------------------*/
 
 import { Disposable } from '../../../../base/common/lifecycle.js';
-import { isWeb } from '../../../../base/common/platform.js';
 import { localize } from '../../../../nls.js';
 import { ExtensionIdentifier } from '../../../../platform/extensions/common/extensions.js';
 import { IFileService } from '../../../../platform/files/common/files.js';
+import { ILogService } from '../../../../platform/log/common/log.js';
 import { IProductService } from '../../../../platform/product/common/productService.js';
-import { IStorageService, StorageScope } from '../../../../platform/storage/common/storage.js';
+import { IStorageService } from '../../../../platform/storage/common/storage.js';
 import { IWorkspaceContextService } from '../../../../platform/workspace/common/workspace.js';
 import { IWorkbenchContribution, registerWorkbenchContribution2, WorkbenchPhase } from '../../../../workbench/common/contributions.js';
 import { ChatAgentLocation, ChatModeKind } from '../../../../workbench/contrib/chat/common/constants.js';
@@ -33,7 +33,6 @@ import { IAuthenticationService } from '../../../../workbench/services/authentic
 import { TalemoRealtimeClient } from '../../../browser/talemoRealtime.js';
 import { TalemoAgentImpl } from './talemoAI.agent.js';
 import { TalemoWorkspaceFileMirror } from './talemoAI.fileMirror.js';
-import { ACTIVE_THREAD_KEY } from './talemoAI.shared.js';
 import { registerTalemoSessionBindingContrib } from './talemoAI.sessionBinding.js';
 import { registerTalemoSessionOpenerParticipant } from './talemoAI.sessionOpener.js';
 import { TALEMO_THREAD_SESSION_SCHEME, TalemoThreadSessionsController } from './talemoThreadSessions.js';
@@ -53,6 +52,7 @@ export class TalemoAIContribution extends Disposable implements IWorkbenchContri
 		@IChatSessionsService chatSessionsService: IChatSessionsService,
 		@IAuthenticationService authenticationService: IAuthenticationService,
 		@IProductService productService: IProductService,
+		@ILogService logService: ILogService,
 		@IStorageService storageService: IStorageService,
 		@IFileService fileService: IFileService,
 		@IWorkspaceContextService workspaceContextService: IWorkspaceContextService,
@@ -126,34 +126,20 @@ export class TalemoAIContribution extends Disposable implements IWorkbenchContri
 			impl,
 		));
 
-		if (isWeb) {
-			const threadSessionsController = this._register(new TalemoThreadSessionsController(
-				authenticationService,
-				storageService,
-				productService,
-				chatService,
-				realtimeClient,
-			));
-			this._register(chatSessionsService.registerChatSessionItemController(TALEMO_THREAD_SESSION_SCHEME, threadSessionsController));
-			this._register(chatSessionsService.registerChatSessionContentProvider(TALEMO_THREAD_SESSION_SCHEME, threadSessionsController));
-		}
+		const threadSessionsController = this._register(new TalemoThreadSessionsController(
+			authenticationService,
+			fileService,
+			logService,
+			storageService,
+			productService,
+			chatService,
+			chatWidgetService,
+			realtimeClient,
+		));
+		this._register(chatSessionsService.registerChatSessionItemController(TALEMO_THREAD_SESSION_SCHEME, threadSessionsController));
+		this._register(chatSessionsService.registerChatSessionContentProvider(TALEMO_THREAD_SESSION_SCHEME, threadSessionsController));
 
 		this._register(registerTalemoSessionOpenerParticipant());
-
-		// Keep VS Code's "New Chat" UX aligned with Talemo backend threads.
-		// When the user opens a brand-new empty chat session in the main Chat
-		// surface, clear the active backend thread binding so the next message
-		// creates a fresh Firestore thread instead of silently appending to the
-		// previous one. Loaded/history sessions already contain requests, so they
-		// are excluded and keep their selected thread binding intact.
-		this._register(chatService.onDidCreateModel(model => {
-			if (
-				model.initialLocation === ChatAgentLocation.Chat &&
-				model.getRequests().length === 0
-			) {
-				storageService.remove(ACTIVE_THREAD_KEY, StorageScope.APPLICATION);
-			}
-		}));
 	}
 }
 

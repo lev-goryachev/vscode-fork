@@ -105,6 +105,9 @@ export class MockChatService implements IChatService {
 	async removeHistoryEntry(resource: URI) {
 		throw new Error('Method not implemented.');
 	}
+	async discardSession(resource: URI) {
+		throw new Error('Method not implemented.');
+	}
 
 	readonly onDidPerformUserAction: Event<IChatUserActionEvent> = undefined!;
 	notifyUserAction(event: IChatUserActionEvent): void {

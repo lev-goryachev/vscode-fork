@@ -84,6 +84,7 @@ export class ChatService extends Disposable implements IChatService {
 	declare _serviceBrand: undefined;
 
 	private readonly _sessionModels: ChatModelStore;
+	private readonly discardedSessionResources = new Set<string>();
 	private readonly _pendingRequests = this._register(new DisposableResourceMap<CancellableRequest>());
 	private readonly _queuedRequestDeferreds = new Map<string, DeferredPromise<ChatSendResult>>();
 	private _saveModelsEnabled = true;
@@ -172,6 +173,7 @@ export class ChatService extends Disposable implements IChatService {
 			}
 		}));
 		this._register(this._sessionModels.onDidDisposeModel(model => {
+			this.discardedSessionResources.delete(model.sessionResource.toString());
 			this._onDidDisposeSession.fire({ sessionResource: [model.sessionResource], reason: 'cleared' });
 		}));
 
@@ -239,6 +241,9 @@ export class ChatService extends Disposable implements IChatService {
 	 * Only persist local sessions from chat that are not imported.
 	 */
 	private shouldStoreSession(session: ChatModel): boolean {
+		if (this.discardedSessionResources.has(session.sessionResource.toString())) {
+			return false;
+		}
 		if (!LocalChatSessionUri.parseLocalSessionId(session.sessionResource)) {
 			return false;
 		}
@@ -424,11 +429,30 @@ export class ChatService extends Disposable implements IChatService {
 	}
 
 	private shouldBeInHistory(entry: ChatModel): boolean {
+		if (this.discardedSessionResources.has(entry.sessionResource.toString())) {
+			return false;
+		}
 		return !entry.isImported && !!LocalChatSessionUri.parseLocalSessionId(entry.sessionResource) && entry.initialLocation === ChatAgentLocation.Chat;
 	}
 
 	async removeHistoryEntry(sessionResource: URI): Promise<void> {
 		await this._chatSessionStore.deleteSession(this.toLocalSessionId(sessionResource));
+		this._onDidDisposeSession.fire({ sessionResource: [sessionResource], reason: 'cleared' });
+	}
+
+	async discardSession(sessionResource: URI): Promise<void> {
+		const key = sessionResource.toString();
+		this.discardedSessionResources.add(key);
+
+		const localSessionId = LocalChatSessionUri.parseLocalSessionId(sessionResource);
+		if (localSessionId) {
+			await this._chatSessionStore.deleteSession(localSessionId);
+		}
+
+		if (!this._sessionModels.has(sessionResource)) {
+			this.discardedSessionResources.delete(key);
+		}
+
 		this._onDidDisposeSession.fire({ sessionResource: [sessionResource], reason: 'cleared' });
 	}
 

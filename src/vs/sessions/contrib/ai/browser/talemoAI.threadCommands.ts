@@ -5,15 +5,12 @@
  *
  *   "Talemo: Select Thread"  (talemo.selectThread)
  *     Fetches GET /ai/threads via talemoApi.listThreads(), shows a QuickPick
- *     with thread titles and last-activity timestamps. Selecting an item:
- *       1. Stores the thread_id as ACTIVE_THREAD_KEY (persists across restarts).
- *       2. Fetches full message history via talemoApi.getThreadMessages().
- *       3. Loads history into a VS Code chat session and opens it in the Chat
- *          panel so the user can read and continue the conversation.
+ *     with thread titles and last-activity timestamps, then opens the selected
+ *     canonical `talemo-thread:/<id>` session in place.
  *
  *   "Talemo: New Thread"  (talemo.newThread)
- *     Clears ACTIVE_THREAD_KEY. The next chat message will call POST /ai/threads
- *     and start a fresh conversation.
+ *     Opens a fresh local draft for the Talemo provider. The backend thread is
+ *     created only when the first message is successfully sent.
  *
  * Auth: all API calls go through authedFetch (inside talemoApi methods) which
  * transparently handles 401 → forceSignIn → retry. AuthRequiredError is caught
@@ -27,22 +24,20 @@ import { Codicon } from '../../../../base/common/codicons.js';
 import { Action2, MenuId, registerAction2 } from '../../../../platform/actions/common/actions.js';
 import { IProductService } from '../../../../platform/product/common/productService.js';
 import { IQuickInputService, IQuickPickItem } from '../../../../platform/quickinput/common/quickInput.js';
-import { IStorageService, StorageScope, StorageTarget } from '../../../../platform/storage/common/storage.js';
+import { IStorageService } from '../../../../platform/storage/common/storage.js';
 import { ServicesAccessor } from '../../../../platform/instantiation/common/instantiation.js';
+import { ACTIVE_GROUP } from '../../../../workbench/services/editor/common/editorService.js';
 import { IAuthenticationService } from '../../../../workbench/services/authentication/common/authentication.js';
-import { generateUuid } from '../../../../base/common/uuid.js';
-import { ISerializableChatData3, ISerializableChatRequestData } from '../../../../workbench/contrib/chat/common/model/chatModel.js';
-import { ChatAgentLocation } from '../../../../workbench/contrib/chat/common/constants.js';
-import { ChatViewPaneTarget, IChatWidgetService } from '../../../../workbench/contrib/chat/browser/chat.js';
-import { IChatService } from '../../../../workbench/contrib/chat/common/chatService/chatService.js';
+import { ChatViewPaneTarget, IChatWidgetService, isIChatViewViewContext } from '../../../../workbench/contrib/chat/browser/chat.js';
 import {
 	AuthRequiredError,
-	MessageRecord,
 	ThreadSummary,
 	listThreads,
-	getThreadMessages,
 } from '../../../browser/talemoApi.js';
-import { ACTIVE_THREAD_KEY } from './talemoAI.shared.js';
+import { getDraftResourceForChatSessionType } from '../../../../workbench/contrib/chat/browser/chatSessions/chatSessionDraftResource.js';
+import { getThreadIdFromSessionModel } from './talemoAI.sessionBinding.js';
+import { TALEMO_THREAD_SESSION_SCHEME } from './talemoAI.shared.js';
+import { getThreadResource } from './talemoThreadSessions.js';
 
 // ─── helpers ──────────────────────────────────────────────────────────────────
 
@@ -61,61 +56,17 @@ function relativeDate(unixMs: number): string {
 	}
 }
 
-/**
- * Convert a flat list of role-tagged messages into ISerializableChatRequestData[] pairs.
- *
- * VS Code's chat model stores history as "turns" (request + response). Each
- * consecutive user→assistant block becomes one ISerializableChatRequestData.
- * Orphaned user messages (no following assistant) get response: undefined.
- */
-function messagesToRequests(messages: MessageRecord[]): ISerializableChatRequestData[] {
-	const requests: ISerializableChatRequestData[] = [];
-	let i = 0;
-	while (i < messages.length) {
-		const msg = messages[i];
-		if (msg.role !== 'user') {
-			// Skip leading or consecutive assistant messages without a user prompt.
-			i++;
-			continue;
-		}
-		const userMsg = msg;
-		const nextMsg = messages[i + 1];
-		const assistantMsg = nextMsg?.role === 'assistant' ? nextMsg : undefined;
-
-		requests.push({
-			requestId: userMsg.message_id,
-			message: userMsg.content,
-			// No attached files or variables — plain text from Talemo sessions.
-			variableData: { variables: [] },
-			response: assistantMsg
-				? [{ value: assistantMsg.content }]  // IMarkdownString shape
-				: undefined,
-			timestamp: userMsg.created_at,
-		});
-
-		i += assistantMsg ? 2 : 1;
+async function openTalemoSessionInPlace(
+	widgetService: IChatWidgetService,
+	sessionResource: ReturnType<typeof getThreadResource>,
+): Promise<void> {
+	const lastFocusedWidget = widgetService.lastFocusedWidget;
+	if (lastFocusedWidget && !isIChatViewViewContext(lastFocusedWidget.viewContext)) {
+		await widgetService.openSession(sessionResource, ACTIVE_GROUP, { pinned: true });
+		return;
 	}
-	return requests;
-}
 
-/**
- * Build a VS Code serializable chat session from Firestore thread data.
- *
- * Consumed by IChatService.loadSessionFromContent() which hydrates a ChatModel
- * that VS Code renders in the Chat panel — identical to the "Import Chat" flow
- * used by chatImportExport.ts.
- */
-function buildChatSession(thread: ThreadSummary, messages: MessageRecord[]): ISerializableChatData3 {
-	return {
-		version: 3,
-		// Fresh VS Code session ID on every load (avoids stale model state).
-		sessionId: generateUuid(),
-		creationDate: thread.created_at,
-		customTitle: thread.title || undefined,
-		initialLocation: ChatAgentLocation.Chat,
-		requests: messagesToRequests(messages),
-		responderUsername: 'Talemo',
-	};
+	await widgetService.openSession(sessionResource, ChatViewPaneTarget);
 }
 
 // ─── "Talemo: Select Thread" ──────────────────────────────────────────────────
@@ -126,10 +77,9 @@ interface ThreadQuickPickItem extends IQuickPickItem {
 
 async function openThreadPicker(accessor: ServicesAccessor): Promise<void> {
 	const quickInputService = accessor.get(IQuickInputService);
-	const storageService = accessor.get(IStorageService);
 	const authService = accessor.get(IAuthenticationService);
 	const productService = accessor.get(IProductService);
-	const chatService = accessor.get(IChatService);
+	const storageService = accessor.get(IStorageService);
 	const widgetService = accessor.get(IChatWidgetService);
 
 	// Show loading placeholder while fetching the thread list.
@@ -165,8 +115,7 @@ async function openThreadPicker(accessor: ServicesAccessor): Promise<void> {
 		return;
 	}
 
-	const activeId = storageService.get(ACTIVE_THREAD_KEY, StorageScope.APPLICATION);
-	const threadMap = new Map<string, ThreadSummary>(threads.map(t => [t.thread_id, t]));
+	const activeId = getThreadIdFromSessionModel(widgetService.lastFocusedWidget?.viewModel?.model);
 
 	// Mark the currently active thread with a checkmark so the user knows where they are.
 	pick.items = threads.map(t => ({
@@ -186,33 +135,15 @@ async function openThreadPicker(accessor: ServicesAccessor): Promise<void> {
 		pick.dispose();
 		if (!selected) { return; }
 
-		// 1. Persist the new active thread_id — future chat messages continue it.
-		storageService.store(
-			ACTIVE_THREAD_KEY,
-			selected.threadId,
-			StorageScope.APPLICATION,
-			StorageTarget.MACHINE,
-		);
-
-		// 2. Load message history from Firestore and open the thread in the Chat panel.
 		try {
-			const thread = threadMap.get(selected.threadId)!;
-			// getThreadMessages uses authedFetch — handles 401 transparently.
-			const messages = await getThreadMessages(authService, storageService, productService, selected.threadId);
-			const sessionData = buildChatSession(thread, messages);
-			const modelRef = chatService.loadSessionFromContent(sessionData);
-			if (modelRef) {
-				await widgetService.openSession(modelRef.object.sessionResource, ChatViewPaneTarget);
-			}
+			await openTalemoSessionInPlace(widgetService, getThreadResource(selected.threadId));
 		} catch (err) {
-			// Non-fatal: active thread_id is already stored, so the next chat message
-			// will still use the correct thread. History just won't be pre-loaded.
 			const label = err instanceof AuthRequiredError
-				? localize('talemo.thread.loadAuthError', "$(key) Sign in required to load thread history")
-				: localize('talemo.thread.loadError', "$(warning) Could not load thread history: {0}", String(err));
+				? localize('talemo.thread.loadAuthError', "$(key) Sign in required to open thread history")
+				: localize('talemo.thread.loadError', "$(warning) Could not open thread history: {0}", String(err));
 			await quickInputService.pick(
 				[{ label }],
-				{ placeHolder: localize('talemo.thread.loadErrorTitle', "History load failed") },
+				{ placeHolder: localize('talemo.thread.loadErrorTitle', "Thread open failed") },
 			);
 		}
 	});
@@ -273,10 +204,15 @@ class NewThreadAction extends Action2 {
 	}
 
 	override run(accessor: ServicesAccessor): void {
-		const storageService = accessor.get(IStorageService);
-		// Clearing the active key causes TalemoAgentImpl._resolveThreadId to call
-		// POST /ai/threads on the next chat message, starting a fresh thread.
-		storageService.remove(ACTIVE_THREAD_KEY, StorageScope.APPLICATION);
+		const widgetService = accessor.get(IChatWidgetService);
+		const lastFocusedWidget = widgetService.lastFocusedWidget;
+		const isEditorTarget = !!lastFocusedWidget && !isIChatViewViewContext(lastFocusedWidget.viewContext);
+		const draftResource = getDraftResourceForChatSessionType(TALEMO_THREAD_SESSION_SCHEME, isEditorTarget);
+		if (isEditorTarget) {
+			void widgetService.openSession(draftResource, ACTIVE_GROUP, { pinned: true });
+			return;
+		}
+		void widgetService.openSession(draftResource, ChatViewPaneTarget);
 	}
 }
 

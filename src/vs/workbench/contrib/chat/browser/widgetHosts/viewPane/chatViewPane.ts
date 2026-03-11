@@ -72,6 +72,18 @@ interface IChatViewPaneState extends Partial<IChatModelInputState> {
 	sessionsSidebarWidth?: number;
 }
 
+export function persistChatViewPaneSessionResource(
+	viewState: { sessionId?: string; sessionResource?: URI },
+	sessionResource: URI,
+	saveMemento: () => void,
+): void {
+	// Persist the canonical resource immediately so hard reloads reopen the same
+	// chat session instead of falling back to a blank shell view.
+	viewState.sessionId = undefined;
+	viewState.sessionResource = sessionResource;
+	saveMemento();
+}
+
 type ChatViewPaneOpenedClassification = {
 	owner: 'sbatten';
 	comment: 'Event fired when the chat view pane is opened';
@@ -706,8 +718,9 @@ export class ChatViewPane extends ViewPane implements IViewWelcomeDelegate {
 		if (model) {
 			await this.updateWidgetLockState(model.sessionResource); // Update widget lock state based on session type
 
-			// remember as model to restore in view state
-			this.viewState.sessionResource = model.sessionResource;
+			// Persist session selection immediately so browser reloads keep the
+			// active canonical chat session even if shutdown save hooks do not run.
+			persistChatViewPaneSessionResource(this.viewState, model.sessionResource, () => this.memento.saveMemento());
 		}
 
 		this._widget.setModel(model);

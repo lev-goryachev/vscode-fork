@@ -1,5 +1,5 @@
 import assert from 'assert';
-import { Event } from '../../../../../../base/common/event.js';
+import { Emitter, Event } from '../../../../../../base/common/event.js';
 import { MarkdownString } from '../../../../../../base/common/htmlContent.js';
 import { DisposableStore } from '../../../../../../base/common/lifecycle.js';
 import { ThemeIcon } from '../../../../../../base/common/themables.js';
@@ -18,6 +18,9 @@ import { ILifecycleService } from '../../../../../services/lifecycle/common/life
 import { TestInstantiationService } from '../../../../../../platform/instantiation/test/common/instantiationServiceMock.js';
 import { IStorageService, StorageScope, StorageTarget } from '../../../../../../platform/storage/common/storage.js';
 import { AgentSessionProviders, getAgentCanContinueIn, getAgentSessionProviderIcon, getAgentSessionProviderName } from '../../../browser/agentSessions/agentSessions.js';
+import { IChatWidgetService } from '../../../browser/chat.js';
+import { MockChatWidgetService } from '../widget/mockChatWidget.js';
+import { TALEMO_THREAD_SESSION_SCHEME } from '../../../../../../sessions/contrib/ai/browser/talemoAI.shared.js';
 
 
 suite('AgentSessions', () => {
@@ -1491,6 +1494,92 @@ suite('AgentSessions', () => {
 				// Mark as unread
 				session.setRead(false);
 				assert.strictEqual(session.isRead(), false);
+			});
+		});
+
+		test('should treat visible Talemo thread session as read when open widget uses bound local session', async () => {
+			return runWithFakedTimers({}, async () => {
+				class TestChatWidgetService extends MockChatWidgetService {
+					private readonly _onDidChangeFocusedSession = new Emitter<void>();
+					override readonly onDidChangeFocusedSession = this._onDidChangeFocusedSession.event;
+					private widgets: any[] = [{
+						viewModel: {
+							sessionResource: LocalChatSessionUri.forSession('draft-session'),
+							model: {
+								inputModel: {
+									state: {
+										get: () => ({
+											contrib: {
+												'talemo.session.binding': { threadId: 'thread-1' },
+											},
+										}),
+									},
+								},
+							},
+						},
+					}];
+
+					override getWidgetBySessionResource(_sessionResource: URI) {
+						return undefined;
+					}
+
+					override getAllWidgets() {
+						return this.widgets as any;
+					}
+
+					hideWidgets(): void {
+						this.widgets = [];
+					}
+
+					fireFocusedSessionChanged(): void {
+						this._onDidChangeFocusedSession.fire();
+					}
+				}
+
+				const chatWidgetService = new TestChatWidgetService();
+				const controller: IChatSessionItemController = {
+					onDidChangeChatSessionItems: Event.None,
+					refresh: async () => { },
+					get items() {
+						return [{
+							resource: URI.parse(`${TALEMO_THREAD_SESSION_SCHEME}:/thread-1`),
+							label: 'Talemo Thread',
+							timing: makeNewSessionTiming({
+								created: Date.UTC(2026, 1 /* February */, 1),
+								lastRequestStarted: Date.UTC(2026, 1 /* February */, 1),
+								lastRequestEnded: Date.UTC(2026, 1 /* February */, 2),
+							}),
+							metadata: {
+								threadId: 'thread-1',
+								lastReadAt: Date.UTC(2026, 1 /* February */, 2),
+								providerLabel: 'Talemo',
+							},
+						}];
+					}
+				};
+
+				instantiationService.stub(IChatWidgetService, chatWidgetService);
+				mockChatSessionsService.registerChatSessionItemController(TALEMO_THREAD_SESSION_SCHEME, controller);
+				viewModel = disposables.add(instantiationService.createInstance(AgentSessionsModel));
+
+				await viewModel.resolve(undefined);
+
+				const session = viewModel.sessions[0];
+				assert.strictEqual(session.isRead(), true);
+
+				// Persist an unread marker first to simulate restored workspace state.
+				// Canonical backend read state must still win for Talemo threads.
+				session.setRead(false);
+				assert.strictEqual(session.isRead(), true);
+
+				// A focused-session refresh while the thread is visible must overwrite the
+				// stale unread marker in persistent state.
+				chatWidgetService.fireFocusedSessionChanged();
+
+				// Once the widget is no longer visible, the session must remain read.
+				chatWidgetService.hideWidgets();
+				chatWidgetService.fireFocusedSessionChanged();
+				assert.strictEqual(session.isRead(), true);
 			});
 		});
 

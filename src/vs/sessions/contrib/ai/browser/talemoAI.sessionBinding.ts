@@ -9,12 +9,10 @@
 
 import { Disposable } from '../../../../base/common/lifecycle.js';
 import { URI } from '../../../../base/common/uri.js';
-import { IStorageService, StorageScope, StorageTarget } from '../../../../platform/storage/common/storage.js';
 import { IChatWidget, IChatWidgetService } from '../../../../workbench/contrib/chat/browser/chat.js';
 import { ChatWidget, IChatWidgetContrib } from '../../../../workbench/contrib/chat/browser/widget/chatWidget.js';
 import { IChatService } from '../../../../workbench/contrib/chat/common/chatService/chatService.js';
 import { IChatModel } from '../../../../workbench/contrib/chat/common/model/chatModel.js';
-import { ACTIVE_THREAD_KEY } from './talemoAI.shared.js';
 
 export const TALEMO_SESSION_BINDING_KEY = 'talemo.session.binding';
 
@@ -138,22 +136,18 @@ function getTalemoSessionBindingContrib(widget: IChatWidget | undefined): Talemo
 export function persistThreadBindingForSession(
 	chatService: IChatService,
 	widgetService: IChatWidgetService,
-	storageService: IStorageService,
 	sessionResource: URI,
 	threadId: string,
 ): void {
 	updateModelBinding(chatService.getSession(sessionResource), threadId);
 	getTalemoSessionBindingContrib(widgetService.getWidgetBySessionResource(sessionResource))?.setThreadId(threadId);
-	storageService.store(ACTIVE_THREAD_KEY, threadId, StorageScope.APPLICATION, StorageTarget.MACHINE);
 }
 
 export function clearThreadBindingForSession(
 	chatService: IChatService,
 	widgetService: IChatWidgetService,
-	storageService: IStorageService,
 	sessionResource: URI,
 ): void {
 	updateModelBinding(chatService.getSession(sessionResource), undefined);
 	getTalemoSessionBindingContrib(widgetService.getWidgetBySessionResource(sessionResource))?.clearThreadId();
-	storageService.remove(ACTIVE_THREAD_KEY, StorageScope.APPLICATION);
 }

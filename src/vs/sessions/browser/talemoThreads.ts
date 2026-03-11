@@ -9,6 +9,9 @@ export interface ThreadSummary {
 	model: string;
 	updated_at: number;
 	created_at: number;
+	last_read_at?: number;
+	last_message_preview?: string;
+	last_message_role?: 'user' | 'assistant';
 }
 
 export interface MessageRecord {
@@ -58,4 +61,34 @@ export async function getThreadMessages(
 		`/ai/threads/${threadId}/messages?limit=100`,
 	);
 	return data.messages ?? [];
+}
+
+export async function markThreadRead(
+	authService: IAuthenticationService,
+	storageService: IStorageService,
+	productService: IProductService,
+	threadId: string,
+): Promise<void> {
+	await authedFetch<void>(
+		authService,
+		storageService,
+		productService,
+		`/ai/threads/${threadId}/read`,
+		{ method: 'POST' },
+	);
+}
+
+export async function markThreadUnread(
+	authService: IAuthenticationService,
+	storageService: IStorageService,
+	productService: IProductService,
+	threadId: string,
+): Promise<void> {
+	await authedFetch<void>(
+		authService,
+		storageService,
+		productService,
+		`/ai/threads/${threadId}/read`,
+		{ method: 'DELETE' },
+	);
 }

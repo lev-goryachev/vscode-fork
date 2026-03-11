@@ -5,7 +5,6 @@ import { Emitter } from '../../../../../base/common/event.js';
 import { Disposable } from '../../../../../base/common/lifecycle.js';
 import { ResourceSet } from '../../../../../base/common/map.js';
 import { Schemas } from '../../../../../base/common/network.js';
-import { isWeb } from '../../../../../base/common/platform.js';
 import { IWorkbenchContribution } from '../../../../common/contributions.js';
 import { IChatModel } from '../../common/model/chatModel.js';
 import { convertLegacyChatSessionTiming, IChatDetail, IChatService, ResponseModelState } from '../../common/chatService/chatService.js';
@@ -69,7 +68,7 @@ export class LocalAgentsSessionsController extends Disposable implements IChatSe
 		const sessionsByResource = new ResourceSet();
 
 		for (const sessionDetail of await this.chatService.getLiveSessionItems()) {
-			const talemoThreadId = isWeb ? await this.getTalemoThreadId(sessionDetail.sessionResource) : undefined;
+			const talemoThreadId = await this.getTalemoThreadId(sessionDetail.sessionResource);
 			if (talemoThreadId) {
 				continue;
 			}
@@ -95,7 +94,7 @@ export class LocalAgentsSessionsController extends Disposable implements IChatSe
 		try {
 			const historyItems = await this.chatService.getHistorySessionItems();
 			const filteredHistory = await Promise.all(historyItems.map(async history => {
-				const talemoThreadId = isWeb ? await this.getTalemoThreadId(history.sessionResource) : undefined;
+				const talemoThreadId = await this.getTalemoThreadId(history.sessionResource);
 				if (talemoThreadId) {
 					return undefined;
 				}

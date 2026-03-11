@@ -23,6 +23,8 @@ import { Extensions, IOutputChannelRegistry, IOutputService } from '../../../../
 import { ChatSessionStatus as AgentSessionStatus, IChatSessionFileChange, IChatSessionFileChange2, IChatSessionItem, IChatSessionsExtensionPoint, IChatSessionsService } from '../../common/chatSessionsService.js';
 import { IChatWidgetService } from '../chat.js';
 import { AgentSessionProviders, getAgentSessionProvider, getAgentSessionProviderIcon, getAgentSessionProviderName, isBuiltInAgentSessionProvider } from './agentSessions.js';
+import { getThreadIdFromSessionModel } from '../../../../../sessions/contrib/ai/browser/talemoAI.sessionBinding.js';
+import { TALEMO_THREAD_SESSION_SCHEME } from '../../../../../sessions/contrib/ai/browser/talemoAI.shared.js';
 
 //#region Interfaces, Types
 
@@ -427,12 +429,20 @@ export class AgentSessionsModel extends Disposable implements IAgentSessionsMode
 		this._register(this.chatSessionsService.onDidChangeAvailability(() => this.resolve(undefined)));
 		this._register(this.chatSessionsService.onDidChangeSessionItems(({ chatSessionType }) => this.updateItems([chatSessionType], CancellationToken.None)));
 		this._register(this.workspaceContextService.onDidChangeWorkspaceFolders(() => this.resolve(undefined)));
+		this._register(this.chatWidgetService.onDidAddWidget(() => this.handleVisibleSessionsChanged()));
+		this._register(this.chatWidgetService.onDidChangeFocusedSession(() => this.handleVisibleSessionsChanged()));
+		this._register(this.chatWidgetService.onDidBackgroundSession(() => this.handleVisibleSessionsChanged()));
 
 		// State
 		this._register(this.storageService.onWillSaveState(() => {
 			this.cache.saveCachedSessions(Array.from(this._sessions.values()));
 			this.cache.saveSessionStates(this.sessionStates);
 		}));
+	}
+
+	private handleVisibleSessionsChanged(): void {
+		this.syncVisibleSessionsReadState();
+		this._onDidChangeSessions.fire();
 	}
 
 	getSession(resource: URI): IAgentSession | undefined {
@@ -542,6 +552,7 @@ export class AgentSessionsModel extends Disposable implements IAgentSessionsMode
 
 		this._sessions = sessions;
 		this._resolved = true;
+		this.syncVisibleSessionsReadState();
 
 		this.logger.logAllStatsIfTrace('Sessions resolved from providers');
 
@@ -588,17 +599,47 @@ export class AgentSessionsModel extends Disposable implements IAgentSessionsMode
 		this._onDidChangeSessions.fire();
 	}
 
+	private syncVisibleSessionsReadState(): void {
+		for (const session of this._sessions.values()) {
+			if (this.isArchived(session) || !this.isSessionVisibleInWidget(session)) {
+				continue;
+			}
+
+			this.setRead(session, true, true);
+		}
+	}
+
+	private getCanonicalReadDate(session: IInternalAgentSessionData): number {
+		if (session.resource.scheme !== TALEMO_THREAD_SESSION_SCHEME) {
+			return 0;
+		}
+
+		const lastReadAt = session.metadata?.lastReadAt;
+		return typeof lastReadAt === 'number' ? lastReadAt : 0;
+	}
+
 	private isRead(session: IInternalAgentSessionData): boolean {
 		if (this.isArchived(session)) {
 			return true; // archived sessions are always read
 		}
 
+		// Visible sessions must always render as read, even if an unread marker was
+		// persisted earlier and later restored from workspace storage.
+		if (this.isSessionVisibleInWidget(session)) {
+			return true;
+		}
+
 		const storedReadDate = this.sessionStates.get(session.resource)?.read;
-		if (storedReadDate === AgentSessionsModel.UNREAD_MARKER) {
+		const canonicalReadDate = this.getCanonicalReadDate(session);
+		if (storedReadDate === AgentSessionsModel.UNREAD_MARKER && canonicalReadDate <= 0) {
 			return false;
 		}
 
-		const readDate = Math.max(storedReadDate ?? 0, this.readDateBaseline /* Use read date baseline when no read date is stored */);
+		const readDate = Math.max(
+			storedReadDate === AgentSessionsModel.UNREAD_MARKER ? 0 : storedReadDate ?? 0,
+			canonicalReadDate,
+			this.readDateBaseline /* Use read date baseline when no read date is stored */,
+		);
 
 		// Install a heuristic to reduce false positives: a user might observe
 		// the output of a session and quickly click on another session before
@@ -608,8 +649,35 @@ export class AgentSessionsModel extends Disposable implements IAgentSessionsMode
 			return true;
 		}
 
-		// Never consider a session as unread if its connected to a widget
-		return !!this.chatWidgetService.getWidgetBySessionResource(session.resource);
+		return false;
+	}
+
+	private isSessionVisibleInWidget(session: IInternalAgentSessionData): boolean {
+		if (this.chatWidgetService.getWidgetBySessionResource(session.resource)) {
+			return true;
+		}
+
+		if (session.resource.scheme !== TALEMO_THREAD_SESSION_SCHEME) {
+			return false;
+		}
+
+		const threadId = session.resource.path.replace(/^\/+/, '').trim();
+		if (!threadId) {
+			return false;
+		}
+
+		try {
+			return this.chatWidgetService.getAllWidgets().some(widget => {
+				const widgetSessionResource = widget.viewModel?.sessionResource;
+				if (widgetSessionResource?.scheme === TALEMO_THREAD_SESSION_SCHEME) {
+					return widgetSessionResource.path.replace(/^\/+/, '').trim() === threadId;
+				}
+
+				return getThreadIdFromSessionModel(widget.viewModel?.model) === threadId;
+			});
+		} catch {
+			return false;
+		}
 	}
 
 	private sessionTimeForReadStateTracking(session: IInternalAgentSessionData): number {

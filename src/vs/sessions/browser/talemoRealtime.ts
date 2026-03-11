@@ -36,6 +36,7 @@ interface ITalemoSubscription {
 interface ITalemoAckResult {
 	accepted?: boolean;
 	run_id?: string;
+	thread_id?: string;
 	error?: string;
 	code?: string;
 	message?: string;
@@ -117,16 +118,16 @@ export class TalemoRealtimeClient extends Disposable {
 		await this.emitWithAck('runtime:unsubscribe', { scope, id: targetId });
 	}
 
-	async startChatRun(request: { message: string; thread_id: string; model: string }): Promise<string> {
+	async startChatRun(request: { message: string; thread_id?: string; model: string }): Promise<{ runId: string; threadId: string }> {
 		await this.connect();
 		const result = await this.emitWithAck('chat:run:start', request);
-		if (!result.accepted || !result.run_id) {
+		if (!result.accepted || !result.run_id || !result.thread_id) {
 			if (result.code === 'CHAT_START_FAILED' || result.code === 'THREAD_NOT_FOUND') {
 				throw new Error(result.message ?? result.code);
 			}
 			throw new AuthRequiredError();
 		}
-		return result.run_id;
+		return { runId: result.run_id, threadId: result.thread_id };
 	}
 
 	private async doConnect(): Promise<void> {
