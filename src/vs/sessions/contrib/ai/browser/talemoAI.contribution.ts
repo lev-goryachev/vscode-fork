@@ -16,13 +16,16 @@
  *--------------------------------------------------------------------------------------------*/
 
 import { Disposable } from '../../../../base/common/lifecycle.js';
+import { isWeb } from '../../../../base/common/platform.js';
 import { localize } from '../../../../nls.js';
 import { ExtensionIdentifier } from '../../../../platform/extensions/common/extensions.js';
 import { IFileService } from '../../../../platform/files/common/files.js';
 import { ILogService } from '../../../../platform/log/common/log.js';
+import { INotificationService, Severity } from '../../../../platform/notification/common/notification.js';
 import { IProductService } from '../../../../platform/product/common/productService.js';
 import { IStorageService } from '../../../../platform/storage/common/storage.js';
 import { IWorkspaceContextService } from '../../../../platform/workspace/common/workspace.js';
+import { ICommandService } from '../../../../platform/commands/common/commands.js';
 import { IWorkbenchContribution, registerWorkbenchContribution2, WorkbenchPhase } from '../../../../workbench/common/contributions.js';
 import { ChatAgentLocation, ChatModeKind } from '../../../../workbench/contrib/chat/common/constants.js';
 import { IChatWidgetService } from '../../../../workbench/contrib/chat/browser/chat.js';
@@ -30,12 +33,16 @@ import { IChatService } from '../../../../workbench/contrib/chat/common/chatServ
 import { IChatSessionsService } from '../../../../workbench/contrib/chat/common/chatSessionsService.js';
 import { IChatAgentService } from '../../../../workbench/contrib/chat/common/participants/chatAgents.js';
 import { IAuthenticationService } from '../../../../workbench/services/authentication/common/authentication.js';
+import { IWorkingCopyFileService } from '../../../../workbench/services/workingCopy/common/workingCopyFileService.js';
 import { TalemoRealtimeClient } from '../../../browser/talemoRealtime.js';
+import { TalemoProjectFileSystemProvider, TALEMO_WORKSPACE_SCHEME } from '../../../browser/talemoProjectFileSystemProvider.js';
 import { TalemoAgentImpl } from './talemoAI.agent.js';
-import { TalemoWorkspaceFileMirror } from './talemoAI.fileMirror.js';
 import { registerTalemoSessionBindingContrib } from './talemoAI.sessionBinding.js';
 import { registerTalemoSessionOpenerParticipant } from './talemoAI.sessionOpener.js';
 import { TALEMO_THREAD_SESSION_SCHEME, TalemoThreadSessionsController } from './talemoThreadSessions.js';
+import { TalemoWorkspaceSyncService } from './talemoWorkspaceSync.js';
+import { TALEMO_MANAGE_PROJECTS_COMMAND_ID } from '../../../browser/talemoProjectCommandsIds.js';
+import { registerTalemoProjectCommands } from './talemoProjectCommands.js';
 
 const AGENT_ID = 'talemo';
 
@@ -56,39 +63,58 @@ export class TalemoAIContribution extends Disposable implements IWorkbenchContri
 		@IStorageService storageService: IStorageService,
 		@IFileService fileService: IFileService,
 		@IWorkspaceContextService workspaceContextService: IWorkspaceContextService,
+		@IWorkingCopyFileService workingCopyFileService: IWorkingCopyFileService,
+		@INotificationService notificationService: INotificationService,
+		@ICommandService commandService: ICommandService,
 	) {
 		super();
 
-		const fileMirror = new TalemoWorkspaceFileMirror(fileService, workspaceContextService);
+		registerTalemoProjectCommands();
+		let projectFileSystemProvider: TalemoProjectFileSystemProvider | undefined;
+		if (isWeb && !fileService.getProvider(TALEMO_WORKSPACE_SCHEME)) {
+			projectFileSystemProvider = this._register(new TalemoProjectFileSystemProvider(
+				authenticationService,
+				storageService,
+				productService,
+			));
+			this._register(fileService.registerProvider(TALEMO_WORKSPACE_SCHEME, projectFileSystemProvider));
+		}
+
 		const realtimeClient = this._register(new TalemoRealtimeClient(
 			authenticationService,
 			productService,
 		));
 
-		this._register(realtimeClient.onDidRuntimeEvent(event => {
-			if (event.event_type === 'tool.file.result') {
-				void fileMirror.apply(event.payload as unknown as Parameters<TalemoWorkspaceFileMirror['apply']>[0]);
-				return;
-			}
-
-			if (event.event_type.startsWith('file.')) {
-				void fileMirror.applyRuntimeEvent(
-					event.event_type,
-					event.payload as Parameters<TalemoWorkspaceFileMirror['applyRuntimeEvent']>[1],
-				);
-			}
-		}));
+		const workspaceSyncService = this._register(new TalemoWorkspaceSyncService(
+			authenticationService,
+			storageService,
+			productService,
+			fileService,
+			workingCopyFileService,
+			workspaceContextService,
+			notificationService,
+			logService,
+			realtimeClient,
+		));
 
 		const ensureRealtimeBaseline = async (): Promise<void> => {
 			try {
 				await realtimeClient.subscribe('tenant');
-				await realtimeClient.subscribe('workspace');
+				const projectId = await workspaceSyncService.getActiveProjectId();
+				if (projectId) {
+					await realtimeClient.subscribe('workspace', projectId);
+				}
 			} catch {
 				// Auth is established lazily by the shared realtime client.
 			}
 		};
 
 		void ensureRealtimeBaseline();
+		if (projectFileSystemProvider) {
+			this._register(realtimeClient.onDidRuntimeEvent(event => {
+				projectFileSystemProvider?.handleRuntimeEvent(event);
+			}));
+		}
 		this._register(authenticationService.onDidChangeSessions(e => {
 			if (e.providerId === 'talemo') {
 				void ensureRealtimeBaseline();
@@ -101,9 +127,23 @@ export class TalemoAIContribution extends Disposable implements IWorkbenchContri
 			storageService,
 			chatService,
 			chatWidgetService,
-			fileMirror,
 			realtimeClient,
+			() => workspaceSyncService.getActiveProjectId(),
 		);
+
+		void workspaceSyncService.getActiveProjectId().then(projectId => {
+			if (projectId || isWeb) {
+				return;
+			}
+			notificationService.prompt(
+				Severity.Info,
+				'No Talemo project is active. Open or create a project inside the managed Talemo Files root to enable sync and file-aware chat.',
+				[
+					{ label: 'Manage Projects', run: () => void commandService.executeCommand(TALEMO_MANAGE_PROJECTS_COMMAND_ID) },
+				],
+				{ sticky: false }
+			);
+		});
 
 		this._register(chatAgentService.registerDynamicAgent(
 			{

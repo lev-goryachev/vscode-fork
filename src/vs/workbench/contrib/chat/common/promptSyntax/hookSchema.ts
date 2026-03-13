@@ -252,7 +252,7 @@ export const HOOK_SCHEMA_URI = 'vscode://schemas/hooks';
 /**
  * Glob pattern for hook files.
  */
-export const HOOK_FILE_GLOB = '.github/hooks/*.json';
+export const HOOK_FILE_GLOB = '.talemo/hooks/*.json';
 
 /**
  * Normalizes a raw hook type identifier to the canonical HookType enum value.

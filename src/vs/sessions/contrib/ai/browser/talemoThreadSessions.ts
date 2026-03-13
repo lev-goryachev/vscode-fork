@@ -32,8 +32,7 @@ import { ISerializableChatModelInputState } from '../../../../workbench/contrib/
 import { IAuthenticationService } from '../../../../workbench/services/authentication/common/authentication.js';
 import { MessageRecord, ThreadSummary, getThreadMessages, listThreads, markThreadRead } from '../../../browser/talemoApi.js';
 import { ITalemoRuntimeEventEnvelope, TalemoRealtimeClient } from '../../../browser/talemoRealtime.js';
-import { getThreadIdFromSessionModel } from './talemoAI.sessionBinding.js';
-import { TALEMO_SESSION_BINDING_KEY } from './talemoAI.sessionBinding.js';
+import { getThreadIdFromSessionModel, TALEMO_SESSION_BINDING_KEY } from './talemoAI.sessionBinding.js';
 import { TALEMO_THREAD_SESSION_SCHEME } from './talemoAI.shared.js';
 import { ITalemoThreadSnapshot, TalemoThreadSnapshotStore, areSnapshotMessagesEqual } from './talemoThreadSnapshotStore.js';
 
@@ -301,7 +300,6 @@ export class TalemoThreadSessionsController extends Disposable implements IChatS
 	private async ensureRealtimeBaseline(): Promise<void> {
 		try {
 			await this.realtimeClient.subscribe('tenant');
-			await this.realtimeClient.subscribe('workspace');
 		} catch {
 			// Auth restore is lazy during startup; the next refresh after auth settles
 			// will retry these baseline subscriptions automatically.

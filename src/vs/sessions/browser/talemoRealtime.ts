@@ -118,7 +118,7 @@ export class TalemoRealtimeClient extends Disposable {
 		await this.emitWithAck('runtime:unsubscribe', { scope, id: targetId });
 	}
 
-	async startChatRun(request: { message: string; thread_id?: string; model: string }): Promise<{ runId: string; threadId: string }> {
+	async startChatRun(request: { message: string; thread_id?: string; model: string; project_id?: string }): Promise<{ runId: string; threadId: string }> {
 		await this.connect();
 		const result = await this.emitWithAck('chat:run:start', request);
 		if (!result.accepted || !result.run_id || !result.thread_id) {

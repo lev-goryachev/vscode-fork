@@ -51,6 +51,11 @@ export const CLAUDE_LOCAL_MD_FILENAME = 'CLAUDE.local.md';
 export const CLAUDE_CONFIG_FOLDER = '.claude';
 
 /**
+ * Talemo project customization folder name.
+ */
+export const TALEMO_CONFIG_FOLDER = '.talemo';
+
+/**
  * Copilot custom instructions file name.
  */
 export const COPILOT_CUSTOM_INSTRUCTIONS_FILENAME = 'copilot-instructions.md';
@@ -59,22 +64,22 @@ export const COPILOT_CUSTOM_INSTRUCTIONS_FILENAME = 'copilot-instructions.md';
 /**
  * Default reusable prompt files source folder.
  */
-export const PROMPT_DEFAULT_SOURCE_FOLDER = '.github/prompts';
+export const PROMPT_DEFAULT_SOURCE_FOLDER = '.talemo/prompts';
 
 /**
  * Default reusable instructions files source folder.
  */
-export const INSTRUCTIONS_DEFAULT_SOURCE_FOLDER = '.github/instructions';
+export const INSTRUCTIONS_DEFAULT_SOURCE_FOLDER = '.talemo/instructions';
 
 /**
  * Default modes source folder.
  */
-export const LEGACY_MODE_DEFAULT_SOURCE_FOLDER = '.github/chatmodes';
+export const LEGACY_MODE_DEFAULT_SOURCE_FOLDER = '.talemo/chatmodes';
 
 /**
  * Agents folder.
  */
-export const AGENTS_SOURCE_FOLDER = '.github/agents';
+export const AGENTS_SOURCE_FOLDER = '.talemo/agents';
 
 /**
  * Claude agents folder.
@@ -89,7 +94,7 @@ export const CLAUDE_RULES_SOURCE_FOLDER = '.claude/rules';
 /**
  * Hooks folder.
  */
-export const HOOKS_SOURCE_FOLDER = '.github/hooks';
+export const HOOKS_SOURCE_FOLDER = '.talemo/hooks';
 
 /**
  * Tracks where prompt files originate from.
@@ -148,8 +153,7 @@ export interface IResolvedPromptFile {
  * All default skill source folders (both workspace and user home).
  */
 export const DEFAULT_SKILL_SOURCE_FOLDERS: readonly IPromptSourceFolder[] = [
-	{ path: '.github/skills', source: PromptFileSource.GitHubWorkspace, storage: PromptsStorage.local },
-	{ path: '.agents/skills', source: PromptFileSource.AgentsWorkspace, storage: PromptsStorage.local },
+	{ path: '.talemo/skills', source: PromptFileSource.GitHubWorkspace, storage: PromptsStorage.local },
 	{ path: '.claude/skills', source: PromptFileSource.ClaudeWorkspace, storage: PromptsStorage.local },
 	{ path: '~/.copilot/skills', source: PromptFileSource.CopilotPersonal, storage: PromptsStorage.user },
 	{ path: '~/.agents/skills', source: PromptFileSource.AgentsPersonal, storage: PromptsStorage.user },
@@ -185,7 +189,7 @@ export const DEFAULT_AGENT_SOURCE_FOLDERS: readonly IPromptSourceFolder[] = [
  * Entries can be either a directory or a specific file path (.json)
  */
 export const DEFAULT_HOOK_FILE_PATHS: readonly IPromptSourceFolder[] = [
-	{ path: '.github/hooks', source: PromptFileSource.GitHubWorkspace, storage: PromptsStorage.local },
+	{ path: '.talemo/hooks', source: PromptFileSource.GitHubWorkspace, storage: PromptsStorage.local },
 	{ path: '.claude/settings.local.json', source: PromptFileSource.ClaudeWorkspaceLocal, storage: PromptsStorage.local },
 	{ path: '.claude/settings.json', source: PromptFileSource.ClaudeWorkspace, storage: PromptsStorage.local },
 	{ path: '~/.claude/settings.json', source: PromptFileSource.ClaudePersonal, storage: PromptsStorage.user },

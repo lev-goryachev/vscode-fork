@@ -559,7 +559,7 @@ export class PromptFilesLocator {
 		const result: IResolvedAgentFile[] = [];
 		const folders = this.getWorkspaceFolders();
 		for (const folder of folders) {
-			const file = joinPath(folder.uri, `.github/` + COPILOT_CUSTOM_INSTRUCTIONS_FILENAME);
+			const file = joinPath(folder.uri, `.talemo/` + COPILOT_CUSTOM_INSTRUCTIONS_FILENAME);
 			try {
 				const stat = await this.fileService.stat(file);
 				if (stat.isFile) {

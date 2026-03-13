@@ -40,7 +40,6 @@ import {
 	forceSignIn,
 	refreshTalemoSession,
 } from '../../../browser/talemoApi.js';
-import { ITalemoFileToolEvent, TalemoWorkspaceFileMirror } from './talemoAI.fileMirror.js';
 import { ITalemoRuntimeEventEnvelope, TalemoRealtimeClient } from '../../../browser/talemoRealtime.js';
 import { DEFAULT_MODEL } from './talemoAI.shared.js';
 import {
@@ -60,8 +59,8 @@ export class TalemoAgentImpl implements IChatAgentImplementation {
 		private readonly storageService: IStorageService,
 		private readonly chatService: IChatService,
 		private readonly chatWidgetService: IChatWidgetService,
-		private readonly fileMirror: TalemoWorkspaceFileMirror,
 		private readonly realtimeClient: TalemoRealtimeClient,
+		private readonly getActiveProjectId: () => Promise<string | undefined>,
 	) { }
 
 	private _getSessionThreadId(sessionResource: IChatAgentRequest['sessionResource']): string | undefined {
@@ -147,20 +146,6 @@ export class TalemoAgentImpl implements IChatAgentImplementation {
 					case 'chat.message.delta':
 						progress([{ kind: 'markdownContent', content: new MarkdownString(String(event.payload.delta ?? '')) }]);
 						return;
-					case 'tool.file.result':
-						void this.fileMirror.apply(event.payload as unknown as ITalemoFileToolEvent);
-						return;
-					case 'file.created':
-					case 'file.updated':
-					case 'file.renamed':
-					case 'file.moved':
-					case 'file.duplicated':
-					case 'file.deleted':
-						void this.fileMirror.applyRuntimeEvent(
-							event.event_type,
-							event.payload as Parameters<TalemoWorkspaceFileMirror['applyRuntimeEvent']>[1],
-						);
-						return;
 					case 'chat.run.failed':
 						progress([{
 							kind: 'markdownContent',
@@ -191,8 +176,11 @@ export class TalemoAgentImpl implements IChatAgentImplementation {
 
 		// ── Step 1: subscribe and start runtime chat turn ─────────────────────
 		const attempt = async (): Promise<{ runId: string; threadId: string }> => {
+			const projectId = await this.getActiveProjectId();
 			await this.realtimeClient.subscribe('tenant');
-			await this.realtimeClient.subscribe('workspace');
+			if (projectId) {
+				await this.realtimeClient.subscribe('workspace', projectId);
+			}
 			if (boundThreadId) {
 				await this.realtimeClient.subscribe('thread', boundThreadId);
 			}
@@ -200,6 +188,7 @@ export class TalemoAgentImpl implements IChatAgentImplementation {
 				message: request.message,
 				thread_id: boundThreadId,
 				model,
+				project_id: projectId,
 			});
 			if (!boundThreadId) {
 				this._persistThreadBinding(request.sessionResource, run.threadId);
