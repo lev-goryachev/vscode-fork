@@ -808,10 +808,7 @@ export class TalemoWorkspaceSyncService extends Disposable {
 			}
 
 			// Reject any URI that isn't on the same scheme / authority as the
-			// workspace root.  On Windows this also covers cross-drive paths
-			// (e.g. root on E: while VS Code globalStorage lives on C:) whose
-			// relativePath() result would start with ".." or contain a drive
-			// letter, leaking non-workspace events into the sync pipeline.
+			// workspace root.
 			if (resource.scheme !== root.scheme || resource.authority !== root.authority) {
 				return undefined;
 			}
@@ -819,11 +816,18 @@ export class TalemoWorkspaceSyncService extends Disposable {
 			const relative = relativePath(root, resource);
 			const normalized = relative ? relative.replace(/\\/g, '/') : undefined;
 
-			// A valid workspace-relative path must stay inside the root (no leading
-			// ".."), must not be empty, and must not be a system file.
+			// On Windows, Node.js path.relative() cannot express cross-drive paths
+			// (e.g. workspace on E: and resource on C:) as a proper "../…" relative
+			// path.  Instead it returns the ABSOLUTE path of the target
+			// ("c:/Users/…").  We detect this case by checking for ":" in the result:
+			// a genuinely workspace-relative path never contains ":" — that character
+			// only appears in Windows drive-letter notation.  Rejecting here prevents
+			// VS Code's own globalStorage / emptyWindowChatSessions files from leaking
+			// into the sync pipeline when they live on a different drive.
 			if (
 				!normalized ||
 				normalized.startsWith('..') ||
+				normalized.includes(':') ||
 				normalized === TALEMO_IGNORE_FILE ||
 				normalized.startsWith(`${TALEMO_BINDING_DIR}/`)
 			) {

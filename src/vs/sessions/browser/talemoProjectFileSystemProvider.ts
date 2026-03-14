@@ -338,15 +338,20 @@ export class TalemoProjectFileSystemProvider extends Disposable implements IFile
 		}
 		const requestedPath = resource.path.replace(/^\/+/, '').replace(/\/+$/, '');
 
-		// Reject paths that look like absolute Windows paths (e.g. "c:/Users/…").
-		// VS Code web uses the workspace FS provider for its own internal state
-		// (globalStorage, emptyWindowChatSessions, state.vscdb …).  Without this
-		// guard those paths would be forwarded to the backend and stored in GCS,
-		// leaking VS Code internal data into the project and polluting the
-		// Explorer.  Valid project-relative paths are always simple relative
-		// segments like "ATRQ/file.md" and never contain a drive-letter colon.
-		if (/^[a-zA-Z]:/.test(requestedPath) || requestedPath.includes('globalStorage') || requestedPath.includes('emptyWindowChatSessions')) {
-			throw createFileSystemProviderError('invalid path: VS Code internal paths are not allowed in Talemo workspace', FileSystemProviderErrorCode.FileNotFound);
+		// VS Code web uses the workspace FS provider as a general "remote" file
+		// system and routes its own internal state (globalStorage, state.vscdb, …)
+		// through it with server-side absolute paths such as
+		// "c:/Users/Arye/AppData/…".  A valid workspace-relative path NEVER
+		// contains ":" — that character only appears in Windows drive-letter
+		// notation (e.g. "c:").  Rejecting here is a domain invariant, not a
+		// pattern-match: no matter what the user puts inside their workspace
+		// (flash-drive files, nested folders, etc.), the paths that reach this
+		// provider are always relative to the project root and therefore colon-free.
+		if (requestedPath.includes(':')) {
+			throw createFileSystemProviderError(
+				`path outside workspace root: "${requestedPath}"`,
+				FileSystemProviderErrorCode.FileNotFound,
+			);
 		}
 
 		return {
