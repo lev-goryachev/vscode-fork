@@ -27,12 +27,11 @@ import { IProgressService, ProgressLocation } from '../../../../platform/progres
 import { SyncDescriptor } from '../../../../platform/instantiation/common/descriptors.js';
 import { WorkbenchStateContext, RemoteNameContext, OpenFolderWorkspaceSupportContext } from '../../../common/contextkeys.js';
 import { IsWebContext } from '../../../../platform/contextkey/common/contextkeys.js';
-import { AddRootFolderAction, OpenFolderAction, OpenFolderViaWorkspaceAction } from '../../../browser/actions/workspaceActions.js';
-import { OpenRecentAction } from '../../../browser/actions/windowActions.js';
 import { Codicon } from '../../../../base/common/codicons.js';
 import { registerIcon } from '../../../../platform/theme/common/iconRegistry.js';
 import { isMouseEvent } from '../../../../base/browser/dom.js';
 import { ILogService } from '../../../../platform/log/common/log.js';
+import { TALEMO_ATTACH_PROJECT_COMMAND_ID } from '../../../../sessions/browser/talemoProjectCommandsIds.js';
 
 const explorerViewIcon = registerIcon('explorer-view-icon', Codicon.files, localize('explorerViewIcon', 'View icon of the explorer view.'));
 const openEditorsViewIcon = registerIcon('open-editors-view-icon', Codicon.book, localize('openEditorsIcon', 'View icon of the open editors view.'));
@@ -267,20 +266,18 @@ export const VIEW_CONTAINER: ViewContainer = viewContainerRegistry.registerViewC
 	},
 }, ViewContainerLocation.Sidebar, { isDefault: true });
 
-const openFolder = localize('openFolder', "Open Folder");
-const addAFolder = localize('addAFolder', "add a folder");
-const openRecent = localize('openRecent', "Open Recent");
+// Empty Explorer is a project entry point for Talemo, so the CTA language stays
+// focused on projects instead of files, folders, or repository operations.
+const openProject = localize('openProject', "Open Project");
+const createProject = localize('createProject', "Create Project");
 
-const addRootFolderButton = `[${openFolder}](command:${AddRootFolderAction.ID})`;
-const addAFolderButton = `[${addAFolder}](command:${AddRootFolderAction.ID})`;
-const openFolderButton = `[${openFolder}](command:${OpenFolderAction.ID})`;
-const openFolderViaWorkspaceButton = `[${openFolder}](command:${OpenFolderViaWorkspaceAction.ID})`;
-const openRecentButton = `[${openRecent}](command:${OpenRecentAction.ID})`;
+const createProjectButton = `[${createProject}](command:welcome.newWorkspaceChat)`;
+const openProjectButton = `[${openProject}](command:${TALEMO_ATTACH_PROJECT_COMMAND_ID})`;
 
 const viewsRegistry = Registry.as<IViewsRegistry>(Extensions.ViewsRegistry);
 viewsRegistry.registerViewWelcomeContent(EmptyView.ID, {
 	content: localize({ key: 'noWorkspaceHelp', comment: ['Please do not translate the word "command", it is part of our internal syntax which must not change'] },
-		"You have not yet added a folder to the workspace.\n{0}", addRootFolderButton),
+		"You have not yet opened a project.\n{0}\n{1}", openProjectButton, createProjectButton),
 	when: ContextKeyExpr.and(
 		// inside a .code-workspace
 		WorkbenchStateContext.isEqualTo('workspace'),
@@ -293,7 +290,7 @@ viewsRegistry.registerViewWelcomeContent(EmptyView.ID, {
 
 viewsRegistry.registerViewWelcomeContent(EmptyView.ID, {
 	content: localize({ key: 'noFolderHelpWeb', comment: ['Please do not translate the word "command", it is part of our internal syntax which must not change'] },
-		"You have not yet opened a folder.\n{0}\n{1}", openFolderViaWorkspaceButton, openRecentButton),
+		"You have not yet opened a project.\n{0}\n{1}", openProjectButton, createProjectButton),
 	when: ContextKeyExpr.and(
 		// inside a .code-workspace
 		WorkbenchStateContext.isEqualTo('workspace'),
@@ -306,7 +303,7 @@ viewsRegistry.registerViewWelcomeContent(EmptyView.ID, {
 
 viewsRegistry.registerViewWelcomeContent(EmptyView.ID, {
 	content: localize({ key: 'remoteNoFolderHelp', comment: ['Please do not translate the word "command", it is part of our internal syntax which must not change'] },
-		"Connected to remote.\n{0}", openFolderButton),
+		"Connected to remote.\n{0}\n{1}", openProjectButton, createProjectButton),
 	when: ContextKeyExpr.and(
 		// not inside a .code-workspace
 		WorkbenchStateContext.notEqualsTo('workspace'),
@@ -320,7 +317,7 @@ viewsRegistry.registerViewWelcomeContent(EmptyView.ID, {
 
 viewsRegistry.registerViewWelcomeContent(EmptyView.ID, {
 	content: localize({ key: 'noFolderButEditorsHelp', comment: ['Please do not translate the word "command", it is part of our internal syntax which must not change'] },
-		"You have not yet opened a folder.\n{0}\nOpening a folder will close all currently open editors. To keep them open, {1} instead.", openFolderButton, addAFolderButton),
+		"You have not yet opened a project.\n{0}\n{1}", openProjectButton, createProjectButton),
 	when: ContextKeyExpr.and(
 		// editors are opened
 		ContextKeyExpr.has('editorIsOpen'),
@@ -337,7 +334,7 @@ viewsRegistry.registerViewWelcomeContent(EmptyView.ID, {
 
 viewsRegistry.registerViewWelcomeContent(EmptyView.ID, {
 	content: localize({ key: 'noFolderHelp', comment: ['Please do not translate the word "command", it is part of our internal syntax which must not change'] },
-		"You have not yet opened a folder.\n{0}", openFolderButton),
+		"You have not yet opened a project.\n{0}\n{1}", openProjectButton, createProjectButton),
 	when: ContextKeyExpr.and(
 		// no editor is open
 		ContextKeyExpr.has('editorIsOpen')?.negate(),

@@ -226,6 +226,12 @@ export class ObjectMutationLog<TFrom, TTo> {
 				if (line.byteLength > 0) {
 					lineCount++;
 					const entry = JSON.parse(line.toString()) as Entry;
+					if (lineCount === 1 && entry.kind !== EntryKind.Initial) {
+						throw new Error('Malformed log file: first entry must be an initial snapshot');
+					}
+					if (lineCount > 1 && entry.kind !== EntryKind.Initial && isUndefinedOrNull(state)) {
+						throw new Error('Malformed log file: mutation entry encountered before initial snapshot');
+					}
 					switch (entry.kind) {
 						case EntryKind.Initial:
 							state = entry.v;

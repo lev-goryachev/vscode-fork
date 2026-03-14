@@ -514,7 +514,15 @@ export class ChatService extends Disposable implements IChatService {
 
 		const defaultAgent = this.chatAgentService.getActivatedAgents().find(agent => agent.id === defaultAgentData.id);
 		if (!defaultAgent) {
-			throw new ErrorNoTelemetry('No default agent registered');
+			const fallbackAgent = this.chatAgentService.getDefaultAgent(location) ?? this.chatAgentService.getDefaultAgent(ChatAgentLocation.Chat);
+			if (fallbackAgent) {
+				// Keep startup resilient when legacy session state still points at an
+				// extension participant that no longer registers an implementation.
+				this.logService.warn('activateDefaultAgent', `Default agent ${defaultAgentData.id} did not register an implementation after activation; continuing with fallback ${fallbackAgent.id}`);
+				return;
+			}
+
+			throw new ErrorNoTelemetry(`No default agent registered for location ${location}`);
 		}
 	}
 

@@ -47,11 +47,11 @@ import { IWindowOpenable } from '../../../../platform/window/common/window.js';
 import { IWorkspaceContextService, UNKNOWN_EMPTY_WINDOW_WORKSPACE } from '../../../../platform/workspace/common/workspace.js';
 import { IRecentFolder, IRecentWorkspace, IRecentlyOpened, IWorkspacesService, isRecentFolder, isRecentWorkspace } from '../../../../platform/workspaces/common/workspaces.js';
 import { OpenRecentAction } from '../../../browser/actions/windowActions.js';
-import { OpenFileFolderAction, OpenFolderAction, OpenFolderViaWorkspaceAction } from '../../../browser/actions/workspaceActions.js';
+import { OpenFileFolderAction, OpenFolderAction } from '../../../browser/actions/workspaceActions.js';
 import { EditorPane } from '../../../browser/parts/editor/editorPane.js';
-import { WorkbenchStateContext } from '../../../common/contextkeys.js';
 import { IEditorOpenContext, IEditorSerializer } from '../../../common/editor.js';
 import { IWebviewElement, IWebviewService } from '../../webview/browser/webview.js';
+import { TALEMO_ATTACH_PROJECT_COMMAND_ID } from '../../../../sessions/browser/talemoProjectCommandsIds.js';
 import './gettingStartedColors.js';
 import { GettingStartedDetailsRenderer } from './gettingStartedDetailsRenderer.js';
 import { gettingStartedCheckedCodicon, gettingStartedUncheckedCodicon } from './gettingStartedIcons.js';
@@ -436,11 +436,7 @@ export class GettingStartedPage extends EditorPane {
 				break;
 			}
 			case 'openFolder': {
-				if (this.contextService.contextMatchesRules(ContextKeyExpr.and(WorkbenchStateContext.isEqualTo('workspace')))) {
-					this.commandService.executeCommand(OpenFolderViaWorkspaceAction.ID);
-				} else {
-					this.commandService.executeCommand('workbench.action.files.openFolder');
-				}
+				this.commandService.executeCommand(TALEMO_ATTACH_PROJECT_COMMAND_ID);
 				break;
 			}
 			case 'selectCategory': {
@@ -1082,8 +1078,8 @@ export class GettingStartedPage extends EditorPane {
 				klass: 'recently-opened',
 				limit: 5,
 				empty: $('.empty-recent', {},
-					localize('noRecents', "You have no recent folders,"),
-					$('button.button-link', { 'x-dispatch': 'openFolder' }, localize('openFolder', "open a folder")),
+					localize('noRecents', "You have no recent projects,"),
+					$('button.button-link', { 'x-dispatch': 'openFolder' }, localize('openProject', "open a project")),
 					localize('toStart', "to start.")),
 
 				more: $('.more', {},

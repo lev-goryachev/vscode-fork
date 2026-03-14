@@ -9,6 +9,7 @@ import { NotebookSetting } from '../../notebook/common/notebookCommon.js';
 import { CONTEXT_ACCESSIBILITY_MODE_ENABLED } from '../../../../platform/accessibility/common/accessibility.js';
 import { URI } from '../../../../base/common/uri.js';
 import product from '../../../../platform/product/common/product.js';
+import { TALEMO_ATTACH_PROJECT_COMMAND_ID } from '../../../../sessions/browser/talemoProjectCommandsIds.js';
 
 interface IGettingStartedContentProvider {
 	(): string;
@@ -112,109 +113,44 @@ type GettingStartedStartEntryContent = BuiltinGettingStartedStartEntry[];
 
 export const startEntries: GettingStartedStartEntryContent = [
 	{
-		id: 'welcome.showNewFileEntries',
-		title: localize('gettingStarted.newFile.title', "New File..."),
-		description: localize('gettingStarted.newFile.description', "Open a new untitled text file, notebook, or custom editor."),
-		icon: Codicon.newFile,
-		content: {
-			type: 'startEntry',
-			command: 'command:welcome.showNewFileEntries',
-		}
-	},
-	{
-		id: 'topLevelOpenMac',
-		title: localize('gettingStarted.openMac.title', "Open..."),
-		description: localize('gettingStarted.openMac.description', "Open a file or folder to start working"),
+		id: 'topLevelOpenProjectMac',
+		title: localize('gettingStarted.openProjectMac.title', "Open Project"),
+		description: localize('gettingStarted.openProjectMac.description', "Open a project to start working"),
 		icon: Codicon.folderOpened,
 		when: '!isWeb && isMac',
 		content: {
 			type: 'startEntry',
-			command: 'command:workbench.action.files.openFileFolder',
+			command: `command:${TALEMO_ATTACH_PROJECT_COMMAND_ID}`,
 		}
 	},
 	{
-		id: 'topLevelOpenFile',
-		title: localize('gettingStarted.openFile.title', "Open File..."),
-		description: localize('gettingStarted.openFile.description', "Open a file to start working"),
-		icon: Codicon.goToFile,
-		when: 'isWeb || !isMac',
-		content: {
-			type: 'startEntry',
-			command: 'command:workbench.action.files.openFile',
-		}
-	},
-	{
-		id: 'topLevelOpenFolder',
-		title: localize('gettingStarted.openFolder.title', "Open Folder..."),
-		description: localize('gettingStarted.openFolder.description', "Open a folder to start working"),
+		id: 'topLevelOpenProject',
+		title: localize('gettingStarted.openProject.title', "Open Project"),
+		description: localize('gettingStarted.openProject.description', "Open a project to start working"),
 		icon: Codicon.folderOpened,
 		when: '!isWeb && !isMac',
 		content: {
 			type: 'startEntry',
-			command: 'command:workbench.action.files.openFolder',
+			command: `command:${TALEMO_ATTACH_PROJECT_COMMAND_ID}`,
 		}
 	},
 	{
-		id: 'topLevelOpenFolderWeb',
-		title: localize('gettingStarted.openFolder.title', "Open Folder..."),
-		description: localize('gettingStarted.openFolder.description', "Open a folder to start working"),
+		id: 'topLevelOpenProjectWeb',
+		title: localize('gettingStarted.openProjectWeb.title', "Open Project"),
+		description: localize('gettingStarted.openProjectWeb.description', "Open a project to start working"),
 		icon: Codicon.folderOpened,
-		when: '!openFolderWorkspaceSupport && workbenchState == \'workspace\'',
+		when: 'isWeb',
 		content: {
 			type: 'startEntry',
-			command: 'command:workbench.action.files.openFolderViaWorkspace',
+			command: `command:${TALEMO_ATTACH_PROJECT_COMMAND_ID}`,
 		}
 	},
 	{
-		id: 'topLevelGitClone',
-		title: localize('gettingStarted.topLevelGitClone.title', "Clone Git Repository..."),
-		description: localize('gettingStarted.topLevelGitClone.description', "Clone a remote repository to a local folder"),
-		when: 'config.git.enabled && !git.missing',
-		icon: Codicon.sourceControl,
-		content: {
-			type: 'startEntry',
-			command: 'command:git.clone',
-		}
-	},
-	{
-		id: 'topLevelGitOpen',
-		title: localize('gettingStarted.topLevelGitOpen.title', "Open Repository..."),
-		description: localize('gettingStarted.topLevelGitOpen.description', "Connect to a remote repository or pull request to browse, search, edit, and commit"),
-		when: 'workspacePlatform == \'webworker\'',
-		icon: Codicon.sourceControl,
-		content: {
-			type: 'startEntry',
-			command: 'command:remoteHub.openRepository',
-		}
-	},
-	{
-		id: 'topLevelRemoteOpen',
-		title: localize('gettingStarted.topLevelRemoteOpen.title', "Connect to..."),
-		description: localize('gettingStarted.topLevelRemoteOpen.description', "Connect to remote development workspaces."),
-		when: '!isWeb',
-		icon: Codicon.remote,
-		content: {
-			type: 'startEntry',
-			command: 'command:workbench.action.remote.showMenu',
-		}
-	},
-	{
-		id: 'topLevelOpenTunnel',
-		title: localize('gettingStarted.topLevelOpenTunnel.title', "Open Tunnel..."),
-		description: localize('gettingStarted.topLevelOpenTunnel.description', "Connect to a remote machine through a Tunnel"),
-		when: 'isWeb && showRemoteStartEntryInWeb',
-		icon: Codicon.remote,
-		content: {
-			type: 'startEntry',
-			command: 'command:workbench.action.remote.showWebStartEntryActions',
-		}
-	},
-	{
-		id: 'topLevelNewWorkspaceChat',
-		title: localize('gettingStarted.newWorkspaceChat.title', "Generate New Workspace..."),
-		description: localize('gettingStarted.newWorkspaceChat.description', "Chat to create a new workspace"),
+		id: 'topLevelCreateProject',
+		title: localize('gettingStarted.createProject.title', "Create Project"),
+		description: localize('gettingStarted.createProject.description', "Describe the project and let Talemo scaffold it for you"),
 		icon: Codicon.chatSparkle,
-		when: '!isWeb && !chatSetupHidden',
+		when: '!chatSetupHidden',
 		content: {
 			type: 'startEntry',
 			command: 'command:welcome.newWorkspaceChat',
@@ -352,11 +288,11 @@ export const walkthroughs: GettingStartedWalkthroughContent = [
 				},
 				{
 					id: 'pickAFolderTask-WebWeb',
-					title: localize('gettingStarted.setup.OpenFolder.title', "Open up your code"),
-					description: localize('gettingStarted.setup.OpenFolderWeb.description.interpolated', "You're all set to start coding. You can open a local project or a remote repository to get your files into VS Code.\n{0}\n{1}", Button(localize('openFolder', "Open Folder"), 'command:workbench.action.addRootFolder'), Button(localize('openRepository', "Open Repository"), 'command:remoteHub.openRepository')),
+					title: localize('gettingStarted.setup.OpenProject.title', "Open or create your project"),
+					description: localize('gettingStarted.setup.OpenProjectWeb.description.interpolated', "You're all set to start working. Open an existing project or create a new one with Talemo.\n{0}\n{1}", Button(localize('openProject', "Open Project"), `command:${TALEMO_ATTACH_PROJECT_COMMAND_ID}`), Button(localize('createProject', "Create Project"), 'command:welcome.newWorkspaceChat')),
 					when: 'workspaceFolderCount == 0',
 					media: {
-						type: 'svg', altText: 'Explorer view showing buttons for opening folder and cloning repository.', path: 'openFolder.svg'
+						type: 'svg', altText: 'Explorer view showing buttons for opening and creating a project.', path: 'openFolder.svg'
 					}
 				},
 				{

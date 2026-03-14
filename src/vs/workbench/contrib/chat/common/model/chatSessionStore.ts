@@ -31,6 +31,12 @@ const maxPersistedSessions = 50;
 const ChatIndexStorageKey = 'chat.ChatSessionStore.index';
 const ChatTransferIndexStorageKey = 'ChatSessionStore.transferIndex';
 
+function hasReadableRequests(session: unknown): session is ISerializableChatDataIn & { requests: NonNullable<ISerializableChatDataIn['requests']> } {
+	return !!session
+		&& typeof session === 'object'
+		&& Array.isArray((session as ISerializableChatDataIn).requests);
+}
+
 export class ChatSessionStore extends Disposable {
 	private storageRoot: URI;
 	private readonly previousEmptyWindowStorageRoot: URI | undefined;
@@ -594,6 +600,19 @@ export class ChatSessionStore extends Disposable {
 		});
 	}
 
+	private async quarantineMalformedSessionLog(logStorageLocation: URI, sessionId: string): Promise<void> {
+		const quarantineFolder = joinPath(this.storageRoot, 'corruptChatSessions');
+		const quarantineTarget = joinPath(quarantineFolder, `${sessionId}-${Date.now()}.jsonl`);
+
+		try {
+			await this.fileService.createFolder(quarantineFolder);
+			await this.fileService.move(logStorageLocation, quarantineTarget, false);
+			this.logService.info(`ChatSessionStore: Quarantined malformed log session ${sessionId} to ${quarantineTarget.path}`);
+		} catch (e) {
+			this.reportError('malformedSessionQuarantine', `Error quarantining malformed log chat session file ${sessionId}`, e);
+		}
+	}
+
 	private async readSessionFromLocation(flatStorageLocation: URI, logStorageLocation: URI | undefined, sessionId: string): Promise<ISerializedChatDataReference | undefined> {
 		let fromLocation = flatStorageLocation;
 		let rawData: VSBuffer | undefined;
@@ -633,6 +652,12 @@ export class ChatSessionStore extends Disposable {
 				session = revive(JSON.parse(rawData.toString()));
 			}
 
+			// Fail fast on corrupted or legacy-incompatible payloads so a single bad
+			// session cannot crash chat restoration for the whole window.
+			if (!hasReadableRequests(session)) {
+				throw new Error('Chat session payload is missing a readable requests array');
+			}
+
 			// TODO Copied from ChatService.ts, cleanup
 			// Revive serialized markdown strings in response data
 			for (const request of session.requests) {
@@ -651,6 +676,19 @@ export class ChatSessionStore extends Disposable {
 			return { value: normalizeSerializableChatData(session), serializer: log };
 		} catch (err) {
 			this.reportError('malformedSession', `Malformed session data in ${fromLocation.fsPath}: [${rawData.slice(0, 20).toString()}${rawData.byteLength > 20 ? '...' : ''}]`, err);
+
+			if (logStorageLocation && fromLocation.toString() === logStorageLocation.toString()) {
+				await this.quarantineMalformedSessionLog(logStorageLocation, sessionId);
+
+				try {
+					if (await this.fileService.exists(flatStorageLocation)) {
+						return this.readSessionFromLocation(flatStorageLocation, undefined, sessionId);
+					}
+				} catch (fallbackError) {
+					this.reportError('malformedSessionFallback', `Error reading fallback flat chat session file ${sessionId}`, fallbackError);
+				}
+			}
+
 			return undefined;
 		}
 	}

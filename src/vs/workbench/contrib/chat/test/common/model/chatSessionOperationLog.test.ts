@@ -377,6 +377,16 @@ suite('ChatSessionOperationLog', () => {
 			assert.throws(() => adapter.read(VSBuffer.fromString('')), /Empty log file/);
 		});
 
+		test('read throws when mutation log starts without initial snapshot', () => {
+			const schema = createTestSchema();
+			const adapter = new Adapt.ObjectMutationLog(schema);
+
+			assert.throws(
+				() => adapter.read(VSBuffer.fromString('{"kind":1,"k":["items",0,"value"],"v":1}\n')),
+				/Malformed log file: first entry must be an initial snapshot/
+			);
+		});
+
 		test('write without prior read creates initial entry', () => {
 			const schema = createTestSchema();
 			const adapter = new Adapt.ObjectMutationLog(schema);

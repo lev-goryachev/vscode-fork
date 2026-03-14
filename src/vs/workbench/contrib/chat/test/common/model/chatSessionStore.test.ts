@@ -1,4 +1,5 @@
 import assert from 'assert';
+import { VSBuffer } from '../../../../../../base/common/buffer.js';
 import { Emitter } from '../../../../../../base/common/event.js';
 import { Disposable } from '../../../../../../base/common/lifecycle.js';
 import { URI } from '../../../../../../base/common/uri.js';
@@ -161,6 +162,40 @@ suite('ChatSessionStore', () => {
 
 		assert.ok(session);
 		assert.strictEqual((session.value as ISerializableChatData3).sessionId, 'session-1');
+	});
+
+	test('readSession returns undefined for malformed log session payload', async () => {
+		const store = createChatSessionStore();
+		const fileService = instantiationService.get(IFileService);
+		const sessionId = 'session-1';
+		const model = testDisposables.add(createMockChatModel(LocalChatSessionUri.forSession(sessionId)));
+
+		await store.storeSessions([model]);
+		await fileService.writeFile(URI.joinPath(store.getChatStorageFolder(), `${sessionId}.jsonl`), VSBuffer.fromString('{"kind":1,"k":["requests",0,"response"],"v":[]}\n'));
+
+		const session = await store.readSession(sessionId);
+		assert.strictEqual(session, undefined);
+	});
+
+	test('readSession quarantines malformed log session payload', async () => {
+		const store = createChatSessionStore();
+		const fileService = instantiationService.get(IFileService);
+		const sessionId = 'session-1';
+		const model = testDisposables.add(createMockChatModel(LocalChatSessionUri.forSession(sessionId)));
+
+		await store.storeSessions([model]);
+
+		const originalLog = URI.joinPath(store.getChatStorageFolder(), `${sessionId}.jsonl`);
+		await fileService.writeFile(originalLog, VSBuffer.fromString('{"kind":1,"k":["requests",0,"response"],"v":[]}\n'));
+
+		await store.readSession(sessionId);
+
+		const originalLogExists = await fileService.exists(originalLog);
+		assert.strictEqual(originalLogExists, false, 'Malformed log should be moved out of the active session location');
+
+		const quarantineFolder = URI.joinPath(store.getChatStorageFolder(), 'corruptChatSessions');
+		const quarantineFolderStat = await fileService.resolve(quarantineFolder);
+		assert.ok(quarantineFolderStat.children?.some(child => child.name.startsWith(`${sessionId}-`) && child.name.endsWith('.jsonl')));
 	});
 
 	test('deleteSession removes session from index', async () => {

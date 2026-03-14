@@ -12,6 +12,7 @@ import { IConfigurationService } from '../../../../../../platform/configuration/
 import { TestConfigurationService } from '../../../../../../platform/configuration/test/common/testConfigurationService.js';
 import { IContextKeyService } from '../../../../../../platform/contextkey/common/contextkey.js';
 import { IEnvironmentService } from '../../../../../../platform/environment/common/environment.js';
+import { ExtensionIdentifier } from '../../../../../../platform/extensions/common/extensions.js';
 import { IFileService } from '../../../../../../platform/files/common/files.js';
 import { ServiceCollection } from '../../../../../../platform/instantiation/common/serviceCollection.js';
 import { TestInstantiationService } from '../../../../../../platform/instantiation/test/common/instantiationServiceMock.js';
@@ -24,7 +25,7 @@ import { IUserDataProfilesService, toUserDataProfile } from '../../../../../../p
 import { IWorkspaceContextService } from '../../../../../../platform/workspace/common/workspace.js';
 import { IWorkbenchAssignmentService } from '../../../../../services/assignment/common/assignmentService.js';
 import { NullWorkbenchAssignmentService } from '../../../../../services/assignment/test/common/nullAssignmentService.js';
-import { IExtensionService, nullExtensionDescription } from '../../../../../services/extensions/common/extensions.js';
+import { ExtensionActivationReason, IExtensionService, nullExtensionDescription } from '../../../../../services/extensions/common/extensions.js';
 import { ILifecycleService } from '../../../../../services/lifecycle/common/lifecycle.js';
 import { IViewsService } from '../../../../../services/views/common/viewsService.js';
 import { IWorkspaceEditingService } from '../../../../../services/workspaces/common/workspaceEditing.js';
@@ -123,8 +124,18 @@ function getAgentData(id: string): IChatAgentData {
 suite('ChatService', () => {
 	const testDisposables = new DisposableStore();
 
+	class RecordingExtensionService extends TestExtensionService {
+		activateByIdCalls: string[] = [];
+
+		override activateById(extensionId: ExtensionIdentifier, reason: ExtensionActivationReason): Promise<void> {
+			this.activateByIdCalls.push(extensionId.value);
+			return super.activateById(extensionId, reason);
+		}
+	}
+
 	let instantiationService: TestInstantiationService;
 	let testFileService: InMemoryTestFileService;
+	let extensionService: RecordingExtensionService;
 
 	let chatAgentService: IChatAgentService;
 	const testServices: ChatService[] = [];
@@ -163,7 +174,8 @@ suite('ChatService', () => {
 		instantiationService.stub(ILogService, new NullLogService());
 		instantiationService.stub(IUserDataProfilesService, { defaultProfile: toUserDataProfile('default', 'Default', URI.file('/test/userdata'), URI.file('/test/cache')) });
 		instantiationService.stub(ITelemetryService, NullTelemetryService);
-		instantiationService.stub(IExtensionService, new TestExtensionService());
+		extensionService = new RecordingExtensionService();
+		instantiationService.stub(IExtensionService, extensionService);
 		instantiationService.stub(IContextKeyService, new MockContextKeyService());
 		instantiationService.stub(IViewsService, new TestExtensionService());
 		instantiationService.stub(IWorkspaceContextService, new TestContextService());
@@ -339,6 +351,21 @@ suite('ChatService', () => {
 		await response3.data.responseCompletePromise;
 		assert.strictEqual(model.getRequests().length, 3);
 		assert.strictEqual(model.getRequests()[2].response?.result?.metadata?.historyLength, 2);
+	});
+
+	test('activateDefaultAgent falls back to activated core default agent when contributed agent implementation is missing', async () => {
+		const coreFallbackAgent: IChatAgentImplementation = {
+			async invoke() {
+				return {};
+			},
+		};
+		testDisposables.add(chatAgentService.registerAgent('coreFallback', { ...getAgentData('coreFallback'), isDefault: true, isCore: true }));
+		testDisposables.add(chatAgentService.registerAgentImplementation('coreFallback', coreFallbackAgent));
+		testDisposables.add(chatAgentService.registerAgent('extensionDefault', { ...getAgentData('extensionDefault'), isDefault: true, extensionId: nullExtensionDescription.identifier }));
+
+		const testService = createChatService();
+		await assert.doesNotReject(() => testService.activateDefaultAgent(ChatAgentLocation.Chat));
+		assert.deepStrictEqual(extensionService.activateByIdCalls, ['']);
 	});
 
 	test('can serialize', async () => {

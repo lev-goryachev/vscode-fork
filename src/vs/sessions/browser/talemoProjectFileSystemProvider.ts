@@ -45,6 +45,14 @@ import {
 } from './talemoFiles.js';
 
 export const TALEMO_WORKSPACE_SCHEME = 'talemo-workspace';
+const LEGACY_VSCODE_PATHS = [
+	'.vscode',
+	'.vscode/settings.json',
+	'.vscode/tasks.json',
+	'.vscode/launch.json',
+	'.vscode/extensions.json',
+	'.vscode/mcp.json',
+] as const;
 
 type TalemoAliasRule = {
 	requestedPath: string;
@@ -52,20 +60,7 @@ type TalemoAliasRule = {
 	exact?: boolean;
 };
 
-const TALEMO_PATH_ALIAS_RULES: readonly TalemoAliasRule[] = [
-	{ requestedPath: '.vscode/mcp.json', canonicalPath: '.talemo/integrations/mcp.json', exact: true },
-	{ requestedPath: '.vscode/settings.json', canonicalPath: '.talemo/vscode/settings.json', exact: true },
-	{ requestedPath: '.vscode/tasks.json', canonicalPath: '.talemo/vscode/tasks.json', exact: true },
-	{ requestedPath: '.vscode/launch.json', canonicalPath: '.talemo/vscode/launch.json', exact: true },
-	{ requestedPath: '.vscode', canonicalPath: '.talemo/vscode' },
-	{ requestedPath: '.github/copilot-instructions.md', canonicalPath: '.talemo/copilot-instructions.md', exact: true },
-	{ requestedPath: '.github/prompts', canonicalPath: '.talemo/prompts' },
-	{ requestedPath: '.github/instructions', canonicalPath: '.talemo/instructions' },
-	{ requestedPath: '.github/chatmodes', canonicalPath: '.talemo/chatmodes' },
-	{ requestedPath: '.github/agents', canonicalPath: '.talemo/agents' },
-	{ requestedPath: '.github/hooks', canonicalPath: '.talemo/hooks' },
-	{ requestedPath: '.github/skills', canonicalPath: '.talemo/skills' },
-] as const;
+const TALEMO_PATH_ALIAS_RULES: readonly TalemoAliasRule[] = [];
 
 export function getTalemoWorkspaceRoot(projectId: string): URI {
 	return URI.from({ scheme: TALEMO_WORKSPACE_SCHEME, authority: projectId, path: '/' });
@@ -91,6 +86,7 @@ export class TalemoProjectFileSystemProvider extends Disposable implements IFile
 	private readonly systemManifestPromises = new Map<string, Promise<TalemoWorkspaceSystemManifest>>();
 	private readonly directoryCache = new Map<string, Awaited<ReturnType<typeof readWorkspaceDirectory>>>();
 	private readonly directoryPromises = new Map<string, Promise<Awaited<ReturnType<typeof readWorkspaceDirectory>>>>();
+	private readonly legacyCleanupTriggered = new Set<string>();
 
 	constructor(
 		private readonly authService: IAuthenticationService,
@@ -101,6 +97,17 @@ export class TalemoProjectFileSystemProvider extends Disposable implements IFile
 	}
 
 	watch(_resource: URI, _opts: IWatchOptions): IDisposable {
+		try {
+			const projectId = getTalemoProjectIdFromResource(_resource);
+			if (projectId && !this.legacyCleanupTriggered.has(projectId)) {
+				this.legacyCleanupTriggered.add(projectId);
+				queueMicrotask(() => {
+					void this.ensureLegacyVirtualNodesPruned(projectId);
+				});
+			}
+		} catch {
+			// Watch registration must stay fire-and-forget.
+		}
 		return Disposable.None;
 	}
 
@@ -525,6 +532,7 @@ export class TalemoProjectFileSystemProvider extends Disposable implements IFile
 			this.systemManifestCache.set(projectId, manifest);
 			this.systemManifestPromises.delete(projectId);
 			this.rememberSystemManifest(projectId, manifest);
+			this.pruneLegacyVirtualNodes(projectId, manifest);
 			return manifest;
 		}, error => {
 			this.systemManifestPromises.delete(projectId);
@@ -569,6 +577,31 @@ export class TalemoProjectFileSystemProvider extends Disposable implements IFile
 				this.directoryPromises.delete(key);
 			}
 		}
+		this.legacyCleanupTriggered.delete(projectId);
+	}
+
+	private pruneLegacyVirtualNodes(projectId: string, manifest: TalemoWorkspaceSystemManifest): void {
+		try {
+			const hasRealVscode = manifest.rootChildren.some(child => child.path === '.vscode');
+			if (hasRealVscode) {
+				return;
+			}
+			const root = getTalemoWorkspaceRoot(projectId);
+			for (const legacyPath of LEGACY_VSCODE_PATHS) {
+				this.emitChange(FileChangeType.DELETED, joinPath(root, legacyPath));
+			}
+		} catch {
+			// Best-effort cleanup for stale explorer state must not break reads.
+		}
+	}
+
+	private async ensureLegacyVirtualNodesPruned(projectId: string): Promise<void> {
+		try {
+			const manifest = await this.getSystemManifest(projectId);
+			this.pruneLegacyVirtualNodes(projectId, manifest);
+		} catch {
+			// Cleanup is opportunistic only and must not fail provider setup.
+		}
 	}
 
 	private isBootstrapPath(path: string): boolean {
@@ -576,9 +609,7 @@ export class TalemoProjectFileSystemProvider extends Disposable implements IFile
 	}
 
 	private isSystemPath(path: string): boolean {
-		return path === '.vscode'
-			|| path.startsWith('.vscode/')
-			|| path === '.claude'
+		return path === '.claude'
 			|| path.startsWith('.claude/')
 			|| path === '.talemo'
 			|| path.startsWith('.talemo/')
