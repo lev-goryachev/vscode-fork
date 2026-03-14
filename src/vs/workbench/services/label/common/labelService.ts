@@ -374,11 +374,28 @@ export class LabelService extends Disposable implements ILabelService {
 			case Verbosity.LONG:
 				label = this.getUriLabel(folderUri);
 				break;
-			case Verbosity.SHORT:
-			case Verbosity.MEDIUM:
-			default:
-				label = basename(folderUri) || posix.sep;
-				break;
+		case Verbosity.SHORT:
+		case Verbosity.MEDIUM:
+		default: {
+			const rawName = basename(folderUri);
+			// For custom URI schemes the root path is '/', so basename yields the path
+			// separator which is not a useful display name.  When a formatter is
+			// registered for the scheme, use it to produce a human-readable label
+			// (e.g. the project name stored via registerFormatter in a contribution).
+			if (rawName && rawName !== posix.sep) {
+				label = rawName;
+		} else {
+			const formatting = this.findFormatting(folderUri);
+			// Prefer workspaceRootLabel when set — it carries the human-readable
+			// project name for custom-scheme roots whose path resolves to an empty
+			// string after stripping the leading separator (e.g. talemo-workspace://).
+			label = formatting?.workspaceRootLabel
+				|| (formatting ? this.formatUri(folderUri, formatting) : '')
+				|| folderUri.authority
+				|| posix.sep;
+		}
+			break;
+		}
 		}
 
 		if (options?.verbose === Verbosity.SHORT) {

@@ -6,7 +6,7 @@
  * identity, sync/conflict semantics, and mutation rules.
  *--------------------------------------------------------------------------------------------*/
 
-import { VSBuffer } from '../../base/common/buffer.js';
+import { VSBuffer, encodeBase64 as vscodeEncodeBase64, decodeBase64 as vscodeDecodeBase64 } from '../../base/common/buffer.js';
 import { IProductService } from '../../platform/product/common/productService.js';
 import { IStorageService } from '../../platform/storage/common/storage.js';
 import { IAuthenticationService } from '../../workbench/services/authentication/common/authentication.js';
@@ -48,19 +48,15 @@ export interface TalemoResolvedFile {
 }
 
 function encodeBase64(buffer: VSBuffer): string {
-	try {
-		return Buffer.from(buffer.buffer.buffer, buffer.buffer.byteOffset, buffer.buffer.byteLength).toString('base64');
-	} catch {
-		return '';
-	}
+	// Use VS Code's own base64 implementation — browser and Node.js safe.
+	// Node.js Buffer.from() is not reliable in the web renderer; using it caused
+	// silent empty-file uploads when the polyfill failed.
+	return vscodeEncodeBase64(buffer);
 }
 
 function decodeBase64(value: string): VSBuffer {
-	try {
-		return VSBuffer.wrap(Buffer.from(value, 'base64'));
-	} catch {
-		return VSBuffer.alloc(0);
-	}
+	// Use VS Code's own base64 implementation — browser and Node.js safe.
+	return vscodeDecodeBase64(value);
 }
 
 function parseConflict(error: unknown): TalemoFileConflictDetail | undefined {

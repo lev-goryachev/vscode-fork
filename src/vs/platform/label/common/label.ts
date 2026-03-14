@@ -61,4 +61,11 @@ export interface ResourceLabelFormatting {
 	workspaceTooltip?: string;
 	authorityPrefix?: string;
 	stripPathStartingSeparator?: boolean;
+	/**
+	 * Human-readable name for the workspace root (e.g. the project name).
+	 * Used by doGetSingleFolderWorkspaceLabel when the URI path resolves to
+	 * an empty string (custom-scheme workspace roots such as talemo-workspace://).
+	 * Has no effect on individual file URI labels.
+	 */
+	workspaceRootLabel?: string;
 }

@@ -18,16 +18,19 @@ import { IProductService } from '../../../../platform/product/common/productServ
 import { IFileService } from '../../../../platform/files/common/files.js';
 import { INotificationService } from '../../../../platform/notification/common/notification.js';
 import { Menus } from '../../../browser/menus.js';
-import { IWorkspaceEditingService } from '../../../../workbench/services/workspaces/common/workspaceEditing.js';
 import { IHostService } from '../../../../workbench/services/host/browser/host.js';
 import { localize2 } from '../../../../nls.js';
 import { IAuthenticationService } from '../../../../workbench/services/authentication/common/authentication.js';
+import { ILabelService } from '../../../../platform/label/common/label.js';
 import { TALEMO_ATTACH_PROJECT_COMMAND_ID, TALEMO_INIT_PROJECT_COMMAND_ID, TALEMO_MANAGE_PROJECTS_COMMAND_ID } from '../../../browser/talemoProjectCommandsIds.js';
+import { registerTalemoProjectLabel } from '../../../browser/talemoWebStartup.contribution.js';
 import {
+	createProjectWorkspaceFile,
 	getActiveProjectBinding,
 	getConfiguredTalemoProjectsRoot,
 	getProvisionedProjectRoot,
 	getWebProjectRoot,
+	getWorkspaceFileResource,
 	getWorkspaceRoot,
 	initRemoteProject,
 	listRemoteProjects,
@@ -41,12 +44,12 @@ type TalemoProjectCommandServices = {
 	storageService: IStorageService;
 	fileDialogService: IFileDialogService;
 	fileService: IFileService;
-	workspaceEditingService: IWorkspaceEditingService;
 	hostService: IHostService;
 	workspaceContextService: IWorkspaceContextService;
 	quickInputService: IQuickInputService;
 	authService: IAuthenticationService;
 	productService: IProductService;
+	labelService: ILabelService;
 };
 
 function toErrorMessage(error: unknown): string {
@@ -62,12 +65,12 @@ function getTalemoProjectCommandServices(accessor: ServicesAccessor): TalemoProj
 		storageService: accessor.get(IStorageService),
 		fileDialogService: accessor.get(IFileDialogService),
 		fileService: accessor.get(IFileService),
-		workspaceEditingService: accessor.get(IWorkspaceEditingService),
 		hostService: accessor.get(IHostService),
 		workspaceContextService: accessor.get(IWorkspaceContextService),
 		quickInputService: accessor.get(IQuickInputService),
 		authService: accessor.get(IAuthenticationService),
 		productService: accessor.get(IProductService),
+		labelService: accessor.get(ILabelService),
 	};
 }
 
@@ -98,7 +101,7 @@ async function ensureProjectFolder(
 	services: TalemoProjectCommandServices,
 	project: Awaited<ReturnType<typeof initRemoteProject>>,
 ): Promise<boolean> {
-	const { notificationService, fileService, workspaceEditingService } = services;
+	const { notificationService, fileService, hostService } = services;
 	const talemoRoot = await ensureTalemoProjectsRoot(services);
 	if (!talemoRoot) {
 		return false;
@@ -107,8 +110,19 @@ async function ensureProjectFolder(
 	const projectRoot = getProvisionedProjectRoot(talemoRoot, project);
 	await fileService.createFolder(projectRoot);
 	await writeProjectBinding(fileService, projectRoot, project, project.tenant_id);
-	await workspaceEditingService.enterWorkspace(projectRoot);
+
+	// Create/update the local workspace file so VS Code shows the project name
+	// (not the UUID folder name) in the Explorer — same UX as the web surface.
+	// The file lives in .talemo/ which is already excluded from cloud sync.
+	await createProjectWorkspaceFile(fileService, projectRoot, project.name);
+
+	// Status must be shown before openWindow because reusing the window
+	// causes an immediate reload and the notification would be lost.
 	notificationService.status(`Project "${project.name}" is now active.`);
+
+	// Open via the workspace file so VS Code enters the named workspace state.
+	// On subsequent startups VS Code restores this workspace automatically.
+	await hostService.openWindow([{ workspaceUri: getWorkspaceFileResource(projectRoot) }], { forceReuseWindow: true });
 	return true;
 }
 
@@ -116,12 +130,16 @@ async function activateProjectForCurrentSurface(
 	services: TalemoProjectCommandServices,
 	project: Awaited<ReturnType<typeof initRemoteProject>>,
 ): Promise<boolean> {
-	const { notificationService, storageService, hostService } = services;
+	const { notificationService, storageService, hostService, labelService } = services;
 	if (!isWeb) {
 		return ensureProjectFolder(services, project);
 	}
 
 	setStoredActiveProject(storageService, project, project.tenant_id);
+	// Register the label formatter before openWindow so the Explorer and title
+	// bar show the project name immediately in the current session as well as
+	// after a page reload (restored in TalemoWebStartupContribution).
+	registerTalemoProjectLabel(labelService, project.project_id, project.name);
 	await hostService.openWindow([{ folderUri: getWebProjectRoot(project.project_id), label: project.name }], { forceReuseWindow: true });
 	notificationService.status(`Project "${project.name}" is now active.`);
 	return true;

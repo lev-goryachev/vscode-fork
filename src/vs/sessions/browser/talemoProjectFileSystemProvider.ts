@@ -174,6 +174,25 @@ export class TalemoProjectFileSystemProvider extends Disposable implements IFile
 			this.invalidateSystemManifest(projectId);
 			this.emitChange(existed ? FileChangeType.UPDATED : FileChangeType.ADDED, resource);
 		} catch (error) {
+			// On a 409 conflict (another device saved a newer version) refresh the
+			// local version cache so the next auto-save retry can use the correct
+			// expectedVersion.  Also surface a clearer error message so the built-in
+			// VS Code "Retry / Revert" dialog makes semantic sense to the user.
+			const is409 = error instanceof Error && error.message.startsWith('HTTP 409:');
+			if (is409) {
+				try {
+					const { projectId: pid, canonicalPath: cp } = this.parseResource(resource);
+					const current = await readWorkspaceFile(this.authService, this.storageService, this.productService, pid, cp);
+					if (current.file.cloud_version) {
+						this.versionCache.set(resource.toString(), current.file.cloud_version);
+					}
+				} catch { /* version refresh is best-effort */ }
+				throw createFileSystemProviderError(
+					'Sync conflict: another device saved a newer version of this file. ' +
+					'Click Retry to overwrite the cloud with your changes, or Revert to discard your changes.',
+					FileSystemProviderErrorCode.NoPermissions,
+				);
+			}
 			throw this.toProviderError(error, FileSystemProviderErrorCode.NoPermissions);
 		}
 	}
@@ -237,6 +256,19 @@ export class TalemoProjectFileSystemProvider extends Disposable implements IFile
 			const root = getTalemoWorkspaceRoot(projectId);
 			const payloadPath = typeof event.payload.path === 'string' ? event.payload.path : undefined;
 			const payloadPaths = Array.isArray(event.payload.paths) ? event.payload.paths.filter((value): value is string => typeof value === 'string') : [];
+
+			// Keep the version cache in sync with authoritative cloud versions so
+			// subsequent writeFile calls send the correct expectedVersion.  Without
+			// this, the web client would send a stale etag after a remote update,
+			// causing an unnecessary 409 conflict on the next auto-save.
+			if (event.event_type === 'file.updated' && payloadPath) {
+				const file = event.payload.file as { cloud_version?: string } | undefined;
+				if (file?.cloud_version) {
+					const resource = joinPath(root, payloadPath);
+					this.versionCache.set(resource.toString(), file.cloud_version);
+				}
+			}
+
 			this.invalidateSystemManifest(projectId);
 			if (payloadPaths.length > 0) {
 				for (const path of payloadPaths) {

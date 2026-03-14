@@ -30,6 +30,7 @@ export interface ITalemoProjectBinding {
 
 export const TALEMO_BINDING_DIR = '.talemo';
 export const TALEMO_BINDING_FILE = '.talemo/project.json';
+export const TALEMO_WORKSPACE_FILE = '.talemo/talemo.code-workspace';
 export const TALEMO_IGNORE_FILE = '.talemoignore';
 export const TALEMO_PROJECTS_ROOT_KEY = 'talemo.projectsRoot';
 export const TALEMO_ACTIVE_PROJECT_KEY = 'talemo.activeProject';
@@ -117,6 +118,12 @@ export function getProvisionedProjectRoot(
 	talemoRoot: URI,
 	project: TalemoWorkspaceProject,
 ): URI {
+	// Use project_id as the folder name as specified in F62 architecture:
+	//   {talemo-root}/{tenant-id}/projects/{project-id}/
+	// The human-readable project name is displayed via the workspace label
+	// formatter (workspaceRootLabel) rather than encoding it in the path.
+	// This avoids breaking existing installations and keeps folder names stable
+	// across project renames.
 	return joinPath(talemoRoot, project.tenant_id, 'projects', project.project_id);
 }
 
@@ -126,6 +133,34 @@ export function getBindingResource(root: URI): URI {
 
 function getBindingDirResource(root: URI): URI {
 	return joinPath(root, TALEMO_BINDING_DIR);
+}
+
+export function getWorkspaceFileResource(root: URI): URI {
+	return joinPath(root, TALEMO_WORKSPACE_FILE);
+}
+
+/**
+ * Creates or overwrites `.talemo/talemo.code-workspace` — a VS Code workspace
+ * file that declares the project folder with a human-readable name.  Stored
+ * inside `.talemo/` which is already excluded from cloud sync, so this file
+ * is purely local.  Opening the workspace file (rather than the raw folder)
+ * makes VS Code show `projectName` as the Explorer root label, matching the
+ * web surface behaviour which uses ILabelService.workspaceRootLabel.
+ */
+export async function createProjectWorkspaceFile(
+	fileService: IFileService,
+	root: URI,
+	projectName: string,
+): Promise<void> {
+	const workspaceContent = JSON.stringify(
+		{ folders: [{ path: '..', name: projectName }] },
+		null,
+		'\t',
+	);
+	await fileService.writeFile(
+		getWorkspaceFileResource(root),
+		VSBuffer.fromString(workspaceContent),
+	);
 }
 
 function getTalemoIgnoreResource(root: URI): URI {

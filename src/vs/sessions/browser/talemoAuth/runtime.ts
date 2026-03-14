@@ -93,16 +93,34 @@ export async function refreshTalemoSession(
 
 export async function getAuthHeaders(
 	authService: IAuthenticationService,
+	storageService?: IStorageService,
 ): Promise<Record<string, string>> {
 	const headers: Record<string, string> = { [TALEMO_SURFACE_HEADER]: TALEMO_SURFACE_VALUE };
+
+	// Try the registered auth provider first (happy path, auth provider already registered).
 	try {
 		const sessions = await authService.getSessions(TALEMO_PROVIDER_ID);
 		if (sessions.length > 0) {
 			headers['Authorization'] = `Bearer ${sessions[0].accessToken}`;
+			return headers;
 		}
 	} catch {
-		// Provider not yet ready — proceed without Authorization and let the backend 401.
+		// Provider not yet ready at this phase — fall through to storage fallback.
 	}
+
+	// Fall back to reading the raw access token from storage.
+	// This covers the BlockRestore timing window where the auth provider has not
+	// been registered yet but a valid access token already exists in storage from
+	// a previous session.  Without this fallback every API call made at startup
+	// (e.g. reconcileWorkspace) returns 401, triggering forceSignIn which throws
+	// auth_provider_not_ready and silently aborts the sync.
+	if (storageService) {
+		const token = storageService.get(AUTH_TOKEN_KEY, StorageScope.APPLICATION);
+		if (token) {
+			headers['Authorization'] = `Bearer ${token}`;
+		}
+	}
+
 	return headers;
 }
 
@@ -180,7 +198,9 @@ export async function authedFetch<T>(
 	const backendUrl = getBackendUrl(productService);
 
 	const makeRequest = async (): Promise<Response> => {
-		const authHeaders = await getAuthHeaders(authService);
+		// Pass storageService so getAuthHeaders can fall back to storage token
+		// when the auth provider is not yet registered (startup timing window).
+		const authHeaders = await getAuthHeaders(authService, storageService);
 		const callerHeaders = (init?.headers ?? {}) as Record<string, string>;
 		return fetch(`${backendUrl}${path}`, {
 			...init,

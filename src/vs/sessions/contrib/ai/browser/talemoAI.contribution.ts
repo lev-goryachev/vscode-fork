@@ -27,6 +27,8 @@ import { IStorageService } from '../../../../platform/storage/common/storage.js'
 import { IWorkspaceContextService } from '../../../../platform/workspace/common/workspace.js';
 import { ICommandService } from '../../../../platform/commands/common/commands.js';
 import { IWorkbenchContribution, registerWorkbenchContribution2, WorkbenchPhase } from '../../../../workbench/common/contributions.js';
+import { IQuickInputService } from '../../../../platform/quickinput/common/quickInput.js';
+import { IStatusbarService } from '../../../../workbench/services/statusbar/browser/statusbar.js';
 import { ChatAgentLocation, ChatModeKind } from '../../../../workbench/contrib/chat/common/constants.js';
 import { IChatWidgetService } from '../../../../workbench/contrib/chat/browser/chat.js';
 import { IChatService } from '../../../../workbench/contrib/chat/common/chatService/chatService.js';
@@ -34,13 +36,21 @@ import { IChatSessionsService } from '../../../../workbench/contrib/chat/common/
 import { IChatAgentService } from '../../../../workbench/contrib/chat/common/participants/chatAgents.js';
 import { IAuthenticationService } from '../../../../workbench/services/authentication/common/authentication.js';
 import { IWorkingCopyFileService } from '../../../../workbench/services/workingCopy/common/workingCopyFileService.js';
+import { IHostService } from '../../../../workbench/services/host/browser/host.js';
 import { TalemoRealtimeClient } from '../../../browser/talemoRealtime.js';
+import {
+	createProjectWorkspaceFile,
+	getWorkspaceFileResource,
+	getWorkspaceRoot,
+	readProjectBinding,
+} from '../../../browser/talemoProjectBinding.js';
 import { TalemoProjectFileSystemProvider, TALEMO_WORKSPACE_SCHEME } from '../../../browser/talemoProjectFileSystemProvider.js';
 import { TalemoAgentImpl } from './talemoAI.agent.js';
 import { registerTalemoSessionBindingContrib } from './talemoAI.sessionBinding.js';
 import { registerTalemoSessionOpenerParticipant } from './talemoAI.sessionOpener.js';
 import { TALEMO_THREAD_SESSION_SCHEME, TalemoThreadSessionsController } from './talemoThreadSessions.js';
 import { TalemoWorkspaceSyncService } from './talemoWorkspaceSync.js';
+import { TalemoSyncStatusBarItem } from './talemoSyncStatusBar.js';
 import { TALEMO_MANAGE_PROJECTS_COMMAND_ID } from '../../../browser/talemoProjectCommandsIds.js';
 import { registerTalemoProjectCommands } from './talemoProjectCommands.js';
 
@@ -66,18 +76,31 @@ export class TalemoAIContribution extends Disposable implements IWorkbenchContri
 		@IWorkingCopyFileService workingCopyFileService: IWorkingCopyFileService,
 		@INotificationService notificationService: INotificationService,
 		@ICommandService commandService: ICommandService,
+		@IHostService hostService: IHostService,
+		@IStatusbarService statusbarService: IStatusbarService,
+		@IQuickInputService quickInputService: IQuickInputService,
 	) {
 		super();
 
 		registerTalemoProjectCommands();
 		let projectFileSystemProvider: TalemoProjectFileSystemProvider | undefined;
-		if (isWeb && !fileService.getProvider(TALEMO_WORKSPACE_SCHEME)) {
-			projectFileSystemProvider = this._register(new TalemoProjectFileSystemProvider(
-				authenticationService,
-				storageService,
-				productService,
-			));
-			this._register(fileService.registerProvider(TALEMO_WORKSPACE_SCHEME, projectFileSystemProvider));
+		if (isWeb) {
+			// TalemoWebStartupContribution may have already registered the provider during
+			// BlockRestore (it runs at the same phase but earlier in import order).  We must
+			// grab the existing instance so we can still wire handleRuntimeEvent below —
+			// otherwise cloud-originated file.updated events never reach the web file system
+			// and the Explorer/editor never reflects remote changes.
+			const existingProvider = fileService.getProvider(TALEMO_WORKSPACE_SCHEME);
+			if (existingProvider instanceof TalemoProjectFileSystemProvider) {
+				projectFileSystemProvider = existingProvider;
+			} else if (!existingProvider) {
+				projectFileSystemProvider = this._register(new TalemoProjectFileSystemProvider(
+					authenticationService,
+					storageService,
+					productService,
+				));
+				this._register(fileService.registerProvider(TALEMO_WORKSPACE_SCHEME, projectFileSystemProvider));
+			}
 		}
 
 		const realtimeClient = this._register(new TalemoRealtimeClient(
@@ -95,7 +118,17 @@ export class TalemoAIContribution extends Disposable implements IWorkbenchContri
 			notificationService,
 			logService,
 			realtimeClient,
+			undefined,
+			// Pass commandService so conflict prompts can open a diff editor on desktop.
+			{ commandService },
 		));
+
+		// Show sync status in the bottom status bar on desktop.  The item is created
+		// regardless of whether a project is active — it transitions to "syncing" as
+		// soon as reconcileWorkspace fires and shows the last-sync timestamp at idle.
+		if (!isWeb) {
+			this._register(new TalemoSyncStatusBarItem(workspaceSyncService, statusbarService, quickInputService));
+		}
 
 		const ensureRealtimeBaseline = async (): Promise<void> => {
 			try {
@@ -131,19 +164,61 @@ export class TalemoAIContribution extends Disposable implements IWorkbenchContri
 			() => workspaceSyncService.getActiveProjectId(),
 		);
 
-		void workspaceSyncService.getActiveProjectId().then(projectId => {
-			if (projectId || isWeb) {
-				return;
-			}
-			notificationService.prompt(
-				Severity.Info,
-				'No Talemo project is active. Open or create a project inside the managed Talemo Files root to enable sync and file-aware chat.',
-				[
-					{ label: 'Manage Projects', run: () => void commandService.executeCommand(TALEMO_MANAGE_PROJECTS_COMMAND_ID) },
-				],
-				{ sticky: false }
-			);
-		});
+		// Only prompt if the workspace has no folder (i.e. the user has genuinely
+		// not opened a project, not just a timing race at BlockRestore phase).
+		// On desktop the active project is resolved from the binding file on disk;
+		// if the workspace folder is already set the binding will exist and return
+		// a project ID — skip the notification in that case to avoid a false alarm
+		// on every cold start.
+		if (!isWeb && workspaceContextService.getWorkspace().folders.length === 0) {
+			void workspaceSyncService.getActiveProjectId().then(projectId => {
+				if (projectId) {
+					return;
+				}
+				notificationService.prompt(
+					Severity.Info,
+					'No Talemo project is active. Open or create a project inside the managed Talemo Files root to enable sync and file-aware chat.',
+					[
+						{ label: 'Manage Projects', run: () => void commandService.executeCommand(TALEMO_MANAGE_PROJECTS_COMMAND_ID) },
+					],
+					{ sticky: false }
+				);
+			});
+		}
+
+		// Desktop: one-time migration — if the current window is open as a plain
+		// folder (single-folder workspace) and a project binding exists, create
+		// .talemo/talemo.code-workspace and reopen via workspace URI so the Explorer
+		// header shows the human-readable project name instead of the UUID folder
+		// name.  After the first migration VS Code restores the workspace file on
+		// subsequent startups automatically, so this branch runs at most once.
+		if (!isWeb) {
+			void (async () => {
+				try {
+					const root = getWorkspaceRoot(workspaceContextService);
+					// workspaceContextService.getWorkspace().configuration is set only
+					// when the current workspace was opened via a .code-workspace file.
+					// When undefined we are in plain single-folder mode → migrate.
+					if (!root || workspaceContextService.getWorkspace().configuration) {
+						return;
+					}
+					const binding = await readProjectBinding(fileService, root);
+					if (!binding) {
+						return;
+					}
+					const workspaceFileUri = getWorkspaceFileResource(root);
+					if (await fileService.exists(workspaceFileUri)) {
+						// Workspace file already present but VS Code opened as a folder
+						// (e.g. after manual state clear).  Re-trigger openWindow to
+						// switch to workspace-file mode.
+					}
+					await createProjectWorkspaceFile(fileService, root, binding.name);
+					await hostService.openWindow([{ workspaceUri: workspaceFileUri }], { forceReuseWindow: true });
+				} catch (error: unknown) {
+					console.warn('[talemo] workspace file migration failed:', error);
+				}
+			})();
+		}
 
 		this._register(chatAgentService.registerDynamicAgent(
 			{

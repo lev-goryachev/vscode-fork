@@ -9,9 +9,11 @@
  *--------------------------------------------------------------------------------------------*/
 
 import { VSBuffer } from '../../../../base/common/buffer.js';
+import { Emitter, Event } from '../../../../base/common/event.js';
 import { isWeb } from '../../../../base/common/platform.js';
 import { Disposable } from '../../../../base/common/lifecycle.js';
-import { dirname, joinPath, relativePath } from '../../../../base/common/resources.js';
+import { basename, dirname, joinPath, relativePath } from '../../../../base/common/resources.js';
+import { ICommandService } from '../../../../platform/commands/common/commands.js';
 import { URI } from '../../../../base/common/uri.js';
 import { FileOperation, IFileService } from '../../../../platform/files/common/files.js';
 import { ILogService } from '../../../../platform/log/common/log.js';
@@ -44,6 +46,17 @@ import {
 import { getTalemoProjectIdFromResource } from '../../../browser/talemoProjectFileSystemProvider.js';
 import { ITalemoRuntimeEventEnvelope, TalemoRealtimeClient } from '../../../browser/talemoRealtime.js';
 
+export type TalemoSyncStatus = 'idle' | 'syncing' | 'error';
+
+/** Snapshot of the current desktop file-sync state — consumed by the status bar. */
+export interface TalemoSyncState {
+	readonly status: TalemoSyncStatus;
+	/** When the last successful full reconcile or individual upload completed. */
+	readonly lastSyncAt: Date | undefined;
+	/** Last error message; populated only when status === 'error'. */
+	readonly lastError: string | undefined;
+}
+
 export interface ITalemoWorkspaceSyncRuntime {
 	listWorkspaceFiles: typeof listWorkspaceFiles;
 	readWorkspaceFile: typeof readWorkspaceFile;
@@ -68,10 +81,31 @@ export class TalemoWorkspaceSyncService extends Disposable {
 
 	private readonly cloudVersions = new Map<string, string>();
 	private readonly conflictPaths = new Set<string>();
+	// Paths with local changes not yet uploaded to cloud.  Set when an
+	// onDidFilesChange event fires for a workspace file; cleared on successful
+	// upload or when the event turns out to be our own write (suppressed path).
+	// applyRemoteFileEvent checks this before overwriting local content so we
+	// never silently discard the user's unsaved work.
+	private readonly localDirtyPaths = new Set<string>();
+	// Latest cloud content for files in conflict.  Used to open a diff editor
+	// so the user can review both sides before resolving.
+	private readonly conflictContentCache = new Map<string, VSBuffer>();
 	private readonly suppressedLocalPaths = new Map<string, number>();
 	private reconcilePromise: Promise<void> | undefined;
 	private operationQueue = Promise.resolve();
 	private subscribedProjectId: string | undefined;
+
+	// ── sync state observable ────────────────────────────────────────────────
+	private _syncOps = 0;               // reference-counted active operations
+	private _lastSyncAt: Date | undefined;
+	private _lastSyncError: string | undefined;
+	private readonly _onDidChangeSyncState = this._register(new Emitter<TalemoSyncState>());
+	/** Fires whenever the sync status transitions between idle / syncing / error. */
+	readonly onDidChangeSyncState: Event<TalemoSyncState> = this._onDidChangeSyncState.event;
+
+	// Injected by the desktop contribution so conflict prompts can open a diff editor.
+	// Undefined on web (diff editor is not available in the virtual FS context).
+	private commandService: ICommandService | undefined;
 
 	constructor(
 		private readonly authService: IAuthenticationService,
@@ -84,9 +118,11 @@ export class TalemoWorkspaceSyncService extends Disposable {
 		private readonly logService: ILogService,
 		private readonly realtimeClient: TalemoRealtimeClient,
 		private readonly runtime: ITalemoWorkspaceSyncRuntime = defaultRuntime,
-		options?: { autoStart?: boolean },
+		options?: { autoStart?: boolean; commandService?: ICommandService },
 	) {
 		super();
+
+		this.commandService = options?.commandService;
 
 		if (isWeb) {
 			this._register(this.storageService.onDidChangeValue(StorageScope.PROFILE, TALEMO_ACTIVE_PROJECT_KEY, this._store)(() => {
@@ -110,6 +146,11 @@ export class TalemoWorkspaceSyncService extends Disposable {
 			if (event.providerId === 'talemo') {
 				void this.reconcileWorkspace();
 			}
+		}));
+		// Re-reconcile after Socket.io reconnects so any events missed during
+		// the disconnection gap are recovered from the authoritative cloud state.
+		this._register(this.realtimeClient.onDidReconnect(() => {
+			void this.reconcileWorkspace();
 		}));
 
 		if (options?.autoStart !== false) {
@@ -156,12 +197,29 @@ export class TalemoWorkspaceSyncService extends Disposable {
 			}
 
 			for (const resource of event.rawUpdated) {
+				// Optimistically mark dirty.  syncLocalFileContent will clear it if
+				// this turns out to be our own authoritative write (suppressed path),
+				// and will also clear it after a successful upload.
+				const rel = this.toWorkspaceRelativePath(resource);
+				if (rel) {
+					this.localDirtyPaths.add(rel);
+				}
 				await this.syncLocalFileContent(resource);
 			}
 			for (const resource of event.rawAdded) {
+				const rel = this.toWorkspaceRelativePath(resource);
+				if (rel) {
+					this.localDirtyPaths.add(rel);
+				}
 				await this.syncLocalFileContent(resource);
 			}
 			for (const resource of event.rawDeleted) {
+				// Deleted files can no longer be dirty.
+				const rel = this.toWorkspaceRelativePath(resource);
+				if (rel) {
+					this.localDirtyPaths.delete(rel);
+					this.conflictContentCache.delete(rel);
+				}
 				await this.syncDeletedFile(resource);
 			}
 		});
@@ -191,17 +249,26 @@ export class TalemoWorkspaceSyncService extends Disposable {
 
 	private async reconcileWorkspace(): Promise<void> {
 		if (this.reconcilePromise) {
+			// A reconcile is already in flight — join it without double-counting.
 			return this.reconcilePromise;
 		}
 
+		// Track this reconcile as an active sync operation.  The counter is paired
+		// with _syncEnd in both the success and error paths inside the promise body.
+		this._syncBegin();
 		this.reconcilePromise = (async () => {
+			let reconcileError: string | undefined;
 			try {
 				const root = this.getWorkspaceRoot();
+				this.logService.warn(`[talemo-sync] reconcile start root=${root?.toString() ?? 'undefined'}`);
 				if (!root) {
+					this.logService.warn('[talemo-sync] reconcile abort: no workspace root');
 					return;
 				}
 				const projectId = await this.getActiveProjectId();
+				this.logService.warn(`[talemo-sync] reconcile projectId=${projectId ?? 'undefined'}`);
 				if (!projectId) {
+					this.logService.warn('[talemo-sync] reconcile abort: no projectId');
 					await this.unsubscribeProjectWorkspace();
 					this.cloudVersions.clear();
 					this.conflictPaths.clear();
@@ -210,27 +277,80 @@ export class TalemoWorkspaceSyncService extends Disposable {
 				await this.ensureProjectWorkspaceSubscribed(projectId);
 
 				const cloudFiles = await this.runtime.listWorkspaceFiles(this.authService, this.storageService, this.productService, projectId, { recursive: true });
+				this.logService.warn(`[talemo-sync] cloud files: ${cloudFiles.map(f => f.path).join(', ')}`);
 				const cloudMap = new Map(cloudFiles.map(file => [file.path, file]));
 				const localFiles = await this.collectLocalFiles(root);
+				this.logService.warn(`[talemo-sync] local files: ${[...localFiles.keys()].join(', ')}`);
 				const localPaths = new Set(localFiles.keys());
 
 				for (const [relative, resource] of localFiles) {
 					const cloudFile = cloudMap.get(relative);
 					if (!cloudFile) {
+						// File only on desktop → upload to cloud.
+						this.logService.warn(`[talemo-sync] upload desktop-only: ${relative}`);
 						await this.syncLocalFileContent(resource, true);
 						continue;
 					}
 
-					this.cloudVersions.set(relative, cloudFile.cloud_version ?? '');
+					// File exists in both desktop and cloud.
+					// Determine which side (if any) changed since the last known sync
+					// point so we can auto-merge unambiguous cases and only surface a
+					// conflict prompt when BOTH sides diverged independently.
+					const lastKnownVersion = this.cloudVersions.get(relative);
+
+					// Always read both sides for comparison; the extra read is cheap
+					// compared to the cost of a wrong auto-resolution.
 					const localBytes = (await this.fileService.readFile(resource)).value;
 					const remote = await this.runtime.readWorkspaceFile(this.authService, this.storageService, this.productService, projectId, relative);
-					if (!localBytes.equals(remote.content)) {
-						await this.showConflictPrompt({ path: relative });
-					}
+
+				if (localBytes.equals(remote.content)) {
+					// Content identical → already in sync.  Record version and move on.
+					this.cloudVersions.set(relative, cloudFile.cloud_version ?? '');
+					// Path is definitively clean — remove any stale dirty marker so
+					// subsequent applyRemoteFileEvent calls don't falsely conflict.
+					this.localDirtyPaths.delete(relative);
+					this.logService.warn(`[talemo-sync] in sync, no action: ${relative}`);
+					continue;
+				}
+
+				// Content differs — decide which side is authoritative.
+				if (lastKnownVersion && lastKnownVersion === cloudFile.cloud_version) {
+					// Cloud version hasn't changed since our last sync → only the
+					// local copy was modified → safe to upload local (no conflict).
+					this.logService.warn(`[talemo-sync] local changed only, uploading: ${relative}`);
+					this.cloudVersions.set(relative, cloudFile.cloud_version ?? '');
+					// syncLocalFileContent will clear localDirtyPaths on success.
+					await this.syncLocalFileContent(resource);
+				} else {
+					// Either no sync history (fresh session, no base established) or
+					// the cloud version changed since our last sync while local also
+					// differs → both sides may have diverged → surface conflict to user.
+					this.logService.warn(`[talemo-sync] conflict, prompting user: ${relative}`);
+					this.cloudVersions.set(relative, cloudFile.cloud_version ?? '');
+					// Mark dirty so applyRemoteFileEvent can't silently overwrite
+					// the local version while the conflict remains unresolved.
+					this.localDirtyPaths.add(relative);
+					// Cache the cloud content for the "Open Diff" button even when
+					// the conflict is detected during reconcile (not a live event).
+					this.conflictContentCache.set(relative, remote.content);
+					await this.showConflictPrompt({ path: relative });
+				}
 				}
 
 				for (const file of cloudFiles) {
 					if (localPaths.has(file.path)) {
+						continue;
+					}
+
+					// Skip system/binding files — they are local-only metadata stored in
+					// GCS as a side-effect of previous write-all policies.  Downloading
+					// them would overwrite the binding file, fire a FS event, and trigger
+					// an infinite reconcile loop.  collectLocalFiles already excludes them
+					// on the local side; we must mirror that on the cloud side too.
+					if (
+						file.path === TALEMO_IGNORE_FILE ||
+						file.path.startsWith(`${TALEMO_BINDING_DIR}/`)
+					) {
 						continue;
 					}
 
@@ -241,8 +361,11 @@ export class TalemoWorkspaceSyncService extends Disposable {
 					}
 				}
 			} catch (error) {
-				this.logService.warn('[talemo-sync] reconcile failed', String(error));
+				reconcileError = String(error);
+				this.logService.warn('[talemo-sync] reconcile failed', reconcileError);
 			} finally {
+				// Always paired with the _syncBegin above — handles all return paths.
+				this._syncEnd(reconcileError);
 				this.reconcilePromise = undefined;
 			}
 		})();
@@ -276,29 +399,61 @@ export class TalemoWorkspaceSyncService extends Disposable {
 			this.cloudVersions.set(path, payload.file.cloud_version);
 		}
 
+		// Resolve cloud content from the event payload or fetch it from the backend.
+		let cloudContent: VSBuffer | undefined;
 		if (payload.updated_content !== undefined) {
-			await this.writeAuthoritativeLocalFile(path, VSBuffer.fromString(payload.updated_content));
+			cloudContent = VSBuffer.fromString(payload.updated_content);
+		} else {
+			const projectId = await this.getRequiredProjectId();
+			if (!projectId) {
+				return;
+			}
+			try {
+				const remote = await this.runtime.readWorkspaceFile(this.authService, this.storageService, this.productService, projectId, path);
+				cloudContent = remote.content;
+				if (remote.file.cloud_version) {
+					this.cloudVersions.set(path, remote.file.cloud_version);
+				}
+			} catch (fetchErr) {
+				this.logService.warn('[talemo-sync] applyRemoteFileEvent: could not fetch cloud content', path, String(fetchErr));
+				return;
+			}
+		}
+
+		// Guard: if local has uncommitted user edits OR an unresolved conflict is
+		// already pending, applying the incoming cloud version would silently destroy
+		// the user's work.  Surface a conflict prompt instead.
+		if (this.localDirtyPaths.has(path) || this.conflictPaths.has(path)) {
+			// Update the cached cloud content so the diff editor shows the latest
+			// cloud side even if a conflict was already prompted earlier.
+			this.conflictContentCache.set(path, cloudContent);
+			await this.showConflictPrompt({ path, cloud_version: payload.file?.cloud_version });
 			return;
 		}
 
-		const projectId = await this.getRequiredProjectId();
-		if (!projectId) {
-			return;
-		}
-		const remote = await this.runtime.readWorkspaceFile(this.authService, this.storageService, this.productService, projectId, path);
-		await this.writeAuthoritativeLocalFile(path, remote.content);
-		if (remote.file.cloud_version) {
-			this.cloudVersions.set(path, remote.file.cloud_version);
-		}
+		await this.writeAuthoritativeLocalFile(path, cloudContent);
 	}
 
 	private async syncLocalFileContent(resource: URI, forceCreate = false): Promise<void> {
-		const projectId = await this.getRequiredProjectId();
-		if (!projectId) {
+		// Check workspace membership FIRST — this avoids the expensive projectId
+		// lookup for every VS Code internal-state file change event (globalStorage,
+		// extension state, etc.), which can fire hundreds of times per minute and
+		// caused a massive log-spam loop before this reordering.
+		const relative = this.toWorkspaceRelativePath(resource);
+		if (!relative) {
 			return;
 		}
-		const relative = this.toWorkspaceRelativePath(resource);
-		if (!relative || this.consumeSuppressedPath(relative)) {
+
+		// If this path was suppressed, the change originated from writeAuthoritativeLocalFile
+		// (we downloaded cloud content and wrote it locally).  It is NOT a user edit,
+		// so clear the dirty flag that onDidFilesChange may have optimistically set.
+		if (this.consumeSuppressedPath(relative)) {
+			this.localDirtyPaths.delete(relative);
+			return;
+		}
+
+		const projectId = await this.getRequiredProjectId();
+		if (!projectId) {
 			return;
 		}
 
@@ -318,23 +473,32 @@ export class TalemoWorkspaceSyncService extends Disposable {
 			if (saved.cloud_version) {
 				this.cloudVersions.set(relative, saved.cloud_version);
 			}
+			// Upload succeeded — path is clean (cloud matches local).
+			this.localDirtyPaths.delete(relative);
 			this.conflictPaths.delete(relative);
 		} catch (error) {
 			if (this.isConflict(error)) {
+				// Upload failed due to a cloud-side conflict.  Keep the path dirty
+				// so that any incoming applyRemoteFileEvent for this path surfaces
+				// a conflict prompt rather than silently overwriting local work.
 				await this.showConflictPrompt(error);
 				return;
 			}
+			// Non-conflict upload failure — still keep dirty; the next auto-save
+			// will retry the upload naturally.
 			this.logService.warn('[talemo-sync] local content sync failed', relative, String(error));
 		}
 	}
 
 	private async syncDeletedFile(resource: URI, alreadyCanonical = false): Promise<void> {
-		const projectId = await this.getRequiredProjectId();
-		if (!projectId) {
-			return;
-		}
+		// Check workspace membership before the projectId lookup for the same
+		// performance reason as syncLocalFileContent.
 		const relative = this.toWorkspaceRelativePath(resource);
 		if (!relative || this.consumeSuppressedPath(relative)) {
+			return;
+		}
+		const projectId = await this.getRequiredProjectId();
+		if (!projectId) {
 			return;
 		}
 
@@ -395,8 +559,8 @@ export class TalemoWorkspaceSyncService extends Disposable {
 		}
 	}
 
-	private async showConflictPrompt(source: TalemoFileConflictDetail | { path?: string } | unknown): Promise<void> {
-		const candidate = typeof source === 'object' && source ? source as TalemoFileConflictDetail : undefined;
+	private async showConflictPrompt(source: TalemoFileConflictDetail | { path?: string; cloud_version?: string } | unknown): Promise<void> {
+		const candidate = typeof source === 'object' && source ? source as TalemoFileConflictDetail & { cloud_version?: string } : undefined;
 		const path = candidate?.path ? String(candidate.path) : '';
 		if (!path || this.conflictPaths.has(path)) {
 			return;
@@ -406,17 +570,80 @@ export class TalemoWorkspaceSyncService extends Disposable {
 		}
 
 		this.conflictPaths.add(path);
+
+		// Build the action list.  "Open Diff" is only available on desktop (needs
+		// ICommandService + a real local file system) and when we have cached cloud
+		// content to show alongside the local version.
+		const hasDiffSupport = !isWeb && !!this.commandService && this.conflictContentCache.has(path);
+		const actions = [
+			...(hasDiffSupport ? [{ label: 'Open Diff', run: () => void this.openConflictDiff(path) }] : []),
+			{ label: 'Keep Local', run: () => void this.acceptLocal(path) },
+			{ label: 'Use Cloud', run: () => void this.acceptCloud(path) },
+		];
+
 		this.notificationService.prompt(
 			Severity.Warning,
 			candidate?.resolution_mode === 'semantic'
 				? `Talemo detected a semantic workspace conflict for ${path}. Choose a side now or continue the merge in chat.`
-				: `Talemo detected a workspace conflict for ${path}. Choose which version should become authoritative.`,
-			[
-				{ label: 'Keep Local', run: () => void this.acceptLocal(path) },
-				{ label: 'Use Cloud', run: () => void this.acceptCloud(path) },
-			],
+				: `Talemo detected a workspace conflict for ${path}. Open Diff to review both versions, or choose which side wins.`,
+			actions,
 			{ sticky: true }
 		);
+	}
+
+	/**
+	 * Opens VS Code's built-in diff editor with the local file on the left and
+	 * the cached cloud version on the right.  The user can copy content between
+	 * the panes to build a merged result, then save the local file.  Saving the
+	 * local file triggers the normal sync upload path and resolves the conflict.
+	 *
+	 * The cloud version is written to a temp file inside `.talemo/conflicts/` so
+	 * it is visible as a real URI in the diff editor.  The temp file is excluded
+	 * from sync by the TALEMO_BINDING_DIR filter in collectLocalFiles.
+	 */
+	private async openConflictDiff(path: string): Promise<void> {
+		if (!this.commandService) {
+			return;
+		}
+		const cloudContent = this.conflictContentCache.get(path);
+		if (!cloudContent) {
+			return;
+		}
+
+		const root = this.getWorkspaceRoot();
+		if (!root) {
+			return;
+		}
+
+		try {
+			// Write cloud version to a temp file inside .talemo/conflicts/.
+			// collectLocalFiles already skips everything under TALEMO_BINDING_DIR,
+			// so this file will never be uploaded to cloud.
+			const conflictDir = joinPath(root, TALEMO_BINDING_DIR, 'conflicts');
+			const cloudTempUri = joinPath(conflictDir, basename(joinPath(root, path)));
+			// Suppress the write event so onDidFilesChange ignores this temp file.
+			this.suppressLocalPath(`${TALEMO_BINDING_DIR}/conflicts/${basename(joinPath(root, path))}`, 1);
+			try {
+				await this.fileService.createFolder(conflictDir);
+			} catch { /* may already exist */ }
+			await this.fileService.createFile(cloudTempUri, cloudContent, { overwrite: true });
+
+			const localUri = this.toWorkspaceResource(path);
+			if (!localUri) {
+				return;
+			}
+
+			// Open the diff editor: local (left / editable) vs cloud temp (right / read-only).
+			await this.commandService.executeCommand(
+				'vscode.diff',
+				localUri,
+				cloudTempUri,
+				`Conflict: ${path} (local \u2194 cloud)`,
+				{ preview: true },
+			);
+		} catch (err) {
+			this.logService.warn('[talemo-sync] openConflictDiff failed', path, String(err));
+		}
 	}
 
 	private async acceptLocal(path: string): Promise<void> {
@@ -441,6 +668,9 @@ export class TalemoWorkspaceSyncService extends Disposable {
 			if (resolved.file.cloud_version) {
 				this.cloudVersions.set(path, resolved.file.cloud_version);
 			}
+			// Local version is now canonical in cloud → path is clean.
+			this.localDirtyPaths.delete(path);
+			this.conflictContentCache.delete(path);
 		} finally {
 			this.conflictPaths.delete(path);
 		}
@@ -464,6 +694,9 @@ export class TalemoWorkspaceSyncService extends Disposable {
 			if (resolved.file.cloud_version) {
 				this.cloudVersions.set(path, resolved.file.cloud_version);
 			}
+			// Cloud version written to disk → suppress the FS event, path is clean.
+			this.localDirtyPaths.delete(path);
+			this.conflictContentCache.delete(path);
 		} finally {
 			this.conflictPaths.delete(path);
 		}
@@ -475,7 +708,10 @@ export class TalemoWorkspaceSyncService extends Disposable {
 			return;
 		}
 
-		this.suppressLocalPath(path, 2);
+		// Suppress exactly 1 file-system event — VS Code emits one ADDED or
+		// UPDATED event per createFile call.  Using count=2 would leave a stale
+		// suppression that silently drops the next real user edit.
+		this.suppressLocalPath(path, 1);
 		try {
 			await this.fileService.createFolder(dirname(resource));
 		} catch {
@@ -490,7 +726,8 @@ export class TalemoWorkspaceSyncService extends Disposable {
 			return;
 		}
 
-		this.suppressLocalPath(path, 2);
+		// Same reasoning as writeAuthoritativeLocalFile: one delete generates one event.
+		this.suppressLocalPath(path, 1);
 		await this.fileService.del(resource, { recursive: false, useTrash: false, atomic: false });
 	}
 
@@ -541,9 +778,26 @@ export class TalemoWorkspaceSyncService extends Disposable {
 				return undefined;
 			}
 
+			// Reject any URI that isn't on the same scheme / authority as the
+			// workspace root.  On Windows this also covers cross-drive paths
+			// (e.g. root on E: while VS Code globalStorage lives on C:) whose
+			// relativePath() result would start with ".." or contain a drive
+			// letter, leaking non-workspace events into the sync pipeline.
+			if (resource.scheme !== root.scheme || resource.authority !== root.authority) {
+				return undefined;
+			}
+
 			const relative = relativePath(root, resource);
 			const normalized = relative ? relative.replace(/\\/g, '/') : undefined;
-			if (!normalized || normalized === TALEMO_IGNORE_FILE || normalized.startsWith(`${TALEMO_BINDING_DIR}/`)) {
+
+			// A valid workspace-relative path must stay inside the root (no leading
+			// ".."), must not be empty, and must not be a system file.
+			if (
+				!normalized ||
+				normalized.startsWith('..') ||
+				normalized === TALEMO_IGNORE_FILE ||
+				normalized.startsWith(`${TALEMO_BINDING_DIR}/`)
+			) {
 				return undefined;
 			}
 			return normalized;
@@ -568,15 +822,20 @@ export class TalemoWorkspaceSyncService extends Disposable {
 	async getActiveProjectId(): Promise<string | undefined> {
 		try {
 			if (isWeb) {
-				return getTalemoProjectIdFromResource(this.getWorkspaceRoot()) ?? getStoredActiveProject(this.storageService)?.project_id;
+				const webId = getTalemoProjectIdFromResource(this.getWorkspaceRoot()) ?? getStoredActiveProject(this.storageService)?.project_id;
+				this.logService.warn(`[talemo-sync] getActiveProjectId (web) → ${webId ?? 'undefined'}`);
+				return webId;
 			}
 			const root = this.getWorkspaceRoot();
+			this.logService.warn(`[talemo-sync] getActiveProjectId root=${root?.toString() ?? 'undefined'}`);
 			if (!root) {
 				return undefined;
 			}
 			const binding = await readProjectBinding(this.fileService, root);
+			this.logService.warn(`[talemo-sync] getActiveProjectId binding=${binding ? JSON.stringify(binding) : 'undefined'}`);
 			return binding?.project_id;
-		} catch {
+		} catch (err) {
+			this.logService.warn(`[talemo-sync] getActiveProjectId threw: ${String(err)}`);
 			return undefined;
 		}
 	}
@@ -646,8 +905,68 @@ export class TalemoWorkspaceSyncService extends Disposable {
 		return typeof candidate.code === 'string' && Array.isArray(candidate.next_actions);
 	}
 
+	// ── sync state helpers ───────────────────────────────────────────────────
+
+	/** Returns a snapshot of the current sync state (safe to call any time). */
+	getSyncState(): TalemoSyncState {
+		return {
+			status: this._syncOps > 0 ? 'syncing' : this._lastSyncError ? 'error' : 'idle',
+			lastSyncAt: this._lastSyncAt,
+			lastError: this._lastSyncError,
+		};
+	}
+
+	/** Force a full workspace reconcile (e.g. triggered by user from status bar).
+	 *  Clears the suppressed-conflict set so any previously dismissed conflict
+	 *  notifications re-appear, letting the user choose a resolution. */
+	async forceSync(): Promise<void> {
+		this.conflictPaths.clear();
+		await this.reconcileWorkspace();
+	}
+
+	/**
+	 * Called at the start of any tracked sync operation.
+	 * Uses a reference counter so nested/parallel operations accumulate correctly.
+	 */
+	private _syncBegin(): void {
+		if (++this._syncOps === 1) {
+			this._lastSyncError = undefined;
+			this._onDidChangeSyncState.fire(this.getSyncState());
+		}
+	}
+
+	/**
+	 * Called when a tracked sync operation finishes (success or error).
+	 * When the counter reaches zero the final state (idle or error) is emitted.
+	 */
+	private _syncEnd(error?: string): void {
+		if (error) {
+			this._lastSyncError = error;
+		}
+		if (--this._syncOps <= 0) {
+			this._syncOps = 0;
+			if (!error) {
+				this._lastSyncAt = new Date();
+			}
+			this._onDidChangeSyncState.fire(this.getSyncState());
+		}
+	}
+
+	// ── operation queue ──────────────────────────────────────────────────────
+
 	private enqueue(task: () => Promise<void>): Promise<void> {
-		this.operationQueue = this.operationQueue.then(task, task);
+		// Track this queued operation so the status bar reflects all pending work,
+		// not only the current reconcile cycle.
+		this._syncBegin();
+		const tracked = async () => {
+			try {
+				await task();
+				this._syncEnd();
+			} catch (error) {
+				this._syncEnd(String(error));
+			}
+		};
+		this.operationQueue = this.operationQueue.then(tracked, tracked);
 		return this.operationQueue;
 	}
 }
