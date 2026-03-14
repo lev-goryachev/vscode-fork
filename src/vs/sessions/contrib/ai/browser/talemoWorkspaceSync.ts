@@ -292,16 +292,27 @@ export class TalemoWorkspaceSyncService extends Disposable {
 						continue;
 					}
 
-					// File exists in both desktop and cloud.
-					// Determine which side (if any) changed since the last known sync
-					// point so we can auto-merge unambiguous cases and only surface a
-					// conflict prompt when BOTH sides diverged independently.
-					const lastKnownVersion = this.cloudVersions.get(relative);
+				// File exists in both desktop and cloud.
+				// Determine which side (if any) changed since the last known sync
+				// point so we can auto-merge unambiguous cases and only surface a
+				// conflict prompt when BOTH sides diverged independently.
+				const lastKnownVersion = this.cloudVersions.get(relative);
 
-					// Always read both sides for comparison; the extra read is cheap
-					// compared to the cost of a wrong auto-resolution.
-					const localBytes = (await this.fileService.readFile(resource)).value;
-					const remote = await this.runtime.readWorkspaceFile(this.authService, this.storageService, this.productService, projectId, relative);
+				// Fast-path: if we already synced this file in this session and
+				// the cloud version hasn't changed AND local has no uncommitted edits,
+				// the file is in sync — skip the expensive cloud content read.
+				if (
+					lastKnownVersion &&
+					lastKnownVersion === cloudFile.cloud_version &&
+					!this.localDirtyPaths.has(relative)
+				) {
+					this.logService.warn(`[talemo-sync] version match, skipping read: ${relative}`);
+					continue;
+				}
+
+				// Full content comparison is required — read both sides.
+				const localBytes = (await this.fileService.readFile(resource)).value;
+				const remote = await this.runtime.readWorkspaceFile(this.authService, this.storageService, this.productService, projectId, relative);
 
 				if (localBytes.equals(remote.content)) {
 					// Content identical → already in sync.  Record version and move on.
@@ -459,6 +470,24 @@ export class TalemoWorkspaceSyncService extends Disposable {
 
 		if (!(await this.fileService.exists(resource))) {
 			return;
+		}
+
+		// Directories are not directly uploadable — their existence is implied by
+		// the files inside them.  When VS Code fires an ADDED event for a folder
+		// (e.g., user drops a whole folder into the workspace), recursively upload
+		// all files inside instead of trying to read the folder as a file.
+		try {
+			const stat = await this.fileService.stat(resource);
+			if (stat.isDirectory) {
+				this.localDirtyPaths.delete(relative);
+				const dirFiles = await this.collectLocalFiles(resource);
+				for (const [, fileUri] of dirFiles) {
+					await this.syncLocalFileContent(fileUri, forceCreate);
+				}
+				return;
+			}
+		} catch {
+			// stat failed — fall through and attempt the normal file upload path.
 		}
 
 		try {
@@ -822,17 +851,13 @@ export class TalemoWorkspaceSyncService extends Disposable {
 	async getActiveProjectId(): Promise<string | undefined> {
 		try {
 			if (isWeb) {
-				const webId = getTalemoProjectIdFromResource(this.getWorkspaceRoot()) ?? getStoredActiveProject(this.storageService)?.project_id;
-				this.logService.warn(`[talemo-sync] getActiveProjectId (web) → ${webId ?? 'undefined'}`);
-				return webId;
+				return getTalemoProjectIdFromResource(this.getWorkspaceRoot()) ?? getStoredActiveProject(this.storageService)?.project_id;
 			}
 			const root = this.getWorkspaceRoot();
-			this.logService.warn(`[talemo-sync] getActiveProjectId root=${root?.toString() ?? 'undefined'}`);
 			if (!root) {
 				return undefined;
 			}
 			const binding = await readProjectBinding(this.fileService, root);
-			this.logService.warn(`[talemo-sync] getActiveProjectId binding=${binding ? JSON.stringify(binding) : 'undefined'}`);
 			return binding?.project_id;
 		} catch (err) {
 			this.logService.warn(`[talemo-sync] getActiveProjectId threw: ${String(err)}`);

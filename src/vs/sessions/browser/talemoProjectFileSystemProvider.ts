@@ -519,6 +519,19 @@ export class TalemoProjectFileSystemProvider extends Disposable implements IFile
 		if (!workspacePath) {
 			return;
 		}
+		// For ADDED and DELETED events VS Code's Explorer needs to see that the
+		// parent directory changed so it re-reads its listing and discovers new
+		// subdirectories.  Without this, adding ATRQ/file.md would not cause the
+		// Explorer to show the ATRQ/ folder because no event was emitted for it.
+		if (type === FileChangeType.ADDED || type === FileChangeType.DELETED) {
+			const parentPath = this.dirnamePath(workspacePath);
+			if (parentPath) {
+				this.emitChange(FileChangeType.UPDATED, joinPath(root, parentPath));
+			}
+			// Always notify the workspace root so newly added top-level directories
+			// appear in the Explorer without requiring a manual refresh.
+			this.emitChange(FileChangeType.UPDATED, root);
+		}
 		const requestedPath = this.toRequestedPath(workspacePath);
 		if (requestedPath !== workspacePath) {
 			this.emitChange(type, joinPath(root, requestedPath));
