@@ -25,12 +25,10 @@ import { ILabelService } from '../../../../platform/label/common/label.js';
 import { TALEMO_ATTACH_PROJECT_COMMAND_ID, TALEMO_INIT_PROJECT_COMMAND_ID, TALEMO_MANAGE_PROJECTS_COMMAND_ID } from '../../../browser/talemoProjectCommandsIds.js';
 import { registerTalemoProjectLabel } from '../../../browser/talemoWebStartup.contribution.js';
 import {
-	createProjectWorkspaceFile,
 	getActiveProjectBinding,
 	getConfiguredTalemoProjectsRoot,
 	getProvisionedProjectRoot,
 	getWebProjectRoot,
-	getWorkspaceFileResource,
 	getWorkspaceRoot,
 	initRemoteProject,
 	listRemoteProjects,
@@ -101,7 +99,7 @@ async function ensureProjectFolder(
 	services: TalemoProjectCommandServices,
 	project: Awaited<ReturnType<typeof initRemoteProject>>,
 ): Promise<boolean> {
-	const { notificationService, fileService, hostService } = services;
+	const { notificationService, fileService, hostService, labelService } = services;
 	const talemoRoot = await ensureTalemoProjectsRoot(services);
 	if (!talemoRoot) {
 		return false;
@@ -111,18 +109,19 @@ async function ensureProjectFolder(
 	await fileService.createFolder(projectRoot);
 	await writeProjectBinding(fileService, projectRoot, project, project.tenant_id);
 
-	// Create/update the local workspace file so VS Code shows the project name
-	// (not the UUID folder name) in the Explorer — same UX as the web surface.
-	// The file lives in .talemo/ which is already excluded from cloud sync.
-	await createProjectWorkspaceFile(fileService, projectRoot, project.name);
-
 	// Status must be shown before openWindow because reusing the window
 	// causes an immediate reload and the notification would be lost.
 	notificationService.status(`Project "${project.name}" is now active.`);
 
-	// Open via the workspace file so VS Code enters the named workspace state.
-	// On subsequent startups VS Code restores this workspace automatically.
-	await hostService.openWindow([{ workspaceUri: getWorkspaceFileResource(projectRoot) }], { forceReuseWindow: true });
+	// Register the custom folder label BEFORE openWindow so the label service
+	// already has the mapping when VS Code renders the new workspace.  After the
+	// window reloads, TalemoAIContribution re-calls setCustomFolderLabel from
+	// the persisted project binding, so the name survives restarts.
+	labelService.setCustomFolderLabel(projectRoot, project.name);
+
+	// Open as a single-folder workspace (not a .code-workspace file) so the
+	// Explorer shows files directly at root with no extra nesting level.
+	await hostService.openWindow([{ folderUri: projectRoot }], { forceReuseWindow: true });
 	return true;
 }
 
