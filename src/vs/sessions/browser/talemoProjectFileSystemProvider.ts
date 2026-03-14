@@ -45,14 +45,6 @@ import {
 } from './talemoFiles.js';
 
 export const TALEMO_WORKSPACE_SCHEME = 'talemo-workspace';
-const LEGACY_VSCODE_PATHS = [
-	'.vscode',
-	'.vscode/settings.json',
-	'.vscode/tasks.json',
-	'.vscode/launch.json',
-	'.vscode/extensions.json',
-	'.vscode/mcp.json',
-] as const;
 
 type TalemoAliasRule = {
 	requestedPath: string;
@@ -86,8 +78,6 @@ export class TalemoProjectFileSystemProvider extends Disposable implements IFile
 	private readonly systemManifestPromises = new Map<string, Promise<TalemoWorkspaceSystemManifest>>();
 	private readonly directoryCache = new Map<string, Awaited<ReturnType<typeof readWorkspaceDirectory>>>();
 	private readonly directoryPromises = new Map<string, Promise<Awaited<ReturnType<typeof readWorkspaceDirectory>>>>();
-	private readonly legacyCleanupTriggered = new Set<string>();
-
 	constructor(
 		private readonly authService: IAuthenticationService,
 		private readonly storageService: IStorageService,
@@ -97,17 +87,6 @@ export class TalemoProjectFileSystemProvider extends Disposable implements IFile
 	}
 
 	watch(_resource: URI, _opts: IWatchOptions): IDisposable {
-		try {
-			const projectId = getTalemoProjectIdFromResource(_resource);
-			if (projectId && !this.legacyCleanupTriggered.has(projectId)) {
-				this.legacyCleanupTriggered.add(projectId);
-				queueMicrotask(() => {
-					void this.ensureLegacyVirtualNodesPruned(projectId);
-				});
-			}
-		} catch {
-			// Watch registration must stay fire-and-forget.
-		}
 		return Disposable.None;
 	}
 
@@ -532,7 +511,6 @@ export class TalemoProjectFileSystemProvider extends Disposable implements IFile
 			this.systemManifestCache.set(projectId, manifest);
 			this.systemManifestPromises.delete(projectId);
 			this.rememberSystemManifest(projectId, manifest);
-			this.pruneLegacyVirtualNodes(projectId, manifest);
 			return manifest;
 		}, error => {
 			this.systemManifestPromises.delete(projectId);
@@ -576,31 +554,6 @@ export class TalemoProjectFileSystemProvider extends Disposable implements IFile
 			if (key.startsWith(`${projectId}:`)) {
 				this.directoryPromises.delete(key);
 			}
-		}
-		this.legacyCleanupTriggered.delete(projectId);
-	}
-
-	private pruneLegacyVirtualNodes(projectId: string, manifest: TalemoWorkspaceSystemManifest): void {
-		try {
-			const hasRealVscode = manifest.rootChildren.some(child => child.path === '.vscode');
-			if (hasRealVscode) {
-				return;
-			}
-			const root = getTalemoWorkspaceRoot(projectId);
-			for (const legacyPath of LEGACY_VSCODE_PATHS) {
-				this.emitChange(FileChangeType.DELETED, joinPath(root, legacyPath));
-			}
-		} catch {
-			// Best-effort cleanup for stale explorer state must not break reads.
-		}
-	}
-
-	private async ensureLegacyVirtualNodesPruned(projectId: string): Promise<void> {
-		try {
-			const manifest = await this.getSystemManifest(projectId);
-			this.pruneLegacyVirtualNodes(projectId, manifest);
-		} catch {
-			// Cleanup is opportunistic only and must not fail provider setup.
 		}
 	}
 
