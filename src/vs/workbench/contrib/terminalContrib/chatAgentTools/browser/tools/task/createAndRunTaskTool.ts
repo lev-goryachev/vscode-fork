@@ -49,7 +49,7 @@ export class CreateAndRunTaskTool implements IToolImpl {
 			return { content: [{ kind: 'text', value: `No invocation context` }], toolResultMessage: `No invocation context` };
 		}
 
-		const tasksJsonUri = URI.file(args.workspaceFolder).with({ path: `${args.workspaceFolder}/.vscode/tasks.json` });
+		const tasksJsonUri = URI.file(args.workspaceFolder).with({ path: `${args.workspaceFolder}/.talemo/tasks.json` });
 		const exists = await this._fileService.exists(tasksJsonUri);
 
 		const newTask: IConfiguredTask = {

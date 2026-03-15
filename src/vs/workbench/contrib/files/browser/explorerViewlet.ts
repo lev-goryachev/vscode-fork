@@ -254,7 +254,6 @@ export const VIEW_CONTAINER: ViewContainer = viewContainerRegistry.registerViewC
 	ctorDescriptor: new SyncDescriptor(ExplorerViewPaneContainer),
 	storageId: 'workbench.explorer.views.state',
 	icon: explorerViewIcon,
-	alwaysUseContainerInfo: true,
 	hideIfEmpty: true,
 	order: 0,
 	openCommandActionDescriptor: {

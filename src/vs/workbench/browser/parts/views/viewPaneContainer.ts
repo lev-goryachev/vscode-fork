@@ -324,6 +324,7 @@ export class ViewPaneContainer<MementoType extends object = object> extends Comp
 	private readonly _onDidBlurView = this._register(new Emitter<IView>());
 	readonly onDidBlurView = this._onDidBlurView.event;
 
+
 	get onDidSashChange(): Event<number> {
 		return assertReturnsDefined(this.paneview).onDidSashChange;
 	}
@@ -1089,9 +1090,9 @@ export class ViewPaneContainer<MementoType extends object = object> extends Comp
 					}
 				});
 			}
-			this.lastMergedCollapsedPane = undefined;
-		}
+		this.lastMergedCollapsedPane = undefined;
 	}
+}
 
 	isViewMergedWithContainer(): boolean {
 		if (!(this.options.mergeViewWithContainerWhenSingleView && this.paneItems.length === 1)) {

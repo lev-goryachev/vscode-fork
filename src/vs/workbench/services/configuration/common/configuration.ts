@@ -6,7 +6,9 @@ import { Event } from '../../../../base/common/event.js';
 import { ResourceMap } from '../../../../base/common/map.js';
 import { IAnyWorkspaceIdentifier } from '../../../../platform/workspace/common/workspace.js';
 
-export const FOLDER_CONFIG_FOLDER_NAME = '.vscode';
+// Talemo uses .talemo as the workspace config folder instead of VS Code's default .vscode.
+// All workspace-scoped config files (settings.json, tasks.json, launch.json, etc.) live here.
+export const FOLDER_CONFIG_FOLDER_NAME = '.talemo';
 export const FOLDER_SETTINGS_NAME = 'settings';
 export const FOLDER_SETTINGS_PATH = `${FOLDER_CONFIG_FOLDER_NAME}/${FOLDER_SETTINGS_NAME}.json`;
 

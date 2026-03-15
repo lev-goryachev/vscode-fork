@@ -32,6 +32,7 @@ import {
 	getWorkspaceRoot,
 	initRemoteProject,
 	listRemoteProjects,
+	mergeStoredProjectLabels,
 	setStoredActiveProject,
 	setConfiguredTalemoProjectsRoot,
 	writeProjectBinding,
@@ -99,7 +100,7 @@ async function ensureProjectFolder(
 	services: TalemoProjectCommandServices,
 	project: Awaited<ReturnType<typeof initRemoteProject>>,
 ): Promise<boolean> {
-	const { notificationService, fileService, hostService, labelService } = services;
+	const { notificationService, fileService, hostService } = services;
 	const talemoRoot = await ensureTalemoProjectsRoot(services);
 	if (!talemoRoot) {
 		return false;
@@ -112,12 +113,6 @@ async function ensureProjectFolder(
 	// Status must be shown before openWindow because reusing the window
 	// causes an immediate reload and the notification would be lost.
 	notificationService.status(`Project "${project.name}" is now active.`);
-
-	// Register the custom folder label BEFORE openWindow so the label service
-	// already has the mapping when VS Code renders the new workspace.  After the
-	// window reloads, TalemoAIContribution re-calls setCustomFolderLabel from
-	// the persisted project binding, so the name survives restarts.
-	labelService.setCustomFolderLabel(projectRoot, project.name);
 
 	// Open as a single-folder workspace (not a .code-workspace file) so the
 	// Explorer shows files directly at root with no extra nesting level.
@@ -135,9 +130,11 @@ async function activateProjectForCurrentSurface(
 	}
 
 	setStoredActiveProject(storageService, project, project.tenant_id);
+	// Persist the project name so TalemoWebStartupContribution can restore it
+	// synchronously on the next page load (before Welcome renders Recent items).
+	mergeStoredProjectLabels(storageService, { [project.project_id]: project.name });
 	// Register the label formatter before openWindow so the Explorer and title
-	// bar show the project name immediately in the current session as well as
-	// after a page reload (restored in TalemoWebStartupContribution).
+	// bar show the project name immediately in the current session.
 	registerTalemoProjectLabel(labelService, project.project_id, project.name);
 	await hostService.openWindow([{ folderUri: getWebProjectRoot(project.project_id), label: project.name }], { forceReuseWindow: true });
 	notificationService.status(`Project "${project.name}" is now active.`);

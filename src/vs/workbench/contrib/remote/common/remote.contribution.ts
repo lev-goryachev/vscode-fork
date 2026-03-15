@@ -98,6 +98,9 @@ class RemoteInvalidWorkspaceDetector extends Disposable implements IWorkbenchCon
 		// the user to a valid workspace.
 		// (see https://github.com/microsoft/vscode/issues/133872)
 		if (this.environmentService.remoteAuthority) {
+			// Talemo diagnostic: log remoteAuthority so we can understand when
+			// this check fires on desktop.  Remove once root cause is identified.
+			console.warn('[talemo-diag] RemoteInvalidWorkspaceDetector: remoteAuthority =', this.environmentService.remoteAuthority);
 			remoteAgentService.getEnvironment().then(remoteEnv => {
 				if (remoteEnv) {
 					// we use the presence of `remoteEnv` to figure out
@@ -116,26 +119,36 @@ class RemoteInvalidWorkspaceDetector extends Disposable implements IWorkbenchCon
 			return; // only when in workspace
 		}
 
+		// Skip validation for Talemo's custom workspace scheme — the file system
+		// provider for talemo-workspace:// is initialized asynchronously after
+		// authentication, so the workspace root URI will not resolve until the
+		// provider registers.  TalemoAIContribution handles opening the correct
+		// project once auth completes; no fallback dialog is needed here.
+		if (workspaceUriToStat.scheme === 'talemo-workspace') {
+			return;
+		}
+
 		const exists = await this.fileService.exists(workspaceUriToStat);
 		if (exists) {
 			return; // all good!
 		}
 
+		// Talemo: expose project terminology instead of VS Code's internal
+		// "workspace" terminology.  The primary action opens the Talemo project
+		// selection instead of the generic VS Code workspace picker.
 		const res = await this.dialogService.confirm({
 			type: 'warning',
-			message: localize('invalidWorkspaceMessage', "Workspace does not exist"),
-			detail: localize('invalidWorkspaceDetail', "Please select another workspace to open."),
-			primaryButton: localize({ key: 'invalidWorkspacePrimary', comment: ['&& denotes a mnemonic'] }, "&&Open Workspace...")
+			message: localize('invalidProjectMessage', "Project not found"),
+			detail: localize('invalidProjectDetail', "The project you were working on could not be found. Please open a project to continue."),
+			primaryButton: localize({ key: 'invalidProjectPrimary', comment: ['&& denotes a mnemonic'] }, "&&Open Project...")
 		});
 
 		if (res.confirmed) {
-
-			// Pick Workspace
+			// Try to open Talemo's project selection; fall back to folder picker
+			// if the command is not available in this context (e.g. first boot).
 			if (workspace.configuration) {
 				return this.fileDialogService.pickWorkspaceAndOpen({});
 			}
-
-			// Pick Folder
 			return this.fileDialogService.pickFolderAndOpen({});
 		}
 	}

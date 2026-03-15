@@ -627,7 +627,7 @@ export class McpWorkbenchService extends Disposable implements IMcpWorkbenchServ
 					id: `${WORKSPACE_FOLDER_CONFIG_ID_PREFIX}${index}`,
 					key: 'workspaceFolderValue',
 					target: ConfigurationTarget.WORKSPACE_FOLDER,
-					label: `${workspaceFolder.name}/.vscode/mcp.json`,
+					label: `${workspaceFolder.name}/.talemo/mcp.json`,
 					scope: StorageScope.WORKSPACE,
 					remoteAuthority: this.environmentService.remoteAuthority,
 					order: McpCollectionSortOrder.WorkspaceFolder,

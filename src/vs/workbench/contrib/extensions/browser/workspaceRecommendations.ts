@@ -13,7 +13,7 @@ import { URI } from '../../../../base/common/uri.js';
 import { RunOnceScheduler } from '../../../../base/common/async.js';
 import { IWorkbenchExtensionManagementService } from '../../../services/extensionManagement/common/extensionManagement.js';
 
-const WORKSPACE_EXTENSIONS_FOLDER = '.vscode/extensions';
+const WORKSPACE_EXTENSIONS_FOLDER = '.talemo/extensions';
 
 export class WorkspaceRecommendations extends ExtensionRecommendations {
 

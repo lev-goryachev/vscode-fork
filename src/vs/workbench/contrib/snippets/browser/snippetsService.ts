@@ -427,7 +427,7 @@ export class SnippetsService implements ISnippetsService {
 
 	private async _initWorkspaceFolderSnippets(workspace: IWorkspace, bucket: DisposableStore): Promise<any> {
 		const promises = workspace.folders.map(async folder => {
-			const snippetFolder = folder.toResource('.vscode');
+			const snippetFolder = folder.toResource('.talemo');
 			const value = await this._fileService.exists(snippetFolder);
 			if (value) {
 				this._initFolderSnippets(SnippetSource.Workspace, snippetFolder, bucket);

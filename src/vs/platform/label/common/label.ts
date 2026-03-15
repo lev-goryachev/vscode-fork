@@ -34,16 +34,6 @@ export interface ILabelService {
 	 */
 	registerCachedFormatter(formatter: ResourceLabelFormatter): IDisposable;
 
-	/**
-	 * Overrides the display name for a specific folder URI in
-	 * doGetSingleFolderWorkspaceLabel.  Used by Talemo to show the human-readable
-	 * project name instead of the UUID-based folder basename when a desktop
-	 * project is opened as a single-folder workspace via a file:// URI.
-	 *
-	 * The label is stored in-memory per window; call this again after a reload
-	 * (e.g. from TalemoAIContribution) to restore the override.
-	 */
-	setCustomFolderLabel(folderUri: URI, label: string): void;
 }
 
 export const enum Verbosity {

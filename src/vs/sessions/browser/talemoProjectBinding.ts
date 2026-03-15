@@ -34,6 +34,8 @@ export const TALEMO_WORKSPACE_FILE = '.talemo/talemo.code-workspace';
 export const TALEMO_IGNORE_FILE = '.talemoignore';
 export const TALEMO_PROJECTS_ROOT_KEY = 'talemo.projectsRoot';
 export const TALEMO_ACTIVE_PROJECT_KEY = 'talemo.activeProject';
+// Persisted map of all known projectId → projectName for sync label restore.
+export const TALEMO_PROJECT_LABELS_KEY = 'talemo.projectLabels';
 
 export function getWorkspaceRoot(workspaceContextService: IWorkspaceContextService): URI | undefined {
 	return workspaceContextService.getWorkspace().folders[0]?.uri;
@@ -74,6 +76,41 @@ export function setStoredActiveProject(
 
 export function clearStoredActiveProject(storageService: IStorageService): void {
 	storageService.remove(TALEMO_ACTIVE_PROJECT_KEY, StorageScope.PROFILE);
+}
+
+/**
+ * Read the persisted projectId → projectName map from storage.
+ * Returns an empty object if nothing is stored yet.
+ * Used synchronously at startup to restore label formatters for Recent items.
+ */
+export function getStoredProjectLabels(storageService: IStorageService): Record<string, string> {
+	try {
+		return storageService.getObject<Record<string, string>>(TALEMO_PROJECT_LABELS_KEY, StorageScope.PROFILE) ?? {};
+	} catch {
+		return {};
+	}
+}
+
+/**
+ * Merge one or more projectId → projectName entries into the persisted map.
+ * Idempotent: safe to call repeatedly with the same data.
+ */
+export function mergeStoredProjectLabels(
+	storageService: IStorageService,
+	entries: Record<string, string>,
+): void {
+	try {
+		const current = getStoredProjectLabels(storageService);
+		const updated = { ...current, ...entries };
+		storageService.store(
+			TALEMO_PROJECT_LABELS_KEY,
+			JSON.stringify(updated),
+			StorageScope.PROFILE,
+			StorageTarget.USER,
+		);
+	} catch {
+		// Non-fatal: worst case Recent shows stale labels until next successful save.
+	}
 }
 
 export async function getActiveProjectBinding(

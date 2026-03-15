@@ -342,7 +342,7 @@ export interface IDefineKeybindingEditorContribution extends IEditorContribution
 	showDefineKeybindingWidget(): void;
 }
 
-export const FOLDER_SETTINGS_PATH = '.vscode/settings.json';
+export const FOLDER_SETTINGS_PATH = '.talemo/settings.json';
 export const DEFAULT_SETTINGS_EDITOR_SETTING = 'workbench.settings.openDefaultSettings';
 export const USE_SPLIT_JSON_SETTING = 'workbench.settings.useSplitJSON';
 export const ALWAYS_SHOW_ADVANCED_SETTINGS_SETTING = 'workbench.settings.alwaysShowAdvancedSettings';

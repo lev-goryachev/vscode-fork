@@ -805,7 +805,7 @@ export class EncodingOracle extends Disposable implements IResourceEncodings {
 
 		// Folder Settings
 		this.contextService.getWorkspace().folders.forEach(folder => {
-			defaultEncodingOverrides.push({ parent: joinPath(folder.uri, '.vscode'), encoding: UTF8 });
+			defaultEncodingOverrides.push({ parent: joinPath(folder.uri, '.talemo'), encoding: UTF8 });
 		});
 
 		return defaultEncodingOverrides;

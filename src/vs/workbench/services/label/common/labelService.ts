@@ -130,14 +130,6 @@ export class LabelService extends Disposable implements ILabelService {
 
 	private formatters: ResourceLabelFormatter[];
 
-	/**
-	 * Per-window map of folder URI string → custom display label.
-	 * Populated by setCustomFolderLabel (called from Talemo contributions)
-	 * so desktop projects whose folders are UUID-named show the human-readable
-	 * project name in the Explorer header instead of the UUID.
-	 */
-	private readonly _customFolderLabels = new Map<string, string>();
-
 	private readonly _onDidChangeFormatters = this._register(new Emitter<IFormatterChangeEvent>({ leakWarningThreshold: 400 }));
 	readonly onDidChangeFormatters = this._onDidChangeFormatters.event;
 
@@ -379,38 +371,38 @@ export class LabelService extends Disposable implements ILabelService {
 	private doGetSingleFolderWorkspaceLabel(folderUri: URI, options?: { verbose: Verbosity }): string {
 		let label: string;
 		switch (options?.verbose) {
-			case Verbosity.LONG:
-				label = this.getUriLabel(folderUri);
+			case Verbosity.LONG: {
+				const uriLabel = this.getUriLabel(folderUri);
+				if (uriLabel) {
+					label = uriLabel;
+				} else {
+					// getUriLabel returned empty for custom-scheme roots (e.g. talemo-workspace://)
+					// whose path strips to "". Fall through to workspaceRootLabel so the Welcome
+					// page Recent list shows the human-readable project name, not a dot/separator.
+					const formatting = this.findFormatting(folderUri);
+					label = formatting?.workspaceRootLabel || folderUri.authority || posix.sep;
+				}
 				break;
+			}
 		case Verbosity.SHORT:
 		case Verbosity.MEDIUM:
 		default: {
-			// Check Talemo's custom folder label first.  This allows desktop projects
-			// whose local folder is UUID-named to display the human-readable project name
-			// in the Explorer header, matching the web surface behaviour.  The override
-			// is stored per-window in _customFolderLabels and re-applied on reload by
-			// TalemoAIContribution.
-			const customLabel = this._customFolderLabels.get(folderUri.toString());
-			if (customLabel) {
-				label = customLabel;
+			const rawName = basename(folderUri);
+			// For custom URI schemes the root path is '/', so basename yields the path
+			// separator which is not a useful display name.  When a formatter is
+			// registered for the scheme, use it to produce a human-readable label
+			// (e.g. the project name stored via registerFormatter in a contribution).
+			if (rawName && rawName !== posix.sep) {
+				label = rawName;
 			} else {
-				const rawName = basename(folderUri);
-				// For custom URI schemes the root path is '/', so basename yields the path
-				// separator which is not a useful display name.  When a formatter is
-				// registered for the scheme, use it to produce a human-readable label
-				// (e.g. the project name stored via registerFormatter in a contribution).
-				if (rawName && rawName !== posix.sep) {
-					label = rawName;
-				} else {
-					const formatting = this.findFormatting(folderUri);
-					// Prefer workspaceRootLabel when set — it carries the human-readable
-					// project name for custom-scheme roots whose path resolves to an empty
-					// string after stripping the leading separator (e.g. talemo-workspace://).
-					label = formatting?.workspaceRootLabel
-						|| (formatting ? this.formatUri(folderUri, formatting) : '')
-						|| folderUri.authority
-						|| posix.sep;
-				}
+				const formatting = this.findFormatting(folderUri);
+				// Prefer workspaceRootLabel when set — it carries the human-readable
+				// project name for custom-scheme roots whose path resolves to an empty
+				// string after stripping the leading separator (e.g. talemo-workspace://).
+				label = formatting?.workspaceRootLabel
+					|| (formatting ? this.formatUri(folderUri, formatting) : '')
+					|| folderUri.authority
+					|| posix.sep;
 			}
 			break;
 		}
@@ -473,15 +465,6 @@ export class LabelService extends Disposable implements ILabelService {
 				this._onDidChangeFormatters.fire({ scheme: formatter.scheme });
 			}
 		};
-	}
-
-	setCustomFolderLabel(folderUri: URI, label: string): void {
-		// Store the override and fire a change event so Explorer and title bar
-		// re-render immediately with the new label.
-		this._customFolderLabels.set(folderUri.toString(), label);
-		// Fire a generic formatters-changed event; consumers that observe
-		// onDidChangeFormatters will re-query getWorkspaceLabel and refresh.
-		this._onDidChangeFormatters.fire({ scheme: folderUri.scheme });
 	}
 
 	private formatUri(resource: URI, formatting: ResourceLabelFormatting, forceNoTildify?: boolean): string {

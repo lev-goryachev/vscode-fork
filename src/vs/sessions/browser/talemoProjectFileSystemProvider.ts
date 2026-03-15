@@ -479,6 +479,12 @@ export class TalemoProjectFileSystemProvider extends Disposable implements IFile
 	}
 
 	private toProviderError(error: unknown, fallbackCode: FileSystemProviderErrorCode) {
+		// HTTP 404 from the backend always means the file/directory does not exist.
+		// Map it explicitly to FileNotFound so VS Code handles it silently (as expected
+		// for optional config files like .vscode/settings.json) rather than logging ERR.
+		if (error instanceof Error && error.message.startsWith('HTTP 404:')) {
+			return createFileSystemProviderError(error.message, FileSystemProviderErrorCode.FileNotFound);
+		}
 		if (error && typeof error === 'object' && 'name' in error) {
 			return error;
 		}

@@ -1040,12 +1040,17 @@ export class GettingStartedPage extends EditorPane {
 			});
 			li.appendChild(link);
 
-			const span = $('span');
-			span.classList.add('path');
-			span.classList.add('detail');
-			span.innerText = parentPath;
-			span.title = fullPath;
-			li.appendChild(span);
+			// Only render the parent-path detail when it is a real, meaningful path.
+			// For custom-scheme roots (e.g. talemo-workspace://) the fullPath is just
+			// the project name with no separators, so dirname returns "." — skip it.
+			if (parentPath && parentPath !== '.') {
+				const span = $('span');
+				span.classList.add('path');
+				span.classList.add('detail');
+				span.innerText = parentPath;
+				span.title = fullPath;
+				li.appendChild(span);
+			}
 
 			const deleteButton = $('a.codicon.codicon-close.hide-category-button.recently-opened-delete-button', {
 				'tabindex': 0,

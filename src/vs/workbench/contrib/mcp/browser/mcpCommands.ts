@@ -695,7 +695,7 @@ export class AddConfigurationAction extends Action2 {
 			menu: {
 				id: MenuId.EditorContent,
 				when: ContextKeyExpr.and(
-					ContextKeyExpr.regex(ResourceContextKey.Path.key, /\.vscode[/\\]mcp\.json$/),
+					ContextKeyExpr.regex(ResourceContextKey.Path.key, /\.talemo[/\\]mcp\.json$/),
 					ActiveEditorContext.isEqualTo(TEXT_FILE_EDITOR_ID),
 					ChatContextKeys.Setup.hidden.negate(),
 				)

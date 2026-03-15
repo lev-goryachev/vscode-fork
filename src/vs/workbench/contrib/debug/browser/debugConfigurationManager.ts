@@ -609,7 +609,7 @@ class Launch extends AbstractLaunch implements ILaunch {
 	}
 
 	get uri(): uri {
-		return resources.joinPath(this.workspace.uri, '/.vscode/launch.json');
+		return resources.joinPath(this.workspace.uri, '/.talemo/launch.json');
 	}
 
 	get name(): string {
@@ -639,7 +639,7 @@ class Launch extends AbstractLaunch implements ILaunch {
 			try {
 				await this.textFileService.write(resource, content);
 			} catch (error) {
-				throw new Error(nls.localize('DebugConfig.failed', "Unable to create 'launch.json' file inside the '.vscode' folder ({0}).", error.message));
+				throw new Error(nls.localize('DebugConfig.failed', "Unable to create 'launch.json' file inside the '.talemo' folder ({0}).", error.message));
 			}
 		}
 

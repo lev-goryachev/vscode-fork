@@ -2249,7 +2249,7 @@ export abstract class AbstractConfigureRecommendedExtensionsAction extends Actio
 							selection
 						}
 					})),
-				error => Promise.reject(new Error(localize('OpenExtensionsFile.failed', "Unable to create 'extensions.json' file inside the '.vscode' folder ({0}).", error))));
+				error => Promise.reject(new Error(localize('OpenExtensionsFile.failed', "Unable to create 'extensions.json' file inside the '.talemo' folder ({0}).", error))));
 	}
 
 	protected openWorkspaceConfigurationFile(workspaceConfigurationFile: URI): Promise<any> {

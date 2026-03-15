@@ -26,7 +26,7 @@ import { IProductService } from '../../../../platform/product/common/productServ
 import { IStorageService } from '../../../../platform/storage/common/storage.js';
 import { IWorkspaceContextService } from '../../../../platform/workspace/common/workspace.js';
 import { ICommandService } from '../../../../platform/commands/common/commands.js';
-import { ILabelService } from '../../../../platform/label/common/label.js';
+
 import { IWorkbenchContribution, registerWorkbenchContribution2, WorkbenchPhase } from '../../../../workbench/common/contributions.js';
 import { IQuickInputService } from '../../../../platform/quickinput/common/quickInput.js';
 import { IStatusbarService } from '../../../../workbench/services/statusbar/browser/statusbar.js';
@@ -40,8 +40,8 @@ import { IWorkingCopyFileService } from '../../../../workbench/services/workingC
 import { IHostService } from '../../../../workbench/services/host/browser/host.js';
 import { TalemoRealtimeClient } from '../../../browser/talemoRealtime.js';
 import {
+	getWorkspaceFileResource,
 	getWorkspaceRoot,
-	readProjectBinding,
 } from '../../../browser/talemoProjectBinding.js';
 import { TalemoProjectFileSystemProvider, TALEMO_WORKSPACE_SCHEME } from '../../../browser/talemoProjectFileSystemProvider.js';
 import { TalemoAgentImpl } from './talemoAI.agent.js';
@@ -78,7 +78,6 @@ export class TalemoAIContribution extends Disposable implements IWorkbenchContri
 		@IHostService hostService: IHostService,
 		@IStatusbarService statusbarService: IStatusbarService,
 		@IQuickInputService quickInputService: IQuickInputService,
-		@ILabelService labelService: ILabelService,
 	) {
 		super();
 
@@ -186,15 +185,13 @@ export class TalemoAIContribution extends Disposable implements IWorkbenchContri
 			});
 		}
 
-		// Desktop: restore the human-readable project name in the Explorer header.
+		// Desktop: migrate legacy .code-workspace → single-folder workspace.
 		//
-		// Strategy: LabelService.setCustomFolderLabel() overrides the Explorer
-		// section title for a specific file:// folder URI.  We must call it on
-		// every startup because the map is in-memory only.
-		//
-		// Additionally, if the current window was opened via a legacy
-		// .code-workspace file (old approach), migrate transparently by reopening
-		// as a single-folder workspace so the extra nesting level disappears.
+		// Old Talemo used a .code-workspace file to set project names, which added
+		// an extra nesting level in Explorer.  If the window is still opened via
+		// a .code-workspace, transparently reopen as a single-folder workspace.
+		// After migration VS Code stores the folderUri and never opens as
+		// .code-workspace again, so this block runs only once per project.
 		if (!isWeb) {
 			void (async () => {
 				try {
@@ -203,39 +200,42 @@ export class TalemoAIContribution extends Disposable implements IWorkbenchContri
 
 					if (wsConfig) {
 						// Legacy: still in .code-workspace mode — migrate to folderUri.
-						// The workspace has exactly one folder (the project root).
 						const folder = workspace.folders[0];
 						if (!folder) {
 							return;
 						}
 						const root = folder.uri;
-						const binding = await readProjectBinding(fileService, root);
-						if (!binding) {
-							return;
+
+						// Delete the legacy workspace file before reopening so VS Code
+						// does not restore it on the next cold start.
+						try {
+							const wsFile = getWorkspaceFileResource(root);
+							if (await fileService.exists(wsFile)) {
+								await fileService.del(wsFile);
+							}
+						} catch {
+							// deletion is best-effort
 						}
-						// Apply label BEFORE reopening so it's available immediately.
-						labelService.setCustomFolderLabel(root, binding.name);
-						// Reopen as single-folder workspace — this drops the extra nesting
-						// level.  VS Code will restore the folderUri on next startup, so
-						// this migration runs only once.
+
 						await hostService.openWindow([{ folderUri: root }], { forceReuseWindow: true });
 						return;
 					}
 
-					// Normal path: single-folder workspace.  Restore the label from
-					// the project binding so the Explorer shows the project name after
-					// every reload.
+					// Normal path: cleanup any leftover .code-workspace artefact.
 					const root = getWorkspaceRoot(workspaceContextService);
 					if (!root) {
 						return;
 					}
-					const binding = await readProjectBinding(fileService, root);
-					if (!binding) {
-						return;
+					try {
+						const wsFile = getWorkspaceFileResource(root);
+						if (await fileService.exists(wsFile)) {
+							await fileService.del(wsFile);
+						}
+					} catch {
+						// deletion is best-effort
 					}
-					labelService.setCustomFolderLabel(root, binding.name);
 				} catch (error: unknown) {
-					console.warn('[talemo] project label restore failed:', error);
+					console.warn('[talemo] workspace migration failed:', error);
 				}
 			})();
 		}
