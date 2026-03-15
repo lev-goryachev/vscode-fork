@@ -38,6 +38,7 @@ import { IChatAgentService } from '../../../../workbench/contrib/chat/common/par
 import { IAuthenticationService } from '../../../../workbench/services/authentication/common/authentication.js';
 import { IWorkingCopyFileService } from '../../../../workbench/services/workingCopy/common/workingCopyFileService.js';
 import { IHostService } from '../../../../workbench/services/host/browser/host.js';
+import { IEditorService } from '../../../../workbench/services/editor/common/editorService.js';
 import { TalemoRealtimeClient } from '../../../browser/talemoRealtime.js';
 import {
 	getWorkspaceFileResource,
@@ -75,6 +76,7 @@ export class TalemoAIContribution extends Disposable implements IWorkbenchContri
 		@IWorkingCopyFileService workingCopyFileService: IWorkingCopyFileService,
 		@INotificationService notificationService: INotificationService,
 		@ICommandService commandService: ICommandService,
+		@IEditorService editorService: IEditorService,
 		@IHostService hostService: IHostService,
 		@IStatusbarService statusbarService: IStatusbarService,
 		@IQuickInputService quickInputService: IQuickInputService,
@@ -118,8 +120,9 @@ export class TalemoAIContribution extends Disposable implements IWorkbenchContri
 			logService,
 			realtimeClient,
 			undefined,
-			// Pass commandService so conflict prompts can open a diff editor on desktop.
-			{ commandService },
+			// Pass commandService + editorService so conflict prompts can open the
+			// 3-way merge editor on desktop.
+			{ commandService, editorService },
 		));
 
 		// Show sync status in the bottom status bar on desktop.  The item is created

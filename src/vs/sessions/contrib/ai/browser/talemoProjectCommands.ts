@@ -114,9 +114,10 @@ async function ensureProjectFolder(
 	// causes an immediate reload and the notification would be lost.
 	notificationService.status(`Project "${project.name}" is now active.`);
 
-	// Open as a single-folder workspace (not a .code-workspace file) so the
-	// Explorer shows files directly at root with no extra nesting level.
-	await hostService.openWindow([{ folderUri: projectRoot }], { forceReuseWindow: true });
+	// Open as a single-folder workspace with an explicit label so the Explorer
+	// title and window title show the human-readable project name instead of
+	// the UUID-based folder name used internally on disk.
+	await hostService.openWindow([{ folderUri: projectRoot, label: project.name }], { forceReuseWindow: true });
 	return true;
 }
 

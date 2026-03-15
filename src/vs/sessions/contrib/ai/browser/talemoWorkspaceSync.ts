@@ -14,6 +14,8 @@ import { isWeb } from '../../../../base/common/platform.js';
 import { Disposable } from '../../../../base/common/lifecycle.js';
 import { basename, dirname, joinPath, relativePath } from '../../../../base/common/resources.js';
 import { ICommandService } from '../../../../platform/commands/common/commands.js';
+import { IResourceMergeEditorInput } from '../../../../workbench/common/editor.js';
+import { IEditorService } from '../../../../workbench/services/editor/common/editorService.js';
 import { URI } from '../../../../base/common/uri.js';
 import { FileOperation, IFileService } from '../../../../platform/files/common/files.js';
 import { ILogService } from '../../../../platform/log/common/log.js';
@@ -41,6 +43,7 @@ import {
 	readProjectBinding,
 	TALEMO_ACTIVE_PROJECT_KEY,
 	TALEMO_BINDING_DIR,
+	TALEMO_BINDING_FILE,
 	TALEMO_IGNORE_FILE,
 } from '../../../browser/talemoProjectBinding.js';
 import { getTalemoProjectIdFromResource } from '../../../browser/talemoProjectFileSystemProvider.js';
@@ -103,9 +106,10 @@ export class TalemoWorkspaceSyncService extends Disposable {
 	/** Fires whenever the sync status transitions between idle / syncing / error. */
 	readonly onDidChangeSyncState: Event<TalemoSyncState> = this._onDidChangeSyncState.event;
 
-	// Injected by the desktop contribution so conflict prompts can open a diff editor.
-	// Undefined on web (diff editor is not available in the virtual FS context).
+	// Injected by the desktop contribution so conflict prompts can open the merge editor.
+	// Undefined on web (merge editor for custom-scheme files is not fully supported).
 	private commandService: ICommandService | undefined;
+	private editorService: IEditorService | undefined;
 
 	constructor(
 		private readonly authService: IAuthenticationService,
@@ -118,11 +122,12 @@ export class TalemoWorkspaceSyncService extends Disposable {
 		private readonly logService: ILogService,
 		private readonly realtimeClient: TalemoRealtimeClient,
 		private readonly runtime: ITalemoWorkspaceSyncRuntime = defaultRuntime,
-		options?: { autoStart?: boolean; commandService?: ICommandService },
+		options?: { autoStart?: boolean; commandService?: ICommandService; editorService?: IEditorService },
 	) {
 		super();
 
 		this.commandService = options?.commandService;
+		this.editorService = options?.editorService;
 
 		if (isWeb) {
 			this._register(this.storageService.onDidChangeValue(StorageScope.PROFILE, TALEMO_ACTIVE_PROJECT_KEY, this._store)(() => {
@@ -270,9 +275,10 @@ export class TalemoWorkspaceSyncService extends Disposable {
 				if (!projectId) {
 					this.logService.warn('[talemo-sync] reconcile abort: no projectId');
 					await this.unsubscribeProjectWorkspace();
-					this.cloudVersions.clear();
-					this.conflictPaths.clear();
-					return;
+				this.cloudVersions.clear();
+				this.conflictPaths.clear();
+				void this.cleanupAllConflictSnapshots();
+				return;
 				}
 				await this.ensureProjectWorkspaceSubscribed(projectId);
 
@@ -353,17 +359,19 @@ export class TalemoWorkspaceSyncService extends Disposable {
 						continue;
 					}
 
-					// Skip system/binding files — they are local-only metadata stored in
-					// GCS as a side-effect of previous write-all policies.  Downloading
-					// them would overwrite the binding file, fire a FS event, and trigger
-					// an infinite reconcile loop.  collectLocalFiles already excludes them
-					// on the local side; we must mirror that on the cloud side too.
-					if (
-						file.path === TALEMO_IGNORE_FILE ||
-						file.path.startsWith(`${TALEMO_BINDING_DIR}/`)
-					) {
-						continue;
-					}
+				// Skip system/binding files that must stay local-only.
+				// project.json holds desktop-specific binding metadata (tenant, paths);
+				// overwriting it from cloud would break the desktop session.
+				// conflicts/ stores ephemeral local-only conflict snapshots.
+				// All other .talemo/* config files (settings.json, extensions.json, etc.)
+				// are intentionally pulled from cloud so templates reach desktop.
+				if (
+					file.path === TALEMO_IGNORE_FILE ||
+					file.path === TALEMO_BINDING_FILE ||
+					file.path.startsWith(`${TALEMO_BINDING_DIR}/conflicts/`)
+				) {
+					continue;
+				}
 
 					const remote = await this.runtime.readWorkspaceFile(this.authService, this.storageService, this.productService, projectId, file.path);
 					await this.writeAuthoritativeLocalFile(file.path, remote.content);
@@ -504,7 +512,10 @@ export class TalemoWorkspaceSyncService extends Disposable {
 			}
 			// Upload succeeded — path is clean (cloud matches local).
 			this.localDirtyPaths.delete(relative);
-			this.conflictPaths.delete(relative);
+			if (this.conflictPaths.has(relative)) {
+				this.conflictPaths.delete(relative);
+				void this.cleanupConflictSnapshots(relative);
+			}
 		} catch (error) {
 			if (this.isConflict(error)) {
 				// Upload failed due to a cloud-side conflict.  Keep the path dirty
@@ -600,38 +611,53 @@ export class TalemoWorkspaceSyncService extends Disposable {
 
 		this.conflictPaths.add(path);
 
-		// Build the action list.  "Open Diff" is only available on desktop (needs
-		// ICommandService + a real local file system) and when we have cached cloud
-		// content to show alongside the local version.
-		const hasDiffSupport = !isWeb && !!this.commandService && this.conflictContentCache.has(path);
+		// "Open Merge Editor" is only available on desktop: requires IEditorService
+		// + a real local file system where we can write the cloud snapshot.
+		// Web gets "Keep Local" / "Use Cloud" as before.
+		const hasMergeEditorSupport = !isWeb && !!this.editorService && this.conflictContentCache.has(path);
 		const actions = [
-			...(hasDiffSupport ? [{ label: 'Open Diff', run: () => void this.openConflictDiff(path) }] : []),
+			...(hasMergeEditorSupport ? [{ label: 'Open Merge Editor', run: () => void this.openMergeEditor(path) }] : []),
 			{ label: 'Keep Local', run: () => void this.acceptLocal(path) },
 			{ label: 'Use Cloud', run: () => void this.acceptCloud(path) },
 		];
 
-		this.notificationService.prompt(
-			Severity.Warning,
-			candidate?.resolution_mode === 'semantic'
-				? `Talemo detected a semantic workspace conflict for ${path}. Choose a side now or continue the merge in chat.`
-				: `Talemo detected a workspace conflict for ${path}. Open Diff to review both versions, or choose which side wins.`,
-			actions,
-			{ sticky: true }
-		);
+		const message = candidate?.resolution_mode === 'semantic'
+			? `Talemo detected a semantic workspace conflict for ${path}. Choose a side now or continue the merge in chat.`
+			: hasMergeEditorSupport
+				? `Workspace conflict in ${path}. Open Merge Editor to pick changes hunk-by-hunk, or choose a side.`
+				: `Workspace conflict in ${path}. Choose which version to keep.`;
+
+		this.notificationService.prompt(Severity.Warning, message, actions, { sticky: true });
 	}
 
 	/**
-	 * Opens VS Code's built-in diff editor with the local file on the left and
-	 * the cached cloud version on the right.  The user can copy content between
-	 * the panes to build a merged result, then save the local file.  Saving the
-	 * local file triggers the normal sync upload path and resolves the conflict.
+	 * Opens VS Code's built-in 3-way merge editor for a conflicted file.
 	 *
-	 * The cloud version is written to a temp file inside `.talemo/conflicts/` so
-	 * it is visible as a real URI in the diff editor.  The temp file is excluded
-	 * from sync by the TALEMO_BINDING_DIR filter in collectLocalFiles.
+	 * Layout:
+	 *   base           = local snapshot  (the "before both sides diverged" approximation)
+	 *   input1 (left)  = cloud snapshot  ("Cloud (incoming)" — what the server has)
+	 *   input2 (right) = local snapshot  ("Local (current)"  — clean read-only copy)
+	 *   result         = actual local file (editable, user constructs the merge here)
+	 *
+	 * Why base = local snapshot:
+	 *   We don't have the real common ancestor.  Using local as base means VS Code
+	 *   diffs cloud against local → cloud's additions appear as "incoming" hunks on
+	 *   the left.  Local has no changes vs base (same content) → right side is clean.
+	 *   VS Code auto-accepts any cloud hunk that has no conflicting local change
+	 *   (e.g. a simple line addition) and flags only real conflicts.
+	 *
+	 *   input2 ≠ result: we write a read-only local snapshot so VS Code can diff it
+	 *   against base without having to share the mutable result URI.
+	 *
+	 * When the user saves the result, the normal sync upload path picks it up:
+	 *   syncLocalFileContent uploads with expectedVersion = cloudVersion → backend
+	 *   accepts the merge → conflictPaths cleared automatically.
+	 *
+	 * Both snapshots live in .talemo/conflicts/ which is excluded from sync so
+	 * they never leak to the backend.
 	 */
-	private async openConflictDiff(path: string): Promise<void> {
-		if (!this.commandService) {
+	private async openMergeEditor(path: string): Promise<void> {
+		if (!this.editorService) {
 			return;
 		}
 		const cloudContent = this.conflictContentCache.get(path);
@@ -645,16 +671,16 @@ export class TalemoWorkspaceSyncService extends Disposable {
 		}
 
 		try {
-			// Write cloud version to a temp file inside .talemo/conflicts/.
-			// collectLocalFiles already skips everything under TALEMO_BINDING_DIR,
-			// so this file will never be uploaded to cloud.
 			const conflictDir = joinPath(root, TALEMO_BINDING_DIR, 'conflicts');
-			const cloudTempUri = joinPath(conflictDir, basename(joinPath(root, path)));
-			// Suppress the write event so onDidFilesChange ignores this temp file.
-			this.suppressLocalPath(`${TALEMO_BINDING_DIR}/conflicts/${basename(joinPath(root, path))}`, 1);
+			const filename = basename(joinPath(root, path));
+
 			try {
 				await this.fileService.createFolder(conflictDir);
 			} catch { /* may already exist */ }
+
+			// Write cloud snapshot — suppressed so onDidFilesChange ignores it.
+			const cloudTempUri = joinPath(conflictDir, `${filename}.cloud`);
+			this.suppressLocalPath(`${TALEMO_BINDING_DIR}/conflicts/${filename}.cloud`, 1);
 			await this.fileService.createFile(cloudTempUri, cloudContent, { overwrite: true });
 
 			const localUri = this.toWorkspaceResource(path);
@@ -662,16 +688,24 @@ export class TalemoWorkspaceSyncService extends Disposable {
 				return;
 			}
 
-			// Open the diff editor: local (left / editable) vs cloud temp (right / read-only).
-			await this.commandService.executeCommand(
-				'vscode.diff',
-				localUri,
-				cloudTempUri,
-				`Conflict: ${path} (local \u2194 cloud)`,
-				{ preview: true },
-			);
+			// Write local snapshot — used as both base and input2 (read-only reference).
+			// Must be a separate URI from result (localUri) so VS Code can diff them
+			// independently without corrupting the base model when result is mutated.
+			const localContent = await this.fileService.readFile(localUri);
+			const localTempUri = joinPath(conflictDir, `${filename}.local`);
+			this.suppressLocalPath(`${TALEMO_BINDING_DIR}/conflicts/${filename}.local`, 1);
+			await this.fileService.createFile(localTempUri, localContent.value, { overwrite: true });
+
+			// Open VS Code's 3-way merge editor with the layout described above.
+			const input: IResourceMergeEditorInput = {
+				input1: { resource: cloudTempUri, label: 'Cloud (incoming)' },
+				input2: { resource: localTempUri, label: 'Local (current)' },
+				base: { resource: localTempUri },
+				result: { resource: localUri },
+			};
+			await this.editorService.openEditor(input);
 		} catch (err) {
-			this.logService.warn('[talemo-sync] openConflictDiff failed', path, String(err));
+			this.logService.warn('[talemo-sync] openMergeEditor failed', path, String(err));
 		}
 	}
 
@@ -702,6 +736,7 @@ export class TalemoWorkspaceSyncService extends Disposable {
 			this.conflictContentCache.delete(path);
 		} finally {
 			this.conflictPaths.delete(path);
+			void this.cleanupConflictSnapshots(path);
 		}
 	}
 
@@ -728,6 +763,56 @@ export class TalemoWorkspaceSyncService extends Disposable {
 			this.conflictContentCache.delete(path);
 		} finally {
 			this.conflictPaths.delete(path);
+			void this.cleanupConflictSnapshots(path);
+		}
+	}
+
+	/**
+	 * Removes the entire .talemo/conflicts/ directory.
+	 * Used when the conflict set is bulk-cleared (force sync, reconcile abort).
+	 * Best-effort: errors are logged but do not block the caller.
+	 */
+	private async cleanupAllConflictSnapshots(): Promise<void> {
+		const root = this.getWorkspaceRoot();
+		if (!root) {
+			return;
+		}
+		try {
+			const conflictDir = joinPath(root, TALEMO_BINDING_DIR, 'conflicts');
+			if (await this.fileService.exists(conflictDir)) {
+				await this.fileService.del(conflictDir, { recursive: true, useTrash: false, atomic: false });
+			}
+		} catch (err) {
+			this.logService.warn('[talemo-sync] cleanupAllConflictSnapshots failed', String(err));
+		}
+	}
+
+	/**
+	 * Removes the temporary conflict snapshot files created by openMergeEditor
+	 * (.talemo/conflicts/<filename>.cloud and .talemo/conflicts/<filename>.local).
+	 * Called after any conflict resolution path so the tree stays clean.
+	 * Errors are swallowed — cleanup is best-effort and must not block resolution.
+	 */
+	private async cleanupConflictSnapshots(path: string): Promise<void> {
+		const root = this.getWorkspaceRoot();
+		if (!root) {
+			return;
+		}
+		try {
+			const filename = basename(joinPath(root, path));
+			const conflictDir = joinPath(root, TALEMO_BINDING_DIR, 'conflicts');
+			for (const suffix of ['.cloud', '.local']) {
+				const uri = joinPath(conflictDir, `${filename}${suffix}`);
+				try {
+					if (await this.fileService.exists(uri)) {
+						// Suppress the delete event — it is our own cleanup, not a user action.
+						this.suppressLocalPath(`${TALEMO_BINDING_DIR}/conflicts/${filename}${suffix}`, 1);
+						await this.fileService.del(uri, { recursive: false, useTrash: false, atomic: false });
+					}
+				} catch { /* ignore individual file errors */ }
+			}
+		} catch (err) {
+			this.logService.warn('[talemo-sync] cleanupConflictSnapshots failed', path, String(err));
 		}
 	}
 
@@ -763,7 +848,12 @@ export class TalemoWorkspaceSyncService extends Disposable {
 	private async collectLocalFiles(folder: URI, bucket = new Map<string, URI>()): Promise<Map<string, URI>> {
 		const stat = await this.fileService.resolve(folder, { resolveMetadata: true });
 		for (const child of stat.children ?? []) {
-			if (child.name === TALEMO_BINDING_DIR || child.name === TALEMO_IGNORE_FILE) {
+			// Always skip .talemoignore (local-only metadata file).
+			// Do NOT skip the .talemo dir entirely — config templates inside it
+			// (settings.json, extensions.json, tasks.json, launch.json, mcp.json)
+			// must sync so cloud-created templates reach desktop.
+			// project.json and conflicts/ are filtered later in toWorkspaceRelativePath.
+			if (child.name === TALEMO_IGNORE_FILE) {
 				continue;
 			}
 			if (child.isDirectory) {
@@ -829,7 +919,12 @@ export class TalemoWorkspaceSyncService extends Disposable {
 				normalized.startsWith('..') ||
 				normalized.includes(':') ||
 				normalized === TALEMO_IGNORE_FILE ||
-				normalized.startsWith(`${TALEMO_BINDING_DIR}/`)
+				// project.json holds desktop-local binding metadata (tenant, paths).
+				// conflicts/ stores ephemeral local-only conflict snapshots.
+				// All other .talemo/* config files (settings.json, extensions.json, etc.)
+				// sync normally so cloud-created templates reach desktop.
+				normalized === TALEMO_BINDING_FILE ||
+				normalized.startsWith(`${TALEMO_BINDING_DIR}/conflicts/`)
 			) {
 				return undefined;
 			}
@@ -950,6 +1045,7 @@ export class TalemoWorkspaceSyncService extends Disposable {
 	 *  notifications re-appear, letting the user choose a resolution. */
 	async forceSync(): Promise<void> {
 		this.conflictPaths.clear();
+		void this.cleanupAllConflictSnapshots();
 		await this.reconcileWorkspace();
 	}
 

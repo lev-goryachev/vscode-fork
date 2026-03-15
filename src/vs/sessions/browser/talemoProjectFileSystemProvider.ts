@@ -178,7 +178,15 @@ export class TalemoProjectFileSystemProvider extends Disposable implements IFile
 			// local version cache so the next auto-save retry can use the correct
 			// expectedVersion.  Also surface a clearer error message so the built-in
 			// VS Code "Retry / Revert" dialog makes semantic sense to the user.
-			const is409 = error instanceof Error && error.message.startsWith('HTTP 409:');
+			//
+			// saveWorkspaceFile can throw EITHER:
+			//   a) a raw Error('HTTP 409: ...') when the 409 body is not valid conflict JSON
+			//   b) a TalemoFileConflictDetail plain object (parsed from the 409 JSON body)
+			// We detect both so neither case silently falls through to a generic NoPermissions error.
+			const errorObj = error as Record<string, unknown>;
+			const is409 =
+				(error instanceof Error && error.message.startsWith('HTTP 409:')) ||
+				(!!error && typeof error === 'object' && typeof errorObj.code === 'string' && Array.isArray(errorObj.next_actions));
 			if (is409) {
 				try {
 					const { projectId: pid, canonicalPath: cp } = this.parseResource(resource);
