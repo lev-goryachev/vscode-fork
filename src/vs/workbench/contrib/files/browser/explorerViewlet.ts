@@ -31,7 +31,7 @@ import { Codicon } from '../../../../base/common/codicons.js';
 import { registerIcon } from '../../../../platform/theme/common/iconRegistry.js';
 import { isMouseEvent } from '../../../../base/browser/dom.js';
 import { ILogService } from '../../../../platform/log/common/log.js';
-import { TALEMO_ATTACH_PROJECT_COMMAND_ID } from '../../../../sessions/browser/talemoProjectCommandsIds.js';
+import { TALEMO_ATTACH_PROJECT_COMMAND_ID } from '../../../../sessions/contrib/talemoWorkspace/browser/talemoProjectCommandsIds.js';
 
 const explorerViewIcon = registerIcon('explorer-view-icon', Codicon.files, localize('explorerViewIcon', 'View icon of the explorer view.'));
 const openEditorsViewIcon = registerIcon('open-editors-view-icon', Codicon.book, localize('openEditorsIcon', 'View icon of the open editors view.'));

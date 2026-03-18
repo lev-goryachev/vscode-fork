@@ -41,7 +41,7 @@ import { LayoutSettings } from '../../../../../services/layout/browser/layoutSer
 import { ChatConfiguration } from '../../../common/constants.js';
 import { ChatEntitlement, IChatEntitlementService } from '../../../../../services/chat/common/chatEntitlementService.js';
 import { IChatWidgetService } from '../../chat.js';
-import { TALEMO_NATIVE_SIGN_IN_COMMAND } from '../../../../../../sessions/browser/talemoApi.js';
+import { TALEMO_NATIVE_SIGN_IN_COMMAND } from '../../../../../services/talemo/browser/constants.js';
 
 // Action IDs
 const TOGGLE_CHAT_ACTION_ID = 'workbench.action.chat.toggle';

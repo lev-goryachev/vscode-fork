@@ -1,8 +1,7 @@
 import { Emitter, Event } from '../../../../base/common/event.js';
 import { Disposable } from '../../../../base/common/lifecycle.js';
-import { IStorageService, StorageScope } from '../../../../platform/storage/common/storage.js';
-import { ICommandService } from '../../../../platform/commands/common/commands.js';
-import { clearStoredTalemoAuth, AUTH_TOKEN_KEY, AUTH_USER_KEY, promptTalemoNativeSignIn, TALEMO_PROVIDER_ID } from '../../../../sessions/browser/talemoApi.js';
+import { TALEMO_PROVIDER_ID } from '../../../services/talemo/browser/constants.js';
+import { ITalemoApiService } from '../../../services/talemo/browser/talemoApiService.js';
 import {
 	AuthenticationSession,
 	AuthenticationSessionsChangeEvent,
@@ -19,8 +18,9 @@ interface StoredUser {
 }
 
 /**
- * Reads the persisted Talemo session from IStorageService and
- * exposes it to the Accounts UI via IAuthenticationProvider.
+ * Exposes the persisted Talemo session to the Accounts UI via IAuthenticationProvider.
+ * Tokens are read from ISecretStorageService (via ITalemoApiService) so they stay
+ * encrypted at rest. User metadata stays in plain IStorageService for sync access.
  */
 export class TalemoAuthenticationProvider extends Disposable implements IAuthenticationProvider {
 	readonly id = TALEMO_PROVIDER_ID;
@@ -31,21 +31,22 @@ export class TalemoAuthenticationProvider extends Disposable implements IAuthent
 	readonly onDidChangeSessions: Event<AuthenticationSessionsChangeEvent> = this._onDidChangeSessions.event;
 
 	constructor(
-		private readonly storageService: IStorageService,
-		private readonly commandService: ICommandService,
+		private readonly api: ITalemoApiService,
 	) {
 		super();
-		this._register(this.storageService.onDidChangeValue(StorageScope.APPLICATION, AUTH_TOKEN_KEY, this._store)(() => {
-			try {
-				const session = this.readSession();
-				if (session) {
-					this._onDidChangeSessions.fire({ added: [session], removed: undefined, changed: undefined });
-				} else {
-					this._onDidChangeSessions.fire({ added: undefined, removed: undefined, changed: undefined });
+		this._register(this.api.onDidAuthStateChange(() => {
+			void (async () => {
+				try {
+					const session = await this.readSession();
+					if (session) {
+						this._onDidChangeSessions.fire({ added: [session], removed: undefined, changed: undefined });
+					} else {
+						this._onDidChangeSessions.fire({ added: undefined, removed: undefined, changed: undefined });
+					}
+				} catch (error: unknown) {
+					console.error('[TalemoAuth] Session change event failed:', error);
 				}
-			} catch (error: unknown) {
-				console.error('[TalemoAuth] Session change event failed:', error);
-			}
+			})();
 		}));
 	}
 
@@ -54,7 +55,7 @@ export class TalemoAuthenticationProvider extends Disposable implements IAuthent
 		_options: IAuthenticationProviderSessionOptions,
 	): Promise<readonly AuthenticationSession[]> {
 		try {
-			const session = this.readSession();
+			const session = await this.readSession();
 			return session ? [session] : [];
 		} catch (error: unknown) {
 			console.error('[TalemoAuth] getSessions failed:', error);
@@ -67,14 +68,14 @@ export class TalemoAuthenticationProvider extends Disposable implements IAuthent
 		_options: IAuthenticationProviderSessionOptions,
 	): Promise<AuthenticationSession> {
 		try {
-			const session = this.readSession();
+			const session = await this.readSession();
 			if (session) {
 				return session;
 			}
 
-			await promptTalemoNativeSignIn(this.commandService, { additionalScopes: scopes });
+			await this.api.promptNativeSignIn({ additionalScopes: scopes });
 
-			const refreshedSession = this.readSession();
+			const refreshedSession = await this.readSession();
 			if (refreshedSession) {
 				return refreshedSession;
 			}
@@ -86,10 +87,10 @@ export class TalemoAuthenticationProvider extends Disposable implements IAuthent
 		}
 	}
 
-	async removeSession(sessionId: string): Promise<void> {
+	async removeSession(_sessionId: string): Promise<void> {
 		try {
-			const existing = this.readSession();
-			clearStoredTalemoAuth(this.storageService);
+			const existing = await this.readSession();
+			await this.api.clearAuth();
 			if (existing) {
 				this._onDidChangeSessions.fire({
 					added: undefined,
@@ -102,14 +103,19 @@ export class TalemoAuthenticationProvider extends Disposable implements IAuthent
 		}
 	}
 
-	private readSession(): AuthenticationSession | null {
+	/**
+	 * Reads the current session from secret + plain storage.
+	 * Access token comes from ISecretStorageService (encrypted).
+	 * User metadata comes from IStorageService (fast synchronous read).
+	 */
+	private async readSession(): Promise<AuthenticationSession | null> {
 		try {
-			const token = this.storageService.get(AUTH_TOKEN_KEY, StorageScope.APPLICATION);
+			const token = await this.api.getAccessToken();
 			if (!token) {
 				return null;
 			}
 
-			const userJson = this.storageService.get(AUTH_USER_KEY, StorageScope.APPLICATION);
+			const userJson = this.api.getStoredUser();
 			let user: StoredUser = { id: 'unknown', email: 'unknown' };
 			if (userJson) {
 				user = JSON.parse(userJson) as StoredUser;
@@ -130,12 +136,11 @@ export class TalemoAuthenticationProvider extends Disposable implements IAuthent
 
 /**
  * Registers the Talemo auth provider with the Accounts UI.
- * Call from a workbench contribution at AfterRestored phase.
+ * Call from a workbench contribution at BlockStartup phase.
  */
 export function registerTalemoAuthProvider(
 	authService: IAuthenticationService,
-	storageService: IStorageService,
-	commandService: ICommandService,
+	api: ITalemoApiService,
 ): TalemoAuthenticationProvider {
 	try {
 		authService.registerDeclaredAuthenticationProvider({
@@ -143,7 +148,7 @@ export function registerTalemoAuthProvider(
 			label: PROVIDER_LABEL,
 		});
 
-		const provider = new TalemoAuthenticationProvider(storageService, commandService);
+		const provider = new TalemoAuthenticationProvider(api);
 		authService.registerAuthenticationProvider(TALEMO_PROVIDER_ID, provider);
 		return provider;
 	} catch (error: unknown) {

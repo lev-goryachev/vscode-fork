@@ -5,11 +5,11 @@
  * shell can render a real Explorer tree without depending on local folders.
  *--------------------------------------------------------------------------------------------*/
 
-import { VSBuffer } from '../../base/common/buffer.js';
-import { Emitter, Event } from '../../base/common/event.js';
-import { Disposable, IDisposable } from '../../base/common/lifecycle.js';
-import { joinPath } from '../../base/common/resources.js';
-import { URI } from '../../base/common/uri.js';
+import { VSBuffer } from '../../../../base/common/buffer.js';
+import { Emitter, Event } from '../../../../base/common/event.js';
+import { Disposable, IDisposable } from '../../../../base/common/lifecycle.js';
+import { joinPath } from '../../../../base/common/resources.js';
+import { URI } from '../../../../base/common/uri.js';
 import {
 	createFileSystemProviderError,
 	FileChangeType,
@@ -23,11 +23,9 @@ import {
 	IFileWriteOptions,
 	IStat,
 	IWatchOptions,
-} from '../../platform/files/common/files.js';
-import { IProductService } from '../../platform/product/common/productService.js';
-import { IStorageService } from '../../platform/storage/common/storage.js';
-import { IAuthenticationService } from '../../workbench/services/authentication/common/authentication.js';
-import { ITalemoRuntimeEventEnvelope } from './talemoRealtime.js';
+} from '../../../../platform/files/common/files.js';
+import { ITalemoApiService } from '../../../../workbench/services/talemo/browser/talemoApiService.js';
+import { ITalemoRuntimeEventEnvelope } from '../../../../workbench/services/talemo/browser/talemoRealtime.js';
 import {
 	createWorkspaceDirectory,
 	deleteWorkspaceDirectory,
@@ -42,7 +40,7 @@ import {
 	TalemoWorkspaceSystemFile,
 	TalemoWorkspaceSystemManifest,
 	TalemoWorkspaceTreeNode,
-} from './talemoFiles.js';
+} from '../../../../workbench/services/talemo/browser/talemoFiles.js';
 
 export const TALEMO_WORKSPACE_SCHEME = 'talemo-workspace';
 
@@ -79,9 +77,7 @@ export class TalemoProjectFileSystemProvider extends Disposable implements IFile
 	private readonly directoryCache = new Map<string, Awaited<ReturnType<typeof readWorkspaceDirectory>>>();
 	private readonly directoryPromises = new Map<string, Promise<Awaited<ReturnType<typeof readWorkspaceDirectory>>>>();
 	constructor(
-		private readonly authService: IAuthenticationService,
-		private readonly storageService: IStorageService,
-		private readonly productService: IProductService,
+		private readonly api: ITalemoApiService,
 	) {
 		super();
 	}
@@ -148,7 +144,7 @@ export class TalemoProjectFileSystemProvider extends Disposable implements IFile
 				}
 				return bootstrapFile.content.buffer;
 			}
-			const remote = await readWorkspaceFile(this.authService, this.storageService, this.productService, projectId, canonicalPath);
+			const remote = await readWorkspaceFile(this.api, projectId, canonicalPath);
 			if (remote.file.cloud_version) {
 				this.versionCache.set(resource.toString(), remote.file.cloud_version);
 			}
@@ -162,7 +158,7 @@ export class TalemoProjectFileSystemProvider extends Disposable implements IFile
 		try {
 			const { projectId, canonicalPath } = this.parseResource(resource);
 			const existed = await this.exists(resource);
-			const saved = await saveWorkspaceFile(this.authService, this.storageService, this.productService, {
+			const saved = await saveWorkspaceFile(this.api, {
 				projectId,
 				path: canonicalPath,
 				content: VSBuffer.wrap(content),
@@ -174,15 +170,6 @@ export class TalemoProjectFileSystemProvider extends Disposable implements IFile
 			this.invalidateSystemManifest(projectId);
 			this.emitChange(existed ? FileChangeType.UPDATED : FileChangeType.ADDED, resource);
 		} catch (error) {
-			// On a 409 conflict (another device saved a newer version) refresh the
-			// local version cache so the next auto-save retry can use the correct
-			// expectedVersion.  Also surface a clearer error message so the built-in
-			// VS Code "Retry / Revert" dialog makes semantic sense to the user.
-			//
-			// saveWorkspaceFile can throw EITHER:
-			//   a) a raw Error('HTTP 409: ...') when the 409 body is not valid conflict JSON
-			//   b) a TalemoFileConflictDetail plain object (parsed from the 409 JSON body)
-			// We detect both so neither case silently falls through to a generic NoPermissions error.
 			const errorObj = error as Record<string, unknown>;
 			const is409 =
 				(error instanceof Error && error.message.startsWith('HTTP 409:')) ||
@@ -190,7 +177,7 @@ export class TalemoProjectFileSystemProvider extends Disposable implements IFile
 			if (is409) {
 				try {
 					const { projectId: pid, canonicalPath: cp } = this.parseResource(resource);
-					const current = await readWorkspaceFile(this.authService, this.storageService, this.productService, pid, cp);
+					const current = await readWorkspaceFile(this.api, pid, cp);
 					if (current.file.cloud_version) {
 						this.versionCache.set(resource.toString(), current.file.cloud_version);
 					}
@@ -208,7 +195,7 @@ export class TalemoProjectFileSystemProvider extends Disposable implements IFile
 	async mkdir(resource: URI): Promise<void> {
 		try {
 			const { projectId, canonicalPath } = this.parseResource(resource);
-			await createWorkspaceDirectory(this.authService, this.storageService, this.productService, projectId, canonicalPath);
+			await createWorkspaceDirectory(this.api, projectId, canonicalPath);
 			this.invalidateSystemManifest(projectId);
 			this.emitChange(FileChangeType.ADDED, resource);
 		} catch (error) {
@@ -221,9 +208,9 @@ export class TalemoProjectFileSystemProvider extends Disposable implements IFile
 			const { projectId, canonicalPath } = this.parseResource(resource);
 			const stat = await this.stat(resource);
 			if (stat.type === FileType.Directory) {
-				await deleteWorkspaceDirectory(this.authService, this.storageService, this.productService, projectId, canonicalPath, opts.recursive);
+				await deleteWorkspaceDirectory(this.api, projectId, canonicalPath, opts.recursive);
 			} else {
-				await deleteWorkspaceFile(this.authService, this.storageService, this.productService, projectId, canonicalPath);
+				await deleteWorkspaceFile(this.api, projectId, canonicalPath);
 			}
 			this.versionCache.delete(resource.toString());
 			this.invalidateSystemManifest(projectId);
@@ -242,9 +229,9 @@ export class TalemoProjectFileSystemProvider extends Disposable implements IFile
 			}
 			const stat = await this.stat(from);
 			if (stat.type === FileType.Directory) {
-				await moveWorkspaceDirectory(this.authService, this.storageService, this.productService, source.projectId, source.canonicalPath, destination.canonicalPath);
+				await moveWorkspaceDirectory(this.api, source.projectId, source.canonicalPath, destination.canonicalPath);
 			} else {
-				await moveWorkspaceFile(this.authService, this.storageService, this.productService, source.projectId, source.canonicalPath, destination.canonicalPath);
+				await moveWorkspaceFile(this.api, source.projectId, source.canonicalPath, destination.canonicalPath);
 			}
 			this.versionCache.delete(from.toString());
 			this.invalidateSystemManifest(source.projectId);
@@ -265,10 +252,6 @@ export class TalemoProjectFileSystemProvider extends Disposable implements IFile
 			const payloadPath = typeof event.payload.path === 'string' ? event.payload.path : undefined;
 			const payloadPaths = Array.isArray(event.payload.paths) ? event.payload.paths.filter((value): value is string => typeof value === 'string') : [];
 
-			// Keep the version cache in sync with authoritative cloud versions so
-			// subsequent writeFile calls send the correct expectedVersion.  Without
-			// this, the web client would send a stale etag after a remote update,
-			// causing an unnecessary 409 conflict on the next auto-save.
 			if (event.event_type === 'file.updated' && payloadPath) {
 				const file = event.payload.file as { cloud_version?: string } | undefined;
 				if (file?.cloud_version) {
@@ -346,15 +329,6 @@ export class TalemoProjectFileSystemProvider extends Disposable implements IFile
 		}
 		const requestedPath = resource.path.replace(/^\/+/, '').replace(/\/+$/, '');
 
-		// VS Code web uses the workspace FS provider as a general "remote" file
-		// system and routes its own internal state (globalStorage, state.vscdb, …)
-		// through it with server-side absolute paths such as
-		// "c:/Users/Arye/AppData/…".  A valid workspace-relative path NEVER
-		// contains ":" — that character only appears in Windows drive-letter
-		// notation (e.g. "c:").  Rejecting here is a domain invariant, not a
-		// pattern-match: no matter what the user puts inside their workspace
-		// (flash-drive files, nested folders, etc.), the paths that reach this
-		// provider are always relative to the project root and therefore colon-free.
 		if (requestedPath.includes(':')) {
 			throw createFileSystemProviderError(
 				`path outside workspace root: "${requestedPath}"`,
@@ -398,9 +372,7 @@ export class TalemoProjectFileSystemProvider extends Disposable implements IFile
 			return existing;
 		}
 		const pending = readWorkspaceDirectory(
-			this.authService,
-			this.storageService,
-			this.productService,
+			this.api,
 			projectId,
 			path,
 		).then(result => {
@@ -487,9 +459,6 @@ export class TalemoProjectFileSystemProvider extends Disposable implements IFile
 	}
 
 	private toProviderError(error: unknown, fallbackCode: FileSystemProviderErrorCode) {
-		// HTTP 404 from the backend always means the file/directory does not exist.
-		// Map it explicitly to FileNotFound so VS Code handles it silently (as expected
-		// for optional config files like .vscode/settings.json) rather than logging ERR.
 		if (error instanceof Error && error.message.startsWith('HTTP 404:')) {
 			return createFileSystemProviderError(error.message, FileSystemProviderErrorCode.FileNotFound);
 		}
@@ -550,17 +519,11 @@ export class TalemoProjectFileSystemProvider extends Disposable implements IFile
 		if (!workspacePath) {
 			return;
 		}
-		// For ADDED and DELETED events VS Code's Explorer needs to see that the
-		// parent directory changed so it re-reads its listing and discovers new
-		// subdirectories.  Without this, adding ATRQ/file.md would not cause the
-		// Explorer to show the ATRQ/ folder because no event was emitted for it.
 		if (type === FileChangeType.ADDED || type === FileChangeType.DELETED) {
 			const parentPath = this.dirnamePath(workspacePath);
 			if (parentPath) {
 				this.emitChange(FileChangeType.UPDATED, joinPath(root, parentPath));
 			}
-			// Always notify the workspace root so newly added top-level directories
-			// appear in the Explorer without requiring a manual refresh.
 			this.emitChange(FileChangeType.UPDATED, root);
 		}
 		const requestedPath = this.toRequestedPath(workspacePath);
@@ -579,9 +542,7 @@ export class TalemoProjectFileSystemProvider extends Disposable implements IFile
 			return existing;
 		}
 		const pending = readWorkspaceSystemManifest(
-			this.authService,
-			this.storageService,
-			this.productService,
+			this.api,
 			projectId,
 		).then(manifest => {
 			this.systemManifestCache.set(projectId, manifest);

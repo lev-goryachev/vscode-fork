@@ -23,8 +23,8 @@ import { IWorkspaceEditingService } from '../../../workbench/services/workspaces
 import { ICommandService } from '../../../platform/commands/common/commands.js';
 import { isWeb } from '../../../base/common/platform.js';
 import { AgenticParts } from './parts.js';
-import { getActiveProjectBinding, TALEMO_ACTIVE_PROJECT_KEY } from '../talemoProjectBinding.js';
-import { TALEMO_MANAGE_PROJECTS_COMMAND_ID } from '../talemoProjectCommandsIds.js';
+import { getActiveProjectBinding, TALEMO_ACTIVE_PROJECT_KEY } from '../../contrib/talemoWorkspace/browser/talemoProjectBinding.js';
+import { TALEMO_MANAGE_PROJECTS_COMMAND_ID } from '../../contrib/talemoWorkspace/browser/talemoProjectCommandsIds.js';
 
 const HOVER_GROUP_ID = 'projectbar';
 

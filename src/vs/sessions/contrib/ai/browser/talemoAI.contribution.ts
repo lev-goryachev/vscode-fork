@@ -39,20 +39,21 @@ import { IAuthenticationService } from '../../../../workbench/services/authentic
 import { IWorkingCopyFileService } from '../../../../workbench/services/workingCopy/common/workingCopyFileService.js';
 import { IHostService } from '../../../../workbench/services/host/browser/host.js';
 import { IEditorService } from '../../../../workbench/services/editor/common/editorService.js';
-import { TalemoRealtimeClient } from '../../../browser/talemoRealtime.js';
+import { ITalemoApiService } from '../../../../workbench/services/talemo/browser/talemoApiService.js';
+import { TalemoRealtimeClient } from '../../../../workbench/services/talemo/browser/talemoRealtime.js';
 import {
 	getWorkspaceFileResource,
 	getWorkspaceRoot,
-} from '../../../browser/talemoProjectBinding.js';
-import { TalemoProjectFileSystemProvider, TALEMO_WORKSPACE_SCHEME } from '../../../browser/talemoProjectFileSystemProvider.js';
+} from '../../talemoWorkspace/browser/talemoProjectBinding.js';
+import { TalemoProjectFileSystemProvider, TALEMO_WORKSPACE_SCHEME } from '../../talemoWorkspace/browser/talemoProjectFileSystemProvider.js';
 import { TalemoAgentImpl } from './talemoAI.agent.js';
 import { registerTalemoSessionBindingContrib } from './talemoAI.sessionBinding.js';
 import { registerTalemoSessionOpenerParticipant } from './talemoAI.sessionOpener.js';
 import { TALEMO_THREAD_SESSION_SCHEME, TalemoThreadSessionsController } from './talemoThreadSessions.js';
-import { TalemoWorkspaceSyncService } from './talemoWorkspaceSync.js';
+import { TalemoWorkspaceSyncService } from '../../talemoWorkspace/browser/talemoWorkspaceSync.js';
 import { TalemoSyncStatusBarItem } from './talemoSyncStatusBar.js';
-import { TALEMO_MANAGE_PROJECTS_COMMAND_ID } from '../../../browser/talemoProjectCommandsIds.js';
-import { registerTalemoProjectCommands } from './talemoProjectCommands.js';
+import { TALEMO_MANAGE_PROJECTS_COMMAND_ID } from '../../talemoWorkspace/browser/talemoProjectCommandsIds.js';
+import { registerTalemoProjectCommands } from '../../talemoWorkspace/browser/talemoProjectCommands.js';
 
 const AGENT_ID = 'talemo';
 
@@ -68,6 +69,7 @@ export class TalemoAIContribution extends Disposable implements IWorkbenchContri
 		@IChatService chatService: IChatService,
 		@IChatSessionsService chatSessionsService: IChatSessionsService,
 		@IAuthenticationService authenticationService: IAuthenticationService,
+		@ITalemoApiService talemoApiService: ITalemoApiService,
 		@IProductService productService: IProductService,
 		@ILogService logService: ILogService,
 		@IStorageService storageService: IStorageService,
@@ -95,11 +97,7 @@ export class TalemoAIContribution extends Disposable implements IWorkbenchContri
 			if (existingProvider instanceof TalemoProjectFileSystemProvider) {
 				projectFileSystemProvider = existingProvider;
 			} else if (!existingProvider) {
-				projectFileSystemProvider = this._register(new TalemoProjectFileSystemProvider(
-					authenticationService,
-					storageService,
-					productService,
-				));
+				projectFileSystemProvider = this._register(new TalemoProjectFileSystemProvider(talemoApiService));
 				this._register(fileService.registerProvider(TALEMO_WORKSPACE_SCHEME, projectFileSystemProvider));
 			}
 		}
@@ -110,9 +108,8 @@ export class TalemoAIContribution extends Disposable implements IWorkbenchContri
 		));
 
 		const workspaceSyncService = this._register(new TalemoWorkspaceSyncService(
-			authenticationService,
+			talemoApiService,
 			storageService,
-			productService,
 			fileService,
 			workingCopyFileService,
 			workspaceContextService,
@@ -157,9 +154,7 @@ export class TalemoAIContribution extends Disposable implements IWorkbenchContri
 		}));
 
 		const impl = new TalemoAgentImpl(
-			authenticationService,
-			productService,
-			storageService,
+			talemoApiService,
 			chatService,
 			chatWidgetService,
 			realtimeClient,
@@ -265,11 +260,9 @@ export class TalemoAIContribution extends Disposable implements IWorkbenchContri
 		));
 
 		const threadSessionsController = this._register(new TalemoThreadSessionsController(
-			authenticationService,
+			talemoApiService,
 			fileService,
 			logService,
-			storageService,
-			productService,
 			chatService,
 			chatWidgetService,
 			realtimeClient,

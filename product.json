@@ -118,7 +118,7 @@
 			}
 		},
 		"providerUriSetting": "",
-		"providerScopes": [[""]],
+		"providerScopes": [["talemo"]],
 		"entitlementUrl": "",
 		"entitlementSignupLimitedUrl": "",
 		"tokenEntitlementUrl": "",

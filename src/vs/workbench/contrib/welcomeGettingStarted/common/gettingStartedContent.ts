@@ -9,7 +9,7 @@ import { NotebookSetting } from '../../notebook/common/notebookCommon.js';
 import { CONTEXT_ACCESSIBILITY_MODE_ENABLED } from '../../../../platform/accessibility/common/accessibility.js';
 import { URI } from '../../../../base/common/uri.js';
 import product from '../../../../platform/product/common/product.js';
-import { TALEMO_ATTACH_PROJECT_COMMAND_ID } from '../../../../sessions/browser/talemoProjectCommandsIds.js';
+import { TALEMO_ATTACH_PROJECT_COMMAND_ID } from '../../../../sessions/contrib/talemoWorkspace/browser/talemoProjectCommandsIds.js';
 
 interface IGettingStartedContentProvider {
 	(): string;

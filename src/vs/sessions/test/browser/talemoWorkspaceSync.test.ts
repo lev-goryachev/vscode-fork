@@ -6,14 +6,13 @@ import { ensureNoDisposablesAreLeakedInTestSuite } from '../../../base/test/comm
 import { IFileContent, IFileService, IFileStatWithMetadata } from '../../../platform/files/common/files.js';
 import { NullLogService } from '../../../platform/log/common/log.js';
 import { INotificationService } from '../../../platform/notification/common/notification.js';
-import { IProductService } from '../../../platform/product/common/productService.js';
 import { IStorageService } from '../../../platform/storage/common/storage.js';
 import { IWorkspaceContextService } from '../../../platform/workspace/common/workspace.js';
-import { IAuthenticationService } from '../../../workbench/services/authentication/common/authentication.js';
 import { IWorkingCopyFileService } from '../../../workbench/services/workingCopy/common/workingCopyFileService.js';
-import { TalemoResolvedFile, TalemoWorkspaceFile } from '../../browser/talemoFiles.js';
-import { TalemoRealtimeClient } from '../../browser/talemoRealtime.js';
-import { loadTalemoWorkspaceSyncForTests } from '../../browser/talemoWorkspaceSyncTestHarness.js';
+import { ITalemoApiService } from '../../../workbench/services/talemo/browser/talemoApiService.js';
+import { TalemoResolvedFile, TalemoWorkspaceFile } from '../../../workbench/services/talemo/browser/talemoFiles.js';
+import { TalemoRealtimeClient } from '../../../workbench/services/talemo/browser/talemoRealtime.js';
+import { loadTalemoWorkspaceSyncForTests } from '../../contrib/talemoWorkspace/browser/talemoWorkspaceSyncTestHarness.js';
 
 suite('TalemoWorkspaceSyncService', () => {
 	const store = ensureNoDisposablesAreLeakedInTestSuite();
@@ -24,50 +23,36 @@ suite('TalemoWorkspaceSyncService', () => {
 
 	type TalemoWorkspaceSyncRuntime = {
 		listWorkspaceFiles: (
-			auth: IAuthenticationService,
-			storage: IStorageService,
-			product: IProductService,
+			api: ITalemoApiService,
 			projectId: string,
 			options?: { prefix?: string; recursive?: boolean },
 		) => Promise<TalemoWorkspaceFile[]>;
 		readWorkspaceFile: (
-			auth: IAuthenticationService,
-			storage: IStorageService,
-			product: IProductService,
+			api: ITalemoApiService,
 			projectId: string,
 			path: string,
 		) => Promise<{ file: TalemoWorkspaceFile; content: VSBuffer; contentType?: string }>;
 		saveWorkspaceFile: (
-			auth: IAuthenticationService,
-			storage: IStorageService,
-			product: IProductService,
+			api: ITalemoApiService,
 			args: { projectId: string; path: string; content: VSBuffer; contentType?: string; expectedVersion?: string },
 		) => Promise<TalemoWorkspaceFile>;
 		resolveWorkspaceConflict: (
-			auth: IAuthenticationService,
-			storage: IStorageService,
-			product: IProductService,
+			api: ITalemoApiService,
 			args: { projectId: string; path: string; strategy: 'accept_local' | 'accept_cloud' | 'chat_assist'; content?: VSBuffer; contentType?: string; expectedVersion?: string },
 		) => Promise<TalemoResolvedFile>;
 		deleteWorkspaceFile: (
-			auth: IAuthenticationService,
-			storage: IStorageService,
-			product: IProductService,
+			api: ITalemoApiService,
 			projectId: string,
 			path: string,
 		) => Promise<void>;
 		moveWorkspaceFile: (
-			auth: IAuthenticationService,
-			storage: IStorageService,
-			product: IProductService,
+			api: ITalemoApiService,
 			projectId: string,
 			sourcePath: string,
 			destinationPath: string,
 		) => Promise<TalemoWorkspaceFile>;
 		duplicateWorkspaceFile: (
-			auth: IAuthenticationService,
-			storage: IStorageService,
-			product: IProductService,
+			api: ITalemoApiService,
 			projectId: string,
 			sourcePath: string,
 			destinationPath: string,
@@ -118,10 +103,9 @@ suite('TalemoWorkspaceSyncService', () => {
 		const workspaceRoot = overrides.workspaceRoot ?? URI.file('/workspace');
 		const projectId = overrides.projectId ?? 'project-1';
 		const bindingResource = URI.file(`${workspaceRoot.path}/.talemo/project.json`);
-		return loadTalemoWorkspaceSyncForTests().then(module => store.add(new module.TalemoWorkspaceSyncService(
-			{ onDidChangeSessions: Event.None } as unknown as IAuthenticationService,
+		return loadTalemoWorkspaceSyncForTests().then((module) => store.add(new module.TalemoWorkspaceSyncService(
+			{ onDidAuthStateChange: Event.None } as unknown as ITalemoApiService,
 			{} as IStorageService,
-			{} as IProductService,
 			{
 				onDidFilesChange: Event.None,
 				createFolder: async () => undefined,
@@ -161,7 +145,7 @@ suite('TalemoWorkspaceSyncService', () => {
 			runtime: {
 				listWorkspaceFiles: async () => [],
 				readWorkspaceFile: async () => { throw new Error('not needed'); },
-				saveWorkspaceFile: async (_auth: unknown, _storage: unknown, _product: unknown, args: { projectId: string; path: string; content: VSBuffer }) => {
+				saveWorkspaceFile: async (_api: unknown, args: { projectId: string; path: string; content: VSBuffer }) => {
 					saveCalls.push(args);
 					return {
 						file_id: `project-1:${args.path}`,

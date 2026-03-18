@@ -11,7 +11,7 @@ import { defaultButtonStyles } from '../../../../../../platform/theme/browser/de
 import { IChatEntitlementService } from '../../../../../services/chat/common/chatEntitlementService.js';
 import { IChatErrorDetailsPart, IChatRendererContent } from '../../../common/model/chatViewModel.js';
 import { IChatContentPart } from './chatContentParts.js';
-import { TALEMO_NATIVE_SIGN_IN_COMMAND } from '../../../../../../sessions/browser/talemoApi.js';
+import { TALEMO_NATIVE_SIGN_IN_COMMAND } from '../../../../../services/talemo/browser/constants.js';
 
 export class ChatAnonymousRateLimitedPart extends Disposable implements IChatContentPart {
 

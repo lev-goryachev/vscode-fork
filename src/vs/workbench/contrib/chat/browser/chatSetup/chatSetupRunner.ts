@@ -26,8 +26,7 @@ import { ChatSetupController } from './chatSetupController.js';
 import { IChatSetupResult, ChatSetupAnonymous, InstallChatEvent, InstallChatClassification, ChatSetupStrategy, ChatSetupResultValue } from './chatSetup.js';
 import { IDefaultAccountService } from '../../../../../platform/defaultAccount/common/defaultAccount.js';
 import { IHostService } from '../../../../services/host/browser/host.js';
-import { IStorageService } from '../../../../../platform/storage/common/storage.js';
-import { loginTalemoWithPassword, resolveTalemoBackend } from '../../../../../sessions/browser/talemoApi.js';
+import { ITalemoApiService } from '../../../../services/talemo/browser/talemoApiService.js';
 
 const defaultChatProvider = {
 	default: {
@@ -69,7 +68,7 @@ export class ChatSetup {
 		let instance = ChatSetup.instance;
 		if (!instance) {
 			instance = ChatSetup.instance = instantiationService.invokeFunction(accessor => {
-				return new ChatSetup(context, controller, accessor.get(ITelemetryService), accessor.get(IWorkbenchLayoutService), accessor.get(IKeybindingService), accessor.get(IChatEntitlementService) as ChatEntitlementService, accessor.get(ILogService), accessor.get(IChatWidgetService), accessor.get(IWorkspaceTrustRequestService), accessor.get(IMarkdownRendererService), accessor.get(IDefaultAccountService), accessor.get(IHostService), accessor.get(IStorageService));
+				return new ChatSetup(context, controller, accessor.get(ITelemetryService), accessor.get(IWorkbenchLayoutService), accessor.get(IKeybindingService), accessor.get(IChatEntitlementService) as ChatEntitlementService, accessor.get(ILogService), accessor.get(IChatWidgetService), accessor.get(IWorkspaceTrustRequestService), accessor.get(IMarkdownRendererService), accessor.get(IDefaultAccountService), accessor.get(IHostService), accessor.get(ITalemoApiService));
 			});
 		}
 
@@ -93,7 +92,7 @@ export class ChatSetup {
 		@IMarkdownRendererService private readonly markdownRendererService: IMarkdownRendererService,
 		@IDefaultAccountService private readonly defaultAccountService: IDefaultAccountService,
 		@IHostService private readonly hostService: IHostService,
-		@IStorageService private readonly storageService: IStorageService,
+		private readonly talemoApi: ITalemoApiService,
 	) { }
 
 	skipDialog(): void {
@@ -341,9 +340,9 @@ export class ChatSetup {
 			errorMsg.style.display = 'none';
 
 			try {
-				const backendResolution = resolveTalemoBackend(product);
+				const backendResolution = this.talemoApi.resolveBackend();
 				this.logService.info(`[TalemoAuth] native_dialog_login backend=${backendResolution.backendUrl} source=${backendResolution.source}`);
-				await loginTalemoWithPassword(this.storageService, product, email, password);
+				await this.talemoApi.login(email, password);
 				resolveEmailAuth(ChatSetupStrategy.SetupWithEmailPassword);
 			} catch (err) {
 				errorMsg.textContent = localize('emailSignInFailed', "Sign-in failed: {0}", String(err));

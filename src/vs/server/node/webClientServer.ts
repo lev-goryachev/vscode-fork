@@ -90,6 +90,16 @@ const APP_ROOT = dirname(FileAccess.asFileUri('').fsPath);
 const STATIC_PATH = `/static`;
 const CALLBACK_PATH = `/callback`;
 const WEB_EXTENSION_PATH = `/web-extension-resource`;
+const SECRET_KEY_PATH = `/secret-key`;
+
+/**
+ * Expected key length for AES-GCM-256 used by the client-side
+ * ServerKeyedAESCrypto in workbench.ts. The server provides one half
+ * of the encryption key; the client generates the other half and XORs
+ * them together. This keeps localStorage secrets encrypted at rest
+ * while allowing persistence across page reloads.
+ */
+const SECRET_KEY_BYTE_LENGTH = 32;
 
 function resolveTalemoBackendUrl(productService: IProductService): string {
 	try {
@@ -114,6 +124,15 @@ export class WebClientServer {
 
 	private readonly _webExtensionResourceUrlTemplate: URI | undefined;
 
+	/**
+	 * Cached server-side half of the AES-GCM-256 key used by
+	 * LocalStorageSecretStorageProvider on the client. Generated once
+	 * per server data directory and persisted to disk so it survives
+	 * server restarts (otherwise previously stored secrets become
+	 * undecryptable).
+	 */
+	private _secretKey: Buffer | undefined;
+
 	constructor(
 		private readonly _connectionToken: ServerConnectionToken,
 		private readonly _basePath: string,
@@ -125,6 +144,47 @@ export class WebClientServer {
 		@ICSSDevelopmentService private readonly _cssDevService: ICSSDevelopmentService
 	) {
 		this._webExtensionResourceUrlTemplate = this._productService.extensionsGallery?.resourceUrlTemplate ? URI.parse(this._productService.extensionsGallery.resourceUrlTemplate) : undefined;
+	}
+
+	/**
+	 * Returns a persistent 256-bit key stored alongside other server
+	 * data. On first call the key is generated with crypto.randomBytes
+	 * and written to disk; subsequent calls read from the cache or from
+	 * the file. The key file lives in the user-data directory so it
+	 * follows the same lifecycle as other VS Code server state.
+	 */
+	private async _getOrCreateSecretKey(): Promise<Buffer> {
+		try {
+			if (this._secretKey) {
+				return this._secretKey;
+			}
+
+			const keyDir = join(this._environmentService.userDataPath, 'secretStorage');
+			const keyPath = join(keyDir, 'server-key');
+
+			try {
+				const existing = await promises.readFile(keyPath);
+				if (existing.length === SECRET_KEY_BYTE_LENGTH) {
+					this._secretKey = existing;
+					return this._secretKey;
+				}
+				this._logService.warn('[WebClientServer] Secret key file has wrong length, regenerating');
+			} catch (readErr: unknown) {
+				if ((readErr as NodeJS.ErrnoException).code !== 'ENOENT') {
+					this._logService.error('[WebClientServer] Failed to read secret key file', readErr);
+				}
+			}
+
+			const newKey = crypto.randomBytes(SECRET_KEY_BYTE_LENGTH);
+			await promises.mkdir(keyDir, { recursive: true });
+			await promises.writeFile(keyPath, newKey, { mode: 0o600 });
+			this._secretKey = newKey;
+			this._logService.info('[WebClientServer] Generated new secret storage key');
+			return this._secretKey;
+		} catch (error) {
+			this._logService.error('[WebClientServer] _getOrCreateSecretKey failed', error);
+			throw error;
+		}
 	}
 
 	/**
@@ -149,6 +209,9 @@ export class WebClientServer {
 			if (pathname.startsWith(WEB_EXTENSION_PATH) && pathname.charCodeAt(WEB_EXTENSION_PATH.length) === CharCode.Slash) {
 				// extension resource support
 				return this._handleWebExtensionResource(req, res, pathname.substring(WEB_EXTENSION_PATH.length));
+			}
+			if (pathname === SECRET_KEY_PATH) {
+				return this._handleSecretKey(req, res);
 			}
 
 			return serveError(req, res, 404, 'Not found.');
@@ -497,22 +560,42 @@ export class WebClientServer {
 			'manifest-src \'self\';'
 		].join(' ');
 
-		const headers: http.OutgoingHttpHeaders = {
-			'Content-Type': 'text/html',
-			'Content-Security-Policy': cspDirectives
-		};
+		const setCookies: string[] = [];
 		if (this._connectionToken.type !== ServerConnectionTokenType.None) {
-			// At this point we know the client has a valid cookie
-			// and we want to set it prolong it to ensure that this
-			// client is valid for another 1 week at least
-			headers['Set-Cookie'] = cookie.serialize(
+			// Prolong the connection token cookie so this client stays
+			// valid for another week at least.
+			setCookies.push(cookie.serialize(
 				connectionTokenCookieName,
 				this._connectionToken.value,
 				{
 					sameSite: 'lax',
 					maxAge: 60 * 60 * 24 * 7 /* 1 week */
 				}
-			);
+			));
+		}
+
+		// Tell the client-side workbench.ts where to fetch the server
+		// half of the AES secret-storage key. When this cookie is
+		// present, LocalStorageSecretStorageProvider + ServerKeyedAESCrypto
+		// are used instead of the in-memory fallback, which means secrets
+		// (including auth tokens) survive page reloads.
+		const secretKeyRoute = posix.join(basePath, this._productPath, SECRET_KEY_PATH);
+		setCookies.push(cookie.serialize(
+			'vscode-secret-key-path',
+			secretKeyRoute,
+			{
+				sameSite: 'lax',
+				maxAge: 60 * 60 * 24 * 7, /* 1 week */
+				encode: (v: string) => v,
+			}
+		));
+
+		const headers: http.OutgoingHttpHeaders = {
+			'Content-Type': 'text/html',
+			'Content-Security-Policy': cspDirectives,
+		};
+		if (setCookies.length > 0) {
+			headers['Set-Cookie'] = setCookies;
 		}
 
 		res.writeHead(200, headers);
@@ -536,6 +619,33 @@ export class WebClientServer {
 			result.push(`'sha256-${hash}'`);
 		}
 		return result;
+	}
+
+	/**
+	 * Returns the server half of the AES-GCM-256 encryption key to the
+	 * client-side ServerKeyedAESCrypto. The client XORs this with a
+	 * per-value random key to derive the actual AES key. Only POST is
+	 * accepted (matching the client's fetch call). The route is already
+	 * protected by the connection token check in the outer request
+	 * handler, so only authenticated browser sessions can reach it.
+	 */
+	private async _handleSecretKey(req: http.IncomingMessage, res: http.ServerResponse): Promise<void> {
+		try {
+			if (req.method !== 'POST') {
+				return serveError(req, res, 405, 'Method Not Allowed');
+			}
+
+			const key = await this._getOrCreateSecretKey();
+			res.writeHead(200, {
+				'Content-Type': 'application/octet-stream',
+				'Content-Length': String(key.length),
+				'Cache-Control': 'no-store',
+			});
+			return void res.end(key);
+		} catch (error) {
+			this._logService.error('[WebClientServer] _handleSecretKey failed', error);
+			return serveError(req, res, 500, 'Internal Server Error.');
+		}
 	}
 
 	/**

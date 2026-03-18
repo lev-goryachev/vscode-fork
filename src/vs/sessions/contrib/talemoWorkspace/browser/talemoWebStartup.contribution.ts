@@ -1,12 +1,11 @@
-import { Disposable } from '../../base/common/lifecycle.js';
-import { IFileService } from '../../platform/files/common/files.js';
-import { ILabelService } from '../../platform/label/common/label.js';
-import { ILogService } from '../../platform/log/common/log.js';
-import { IProductService } from '../../platform/product/common/productService.js';
-import { IStorageService } from '../../platform/storage/common/storage.js';
-import { registerWorkbenchContribution2, WorkbenchPhase, IWorkbenchContribution } from '../../workbench/common/contributions.js';
-import { IAuthenticationService } from '../../workbench/services/authentication/common/authentication.js';
-import { listWorkspaceProjects } from './talemoFiles.js';
+import { Disposable } from '../../../../base/common/lifecycle.js';
+import { IFileService } from '../../../../platform/files/common/files.js';
+import { ILabelService } from '../../../../platform/label/common/label.js';
+import { ILogService } from '../../../../platform/log/common/log.js';
+import { IStorageService } from '../../../../platform/storage/common/storage.js';
+import { registerWorkbenchContribution2, WorkbenchPhase, IWorkbenchContribution } from '../../../../workbench/common/contributions.js';
+import { ITalemoApiService } from '../../../../workbench/services/talemo/browser/talemoApiService.js';
+import { listWorkspaceProjects } from '../../../../workbench/services/talemo/browser/talemoFiles.js';
 import { getStoredActiveProject, getStoredProjectLabels, mergeStoredProjectLabels } from './talemoProjectBinding.js';
 import { TalemoProjectFileSystemProvider, TALEMO_WORKSPACE_SCHEME } from './talemoProjectFileSystemProvider.js';
 
@@ -23,9 +22,8 @@ class TalemoWebStartupContribution extends Disposable implements IWorkbenchContr
 
 	constructor(
 		@IFileService private readonly fileService: IFileService,
-		@IAuthenticationService private readonly authService: IAuthenticationService,
+		@ITalemoApiService private readonly api: ITalemoApiService,
 		@IStorageService private readonly storageService: IStorageService,
-		@IProductService private readonly productService: IProductService,
 		@ILabelService private readonly labelService: ILabelService,
 		@ILogService private readonly logService: ILogService,
 	) {
@@ -46,9 +44,7 @@ class TalemoWebStartupContribution extends Disposable implements IWorkbenchContr
 			}
 
 			const provider = this._register(new TalemoProjectFileSystemProvider(
-				this.authService,
-				this.storageService,
-				this.productService,
+				this.api,
 			));
 			this._register(this.fileService.registerProvider(TALEMO_WORKSPACE_SCHEME, provider));
 		} catch (error) {
@@ -62,28 +58,24 @@ class TalemoWebStartupContribution extends Disposable implements IWorkbenchContr
 	 *
 	 * Two-phase approach:
 	 * 1. Sync: register ALL previously seen projects from the persisted label map
-	 *    in storage — runs before the Welcome page renders, so Recent shows names
+	 *    in storage -- runs before the Welcome page renders, so Recent shows names
 	 *    immediately on every reload without a network round-trip.
 	 * 2. Async: fetch the current project list from the backend, update the
 	 *    persisted map with any new/renamed projects, and register their formatters.
 	 */
 	private restoreProjectLabel(): void {
 		try {
-			// Phase 1 (sync): register every project we have ever seen.
-			// This populates Recent labels before the Welcome page renders.
 			const storedLabels = getStoredProjectLabels(this.storageService);
 			for (const [projectId, projectName] of Object.entries(storedLabels)) {
 				registerTalemoProjectLabel(this.labelService, projectId, projectName);
 			}
 
-			// Also ensure the active project is covered (in case it's not in the map yet).
 			const activeProject = getStoredActiveProject(this.storageService);
 			if (activeProject?.project_id && activeProject.name) {
 				registerTalemoProjectLabel(this.labelService, activeProject.project_id, activeProject.name);
 			}
 
-			// Phase 2 (async): refresh from backend, persist updated map for next startup.
-			listWorkspaceProjects(this.authService, this.storageService, this.productService)
+			listWorkspaceProjects(this.api)
 				.then(projects => {
 					const newEntries: Record<string, string> = {};
 					for (const project of projects) {
@@ -95,7 +87,6 @@ class TalemoWebStartupContribution extends Disposable implements IWorkbenchContr
 					mergeStoredProjectLabels(this.storageService, newEntries);
 				})
 				.catch(error => {
-					// Non-fatal: stored labels already cover the last known state.
 					this.logService.warn('Failed to refresh project labels from backend.', error);
 				});
 		} catch (error) {
@@ -121,16 +112,9 @@ export function registerTalemoProjectLabel(
 			scheme: TALEMO_WORKSPACE_SCHEME,
 			authority: projectId,
 			formatting: {
-				// Use the path token so individual file URIs display their file
-				// name in editor tabs (e.g. "testestest.txt") instead of the
-				// static project name.  The workspace root URI has an empty path
-				// after stripping the leading separator, so the path token yields
-				// an empty string there — workspaceRootLabel fills that gap.
 				label: '${path}',
 				separator: '/',
 				stripPathStartingSeparator: true,
-				// Human-readable workspace root label used by
-				// doGetSingleFolderWorkspaceLabel when the path is empty.
 				workspaceRootLabel: projectName,
 			},
 		});

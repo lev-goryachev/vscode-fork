@@ -6,12 +6,14 @@
  * in one place so chat/session/file consumers use the same backend contract.
  *--------------------------------------------------------------------------------------------*/
 
-import { Emitter, Event } from '../../base/common/event.js';
-import { Disposable } from '../../base/common/lifecycle.js';
-import { importAMDNodeModule } from '../../amdX.js';
-import { IProductService } from '../../platform/product/common/productService.js';
-import { IAuthenticationService } from '../../workbench/services/authentication/common/authentication.js';
-import { AuthRequiredError, TALEMO_PROVIDER_ID, getBackendUrl } from './talemoApi.js';
+import { Emitter, Event } from '../../../../base/common/event.js';
+import { Disposable } from '../../../../base/common/lifecycle.js';
+import { importAMDNodeModule } from '../../../../amdX.js';
+import { IProductService } from '../../../../platform/product/common/productService.js';
+import { IAuthenticationService } from '../../authentication/common/authentication.js';
+import { AuthRequiredError } from './talemoApiService.js';
+import { TALEMO_PROVIDER_ID } from './constants.js';
+import { getBackendUrl } from './backend.js';
 
 export interface ITalemoRuntimeEventEnvelope {
 	event_id: string;

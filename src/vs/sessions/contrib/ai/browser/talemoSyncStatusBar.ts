@@ -15,7 +15,7 @@ import { Disposable } from '../../../../base/common/lifecycle.js';
 import { CommandsRegistry } from '../../../../platform/commands/common/commands.js';
 import { IQuickInputService } from '../../../../platform/quickinput/common/quickInput.js';
 import { IStatusbarEntry, IStatusbarEntryAccessor, IStatusbarService, StatusbarAlignment } from '../../../../workbench/services/statusbar/browser/statusbar.js';
-import { TalemoSyncState, TalemoWorkspaceSyncService } from './talemoWorkspaceSync.js';
+import { TalemoSyncState, TalemoWorkspaceSyncService } from '../../talemoWorkspace/browser/talemoWorkspaceSync.js';
 
 /** Command ID registered internally — only the status bar entry triggers it. */
 const COMMAND_SHOW_SYNC_STATUS = 'talemo.sync.showStatus';

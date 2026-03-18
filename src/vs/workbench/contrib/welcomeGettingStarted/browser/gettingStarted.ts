@@ -51,7 +51,7 @@ import { OpenFileFolderAction, OpenFolderAction } from '../../../browser/actions
 import { EditorPane } from '../../../browser/parts/editor/editorPane.js';
 import { IEditorOpenContext, IEditorSerializer } from '../../../common/editor.js';
 import { IWebviewElement, IWebviewService } from '../../webview/browser/webview.js';
-import { TALEMO_ATTACH_PROJECT_COMMAND_ID } from '../../../../sessions/browser/talemoProjectCommandsIds.js';
+import { TALEMO_ATTACH_PROJECT_COMMAND_ID } from '../../../../sessions/contrib/talemoWorkspace/browser/talemoProjectCommandsIds.js';
 import './gettingStartedColors.js';
 import { GettingStartedDetailsRenderer } from './gettingStartedDetailsRenderer.js';
 import { gettingStartedCheckedCodicon, gettingStartedUncheckedCodicon } from './gettingStartedIcons.js';

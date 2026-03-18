@@ -46,7 +46,7 @@ import { ChatSetupController } from './chatSetupController.js';
 import { GrowthSessionController, registerGrowthSession } from './chatSetupGrowthSession.js';
 import { AICodeActionsHelper, AINewSymbolNamesProvider, ChatCodeActionsProvider, SetupAgent } from './chatSetupProviders.js';
 import { ChatSetup } from './chatSetupRunner.js';
-import { TALEMO_NATIVE_SIGN_IN_COMMAND } from '../../../../../sessions/browser/talemoApi.js';
+import { TALEMO_NATIVE_SIGN_IN_COMMAND } from '../../../../services/talemo/browser/constants.js';
 
 const defaultChat = {
 	chatExtensionId: product.defaultChatAgent?.chatExtensionId ?? '',

@@ -35,7 +35,7 @@ import { AgentSessionProviders, getAgentSessionProviderIcon, getAgentSessionProv
 import { IChatWidget, IChatWidgetService } from '../chat.js';
 import { ctxHasEditorModification } from '../chatEditing/chatEditingEditorContextKeys.js';
 import { PromptFileVariableKind, toPromptFileVariableEntry } from '../../common/attachments/chatVariableEntries.js';
-import { TALEMO_NATIVE_SIGN_IN_COMMAND } from '../../../../../sessions/browser/talemoApi.js';
+import { TALEMO_NATIVE_SIGN_IN_COMMAND } from '../../../../services/talemo/browser/constants.js';
 
 export const enum ActionLocation {
 	ChatWidget = 'chatWidget',

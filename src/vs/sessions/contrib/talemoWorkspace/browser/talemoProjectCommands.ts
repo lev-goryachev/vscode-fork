@@ -14,16 +14,15 @@ import { ServicesAccessor } from '../../../../platform/instantiation/common/inst
 import { IQuickInputService } from '../../../../platform/quickinput/common/quickInput.js';
 import { IStorageService } from '../../../../platform/storage/common/storage.js';
 import { IWorkspaceContextService } from '../../../../platform/workspace/common/workspace.js';
-import { IProductService } from '../../../../platform/product/common/productService.js';
 import { IFileService } from '../../../../platform/files/common/files.js';
 import { INotificationService } from '../../../../platform/notification/common/notification.js';
 import { Menus } from '../../../browser/menus.js';
 import { IHostService } from '../../../../workbench/services/host/browser/host.js';
 import { localize2 } from '../../../../nls.js';
-import { IAuthenticationService } from '../../../../workbench/services/authentication/common/authentication.js';
 import { ILabelService } from '../../../../platform/label/common/label.js';
-import { TALEMO_ATTACH_PROJECT_COMMAND_ID, TALEMO_INIT_PROJECT_COMMAND_ID, TALEMO_MANAGE_PROJECTS_COMMAND_ID } from '../../../browser/talemoProjectCommandsIds.js';
-import { registerTalemoProjectLabel } from '../../../browser/talemoWebStartup.contribution.js';
+import { ITalemoApiService } from '../../../../workbench/services/talemo/browser/talemoApiService.js';
+import { TALEMO_ATTACH_PROJECT_COMMAND_ID, TALEMO_INIT_PROJECT_COMMAND_ID, TALEMO_MANAGE_PROJECTS_COMMAND_ID } from './talemoProjectCommandsIds.js';
+import { registerTalemoProjectLabel } from './talemoWebStartup.contribution.js';
 import {
 	getActiveProjectBinding,
 	getConfiguredTalemoProjectsRoot,
@@ -36,7 +35,7 @@ import {
 	setStoredActiveProject,
 	setConfiguredTalemoProjectsRoot,
 	writeProjectBinding,
-} from '../../../browser/talemoProjectBinding.js';
+} from './talemoProjectBinding.js';
 
 type TalemoProjectCommandServices = {
 	notificationService: INotificationService;
@@ -46,8 +45,7 @@ type TalemoProjectCommandServices = {
 	hostService: IHostService;
 	workspaceContextService: IWorkspaceContextService;
 	quickInputService: IQuickInputService;
-	authService: IAuthenticationService;
-	productService: IProductService;
+	api: ITalemoApiService;
 	labelService: ILabelService;
 };
 
@@ -67,8 +65,7 @@ function getTalemoProjectCommandServices(accessor: ServicesAccessor): TalemoProj
 		hostService: accessor.get(IHostService),
 		workspaceContextService: accessor.get(IWorkspaceContextService),
 		quickInputService: accessor.get(IQuickInputService),
-		authService: accessor.get(IAuthenticationService),
-		productService: accessor.get(IProductService),
+		api: accessor.get(ITalemoApiService),
 		labelService: accessor.get(ILabelService),
 	};
 }
@@ -110,13 +107,8 @@ async function ensureProjectFolder(
 	await fileService.createFolder(projectRoot);
 	await writeProjectBinding(fileService, projectRoot, project, project.tenant_id);
 
-	// Status must be shown before openWindow because reusing the window
-	// causes an immediate reload and the notification would be lost.
 	notificationService.status(`Project "${project.name}" is now active.`);
 
-	// Open as a single-folder workspace with an explicit label so the Explorer
-	// title and window title show the human-readable project name instead of
-	// the UUID-based folder name used internally on disk.
 	await hostService.openWindow([{ folderUri: projectRoot, label: project.name }], { forceReuseWindow: true });
 	return true;
 }
@@ -131,11 +123,7 @@ async function activateProjectForCurrentSurface(
 	}
 
 	setStoredActiveProject(storageService, project, project.tenant_id);
-	// Persist the project name so TalemoWebStartupContribution can restore it
-	// synchronously on the next page load (before Welcome renders Recent items).
 	mergeStoredProjectLabels(storageService, { [project.project_id]: project.name });
-	// Register the label formatter before openWindow so the Explorer and title
-	// bar show the project name immediately in the current session.
 	registerTalemoProjectLabel(labelService, project.project_id, project.name);
 	await hostService.openWindow([{ folderUri: getWebProjectRoot(project.project_id), label: project.name }], { forceReuseWindow: true });
 	notificationService.status(`Project "${project.name}" is now active.`);
@@ -143,7 +131,7 @@ async function activateProjectForCurrentSurface(
 }
 
 async function doInitProject(services: TalemoProjectCommandServices): Promise<void> {
-	const { notificationService, workspaceContextService, quickInputService, authService, storageService, productService } = services;
+	const { notificationService, workspaceContextService, quickInputService, api } = services;
 	try {
 		const root = getWorkspaceRoot(workspaceContextService);
 		const fallbackName = root ? root.path.split('/').filter(Boolean).at(-1) ?? 'Project' : 'Project';
@@ -163,7 +151,7 @@ async function doInitProject(services: TalemoProjectCommandServices): Promise<vo
 
 		notificationService.status(`Creating project "${name.trim()}"...`);
 		try {
-			const project = await initRemoteProject(authService, storageService, productService, name.trim());
+			const project = await initRemoteProject(api, name.trim());
 			const opened = await activateProjectForCurrentSurface(services, project);
 			if (!opened) {
 				notificationService.warn(isWeb
@@ -232,9 +220,9 @@ async function doManageProjects(services: TalemoProjectCommandServices): Promise
 }
 
 async function doAttachProject(services: TalemoProjectCommandServices): Promise<void> {
-	const { notificationService, quickInputService, authService, storageService, productService } = services;
+	const { notificationService, quickInputService, api } = services;
 	try {
-		const projects = await listRemoteProjects(authService, storageService, productService);
+		const projects = await listRemoteProjects(api);
 		const pick = await quickInputService.pick(
 			projects.map(project => ({
 				id: project.project_id,

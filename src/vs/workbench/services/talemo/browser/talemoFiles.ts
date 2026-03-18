@@ -4,13 +4,13 @@
  * This module keeps desktop-side file sync on the same authenticated backend
  * contract used by chat tools. The backend remains the canonical owner of file
  * identity, sync/conflict semantics, and mutation rules.
+ *
+ * All functions accept ITalemoApiService — a single DI-injected service that
+ * handles auth headers, 401 recovery, and token storage transparently.
  *--------------------------------------------------------------------------------------------*/
 
-import { VSBuffer, encodeBase64 as vscodeEncodeBase64, decodeBase64 as vscodeDecodeBase64 } from '../../base/common/buffer.js';
-import { IProductService } from '../../platform/product/common/productService.js';
-import { IStorageService } from '../../platform/storage/common/storage.js';
-import { IAuthenticationService } from '../../workbench/services/authentication/common/authentication.js';
-import { authedFetch } from './talemoAuth/runtime.js';
+import { VSBuffer, encodeBase64 as vscodeEncodeBase64, decodeBase64 as vscodeDecodeBase64 } from '../../../../base/common/buffer.js';
+import { ITalemoApiService } from './talemoApiService.js';
 
 export interface TalemoWorkspaceFile {
 	file_id: string;
@@ -48,14 +48,10 @@ export interface TalemoResolvedFile {
 }
 
 function encodeBase64(buffer: VSBuffer): string {
-	// Use VS Code's own base64 implementation — browser and Node.js safe.
-	// Node.js Buffer.from() is not reliable in the web renderer; using it caused
-	// silent empty-file uploads when the polyfill failed.
 	return vscodeEncodeBase64(buffer);
 }
 
 function decodeBase64(value: string): VSBuffer {
-	// Use VS Code's own base64 implementation — browser and Node.js safe.
 	return vscodeDecodeBase64(value);
 }
 
@@ -130,34 +126,24 @@ export interface TalemoWorkspaceSystemManifest {
 }
 
 export async function listWorkspaceFiles(
-	authService: IAuthenticationService,
-	storageService: IStorageService,
-	productService: IProductService,
+	api: ITalemoApiService,
 	projectId: string,
 	options?: { prefix?: string; recursive?: boolean },
 ): Promise<TalemoWorkspaceFile[]> {
 	const prefix = options?.prefix ?? '';
 	const recursive = options?.recursive === true ? 'true' : 'false';
-	const data = await authedFetch<{ files: TalemoWorkspaceFile[] }>(
-		authService,
-		storageService,
-		productService,
+	const data = await api.authedFetch<{ files: TalemoWorkspaceFile[] }>(
 		`/workspace/files?project_id=${encodeURIComponent(projectId)}&prefix=${encodeURIComponent(prefix)}&recursive=${recursive}`,
 	);
 	return data.files ?? [];
 }
 
 export async function readWorkspaceFile(
-	authService: IAuthenticationService,
-	storageService: IStorageService,
-	productService: IProductService,
+	api: ITalemoApiService,
 	projectId: string,
 	path: string,
 ): Promise<{ file: TalemoWorkspaceFile; content: VSBuffer; contentType?: string }> {
-	const data = await authedFetch<{ file: TalemoWorkspaceFile; content_base64: string; content_type?: string }>(
-		authService,
-		storageService,
-		productService,
+	const data = await api.authedFetch<{ file: TalemoWorkspaceFile; content_base64: string; content_type?: string }>(
 		`/workspace/files/blob?project_id=${encodeURIComponent(projectId)}&path=${encodeURIComponent(path)}`,
 	);
 	return {
@@ -168,16 +154,11 @@ export async function readWorkspaceFile(
 }
 
 export async function saveWorkspaceFile(
-	authService: IAuthenticationService,
-	storageService: IStorageService,
-	productService: IProductService,
+	api: ITalemoApiService,
 	args: { projectId: string; path: string; content: VSBuffer; contentType?: string; expectedVersion?: string },
 ): Promise<TalemoWorkspaceFile> {
 	try {
-		return await authedFetch<TalemoWorkspaceFile>(
-			authService,
-			storageService,
-			productService,
+		return await api.authedFetch<TalemoWorkspaceFile>(
 			'/workspace/files/blob',
 			{
 				method: 'PUT',
@@ -201,20 +182,15 @@ export async function saveWorkspaceFile(
 }
 
 export async function resolveWorkspaceConflict(
-	authService: IAuthenticationService,
-	storageService: IStorageService,
-	productService: IProductService,
+	api: ITalemoApiService,
 	args: { projectId: string; path: string; strategy: 'accept_local' | 'accept_cloud' | 'chat_assist'; content?: VSBuffer; contentType?: string; expectedVersion?: string },
 ): Promise<TalemoResolvedFile> {
-	const data = await authedFetch<{
+	const data = await api.authedFetch<{
 		file: TalemoWorkspaceFile;
 		content_base64?: string;
 		content_type?: string;
 		resolution_strategy: string;
 	}>(
-		authService,
-		storageService,
-		productService,
 		'/workspace/files/conflicts/resolve',
 		{
 			method: 'POST',
@@ -238,33 +214,23 @@ export async function resolveWorkspaceConflict(
 }
 
 export async function deleteWorkspaceFile(
-	authService: IAuthenticationService,
-	storageService: IStorageService,
-	productService: IProductService,
+	api: ITalemoApiService,
 	projectId: string,
 	path: string,
 ): Promise<void> {
-	await authedFetch<void>(
-		authService,
-		storageService,
-		productService,
+	await api.authedFetch<void>(
 		`/workspace/files?project_id=${encodeURIComponent(projectId)}&path=${encodeURIComponent(path)}`,
 		{ method: 'DELETE' },
 	);
 }
 
 export async function moveWorkspaceFile(
-	authService: IAuthenticationService,
-	storageService: IStorageService,
-	productService: IProductService,
+	api: ITalemoApiService,
 	projectId: string,
 	sourcePath: string,
 	destinationPath: string,
 ): Promise<TalemoWorkspaceFile> {
-	return authedFetch<TalemoWorkspaceFile>(
-		authService,
-		storageService,
-		productService,
+	return api.authedFetch<TalemoWorkspaceFile>(
 		'/workspace/files/move',
 		{
 			method: 'POST',
@@ -275,17 +241,12 @@ export async function moveWorkspaceFile(
 }
 
 export async function duplicateWorkspaceFile(
-	authService: IAuthenticationService,
-	storageService: IStorageService,
-	productService: IProductService,
+	api: ITalemoApiService,
 	projectId: string,
 	sourcePath: string,
 	destinationPath: string,
 ): Promise<TalemoWorkspaceFile> {
-	return authedFetch<TalemoWorkspaceFile>(
-		authService,
-		storageService,
-		productService,
+	return api.authedFetch<TalemoWorkspaceFile>(
 		'/workspace/files/duplicate',
 		{
 			method: 'POST',
@@ -296,29 +257,19 @@ export async function duplicateWorkspaceFile(
 }
 
 export async function listWorkspaceProjects(
-	authService: IAuthenticationService,
-	storageService: IStorageService,
-	productService: IProductService,
+	api: ITalemoApiService,
 ): Promise<TalemoWorkspaceProject[]> {
-	const data = await authedFetch<{ projects: TalemoWorkspaceProject[] }>(
-		authService,
-		storageService,
-		productService,
+	const data = await api.authedFetch<{ projects: TalemoWorkspaceProject[] }>(
 		'/workspace/projects',
 	);
 	return data.projects ?? [];
 }
 
 export async function createWorkspaceProject(
-	authService: IAuthenticationService,
-	storageService: IStorageService,
-	productService: IProductService,
+	api: ITalemoApiService,
 	name: string,
 ): Promise<TalemoWorkspaceProject> {
-	return authedFetch<TalemoWorkspaceProject>(
-		authService,
-		storageService,
-		productService,
+	return api.authedFetch<TalemoWorkspaceProject>(
 		'/workspace/projects',
 		{
 			method: 'POST',
@@ -329,27 +280,20 @@ export async function createWorkspaceProject(
 }
 
 export async function readWorkspaceDirectory(
-	authService: IAuthenticationService,
-	storageService: IStorageService,
-	productService: IProductService,
+	api: ITalemoApiService,
 	projectId: string,
 	path = '',
 ): Promise<TalemoWorkspaceTreeDirectory> {
-	return authedFetch<TalemoWorkspaceTreeDirectory>(
-		authService,
-		storageService,
-		productService,
+	return api.authedFetch<TalemoWorkspaceTreeDirectory>(
 		`/workspace/tree?project_id=${encodeURIComponent(projectId)}&path=${encodeURIComponent(path)}`,
 	);
 }
 
 export async function readWorkspaceSystemManifest(
-	authService: IAuthenticationService,
-	storageService: IStorageService,
-	productService: IProductService,
+	api: ITalemoApiService,
 	projectId: string,
 ): Promise<TalemoWorkspaceSystemManifest> {
-	const data = await authedFetch<{
+	const data = await api.authedFetch<{
 		root_directory: TalemoWorkspaceTreeNode;
 		root_children: TalemoWorkspaceTreeNode[];
 		directories: Array<{
@@ -366,9 +310,6 @@ export async function readWorkspaceSystemManifest(
 			content_type?: string;
 		}>;
 	}>(
-		authService,
-		storageService,
-		productService,
 		`/workspace/tree/system-manifest?project_id=${encodeURIComponent(projectId)}`,
 	);
 	return {
@@ -391,16 +332,11 @@ export async function readWorkspaceSystemManifest(
 }
 
 export async function createWorkspaceDirectory(
-	authService: IAuthenticationService,
-	storageService: IStorageService,
-	productService: IProductService,
+	api: ITalemoApiService,
 	projectId: string,
 	path: string,
 ): Promise<TalemoWorkspaceTreeNode> {
-	return authedFetch<TalemoWorkspaceTreeNode>(
-		authService,
-		storageService,
-		productService,
+	return api.authedFetch<TalemoWorkspaceTreeNode>(
 		'/workspace/tree/directories',
 		{
 			method: 'POST',
@@ -411,34 +347,24 @@ export async function createWorkspaceDirectory(
 }
 
 export async function deleteWorkspaceDirectory(
-	authService: IAuthenticationService,
-	storageService: IStorageService,
-	productService: IProductService,
+	api: ITalemoApiService,
 	projectId: string,
 	path: string,
 	recursive: boolean,
 ): Promise<void> {
-	await authedFetch<void>(
-		authService,
-		storageService,
-		productService,
+	await api.authedFetch<void>(
 		`/workspace/tree/directories?project_id=${encodeURIComponent(projectId)}&path=${encodeURIComponent(path)}&recursive=${recursive ? 'true' : 'false'}`,
 		{ method: 'DELETE' },
 	);
 }
 
 export async function moveWorkspaceDirectory(
-	authService: IAuthenticationService,
-	storageService: IStorageService,
-	productService: IProductService,
+	api: ITalemoApiService,
 	projectId: string,
 	sourcePath: string,
 	destinationPath: string,
 ): Promise<TalemoWorkspaceTreeNode> {
-	return authedFetch<TalemoWorkspaceTreeNode>(
-		authService,
-		storageService,
-		productService,
+	return api.authedFetch<TalemoWorkspaceTreeNode>(
 		'/workspace/tree/directories/move',
 		{
 			method: 'POST',
@@ -449,17 +375,12 @@ export async function moveWorkspaceDirectory(
 }
 
 export async function renameWorkspaceDirectory(
-	authService: IAuthenticationService,
-	storageService: IStorageService,
-	productService: IProductService,
+	api: ITalemoApiService,
 	projectId: string,
 	path: string,
 	destinationName: string,
 ): Promise<TalemoWorkspaceTreeNode> {
-	return authedFetch<TalemoWorkspaceTreeNode>(
-		authService,
-		storageService,
-		productService,
+	return api.authedFetch<TalemoWorkspaceTreeNode>(
 		'/workspace/tree/directories/rename',
 		{
 			method: 'POST',

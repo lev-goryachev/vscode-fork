@@ -1,5 +1,5 @@
-import { env as processEnv } from '../../../base/common/process.js';
-import { IProductService } from '../../../platform/product/common/productService.js';
+import { env as processEnv } from '../../../../base/common/process.js';
+import { IProductService } from '../../../../platform/product/common/productService.js';
 
 export type TalemoProductLike = Pick<IProductService, 'quality'> & { talemoBackendUrl?: string };
 

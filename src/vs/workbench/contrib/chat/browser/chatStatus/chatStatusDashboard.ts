@@ -43,7 +43,7 @@ import { Color } from '../../../../../base/common/color.js';
 import { IViewsService } from '../../../../services/views/common/viewsService.js';
 import { ChatViewId } from '../chat.js';
 import { isCompletionsEnabled } from '../../../../../editor/common/services/completionsEnablement.js';
-import { TALEMO_NATIVE_SIGN_IN_COMMAND } from '../../../../../sessions/browser/talemoApi.js';
+import { TALEMO_NATIVE_SIGN_IN_COMMAND } from '../../../../services/talemo/browser/constants.js';
 
 const defaultChat = {
 	...product.defaultChatAgent,

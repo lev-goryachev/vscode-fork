@@ -8,16 +8,15 @@
  * provisioned subtree so the opened project folder can resolve its active project.
  *--------------------------------------------------------------------------------------------*/
 
-import { VSBuffer } from '../../base/common/buffer.js';
-import { isWeb } from '../../base/common/platform.js';
-import { joinPath } from '../../base/common/resources.js';
-import { URI } from '../../base/common/uri.js';
-import { IFileService } from '../../platform/files/common/files.js';
-import { IProductService } from '../../platform/product/common/productService.js';
-import { IStorageService, StorageScope, StorageTarget } from '../../platform/storage/common/storage.js';
-import { IWorkspaceContextService } from '../../platform/workspace/common/workspace.js';
-import { IAuthenticationService } from '../../workbench/services/authentication/common/authentication.js';
-import { createWorkspaceProject, listWorkspaceProjects, TalemoWorkspaceProject } from './talemoFiles.js';
+import { VSBuffer } from '../../../../base/common/buffer.js';
+import { isWeb } from '../../../../base/common/platform.js';
+import { joinPath } from '../../../../base/common/resources.js';
+import { URI } from '../../../../base/common/uri.js';
+import { IFileService } from '../../../../platform/files/common/files.js';
+import { IStorageService, StorageScope, StorageTarget } from '../../../../platform/storage/common/storage.js';
+import { IWorkspaceContextService } from '../../../../platform/workspace/common/workspace.js';
+import { createWorkspaceProject, listWorkspaceProjects, TalemoWorkspaceProject } from '../../../../workbench/services/talemo/browser/talemoFiles.js';
+import { ITalemoApiService } from '../../../../workbench/services/talemo/browser/talemoApiService.js';
 import { getTalemoProjectIdFromResource, getTalemoWorkspaceRoot } from './talemoProjectFileSystemProvider.js';
 
 export interface ITalemoProjectBinding {
@@ -34,7 +33,6 @@ export const TALEMO_WORKSPACE_FILE = '.talemo/talemo.code-workspace';
 export const TALEMO_IGNORE_FILE = '.talemoignore';
 export const TALEMO_PROJECTS_ROOT_KEY = 'talemo.projectsRoot';
 export const TALEMO_ACTIVE_PROJECT_KEY = 'talemo.activeProject';
-// Persisted map of all known projectId → projectName for sync label restore.
 export const TALEMO_PROJECT_LABELS_KEY = 'talemo.projectLabels';
 
 export function getWorkspaceRoot(workspaceContextService: IWorkspaceContextService): URI | undefined {
@@ -79,7 +77,7 @@ export function clearStoredActiveProject(storageService: IStorageService): void 
 }
 
 /**
- * Read the persisted projectId → projectName map from storage.
+ * Read the persisted projectId -> projectName map from storage.
  * Returns an empty object if nothing is stored yet.
  * Used synchronously at startup to restore label formatters for Recent items.
  */
@@ -92,7 +90,7 @@ export function getStoredProjectLabels(storageService: IStorageService): Record<
 }
 
 /**
- * Merge one or more projectId → projectName entries into the persisted map.
+ * Merge one or more projectId -> projectName entries into the persisted map.
  * Idempotent: safe to call repeatedly with the same data.
  */
 export function mergeStoredProjectLabels(
@@ -155,12 +153,6 @@ export function getProvisionedProjectRoot(
 	talemoRoot: URI,
 	project: TalemoWorkspaceProject,
 ): URI {
-	// Use project_id as the folder name as specified in F62 architecture:
-	//   {talemo-root}/{tenant-id}/projects/{project-id}/
-	// The human-readable project name is displayed via the workspace label
-	// formatter (workspaceRootLabel) rather than encoding it in the path.
-	// This avoids breaking existing installations and keeps folder names stable
-	// across project renames.
 	return joinPath(talemoRoot, project.tenant_id, 'projects', project.project_id);
 }
 
@@ -176,14 +168,6 @@ export function getWorkspaceFileResource(root: URI): URI {
 	return joinPath(root, TALEMO_WORKSPACE_FILE);
 }
 
-/**
- * Creates or overwrites `.talemo/talemo.code-workspace` — a VS Code workspace
- * file that declares the project folder with a human-readable name.  Stored
- * inside `.talemo/` which is already excluded from cloud sync, so this file
- * is purely local.  Opening the workspace file (rather than the raw folder)
- * makes VS Code show `projectName` as the Explorer root label, matching the
- * web surface behaviour which uses ILabelService.workspaceRootLabel.
- */
 export async function createProjectWorkspaceFile(
 	fileService: IFileService,
 	root: URI,
@@ -255,18 +239,14 @@ export async function ensureTalemoIgnore(fileService: IFileService, root: URI): 
 }
 
 export async function listRemoteProjects(
-	authService: IAuthenticationService,
-	storageService: IStorageService,
-	productService: IProductService,
+	api: ITalemoApiService,
 ): Promise<TalemoWorkspaceProject[]> {
-	return listWorkspaceProjects(authService, storageService, productService);
+	return listWorkspaceProjects(api);
 }
 
 export async function initRemoteProject(
-	authService: IAuthenticationService,
-	storageService: IStorageService,
-	productService: IProductService,
+	api: ITalemoApiService,
 	name: string,
 ): Promise<TalemoWorkspaceProject> {
-	return createWorkspaceProject(authService, storageService, productService, name);
+	return createWorkspaceProject(api, name);
 }

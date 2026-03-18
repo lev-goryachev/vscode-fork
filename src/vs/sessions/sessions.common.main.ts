@@ -431,4 +431,8 @@ import '../workbench/contrib/editTelemetry/browser/editTelemetry.contribution.js
 // Opener
 import '../workbench/contrib/opener/browser/opener.contribution.js';
 
+// Talemo: register workspace FS provider and project label formatters so
+// labelService returns project names instead of UUID authorities on startup.
+import './contrib/talemoWorkspace/browser/talemoWebStartup.contribution.js';
+
 //#endregion

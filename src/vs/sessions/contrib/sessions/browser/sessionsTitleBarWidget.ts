@@ -25,6 +25,8 @@ import { getAgentSessionProvider, getAgentSessionProviderIcon } from '../../../.
 import { basename } from '../../../../base/common/resources.js';
 import { ICommandService } from '../../../../platform/commands/common/commands.js';
 import { ViewAllSessionChangesAction } from '../../../../workbench/contrib/chat/browser/chatEditing/chatEditingActions.js';
+import { IStorageService, StorageScope } from '../../../../platform/storage/common/storage.js';
+import { getStoredProjectLabels, TALEMO_PROJECT_LABELS_KEY } from '../../talemoWorkspace/browser/talemoProjectBinding.js';
 
 /**
  * Sessions Title Bar Widget - renders the active chat session title
@@ -59,6 +61,7 @@ export class SessionsTitleBarWidget extends BaseActionViewItem {
 		@IChatService private readonly chatService: IChatService,
 		@IAgentSessionsService private readonly agentSessionsService: IAgentSessionsService,
 		@ICommandService private readonly commandService: ICommandService,
+		@IStorageService private readonly storageService: IStorageService,
 	) {
 		super(undefined, action, options);
 
@@ -72,6 +75,13 @@ export class SessionsTitleBarWidget extends BaseActionViewItem {
 
 		// Re-render when sessions data changes (e.g., changes info updated)
 		this._register(this.agentSessionsService.model.onDidChangeSessions(() => {
+			this._lastRenderState = undefined;
+			this._render();
+		}));
+
+		// Re-render when the project labels map is updated in storage so the
+		// repository name refreshes as soon as the sync service persists it.
+		this._register(this.storageService.onDidChangeValue(StorageScope.PROFILE, TALEMO_PROJECT_LABELS_KEY, this._store)(() => {
 			this._lastRenderState = undefined;
 			this._render();
 		}));
@@ -298,6 +308,9 @@ export class SessionsTitleBarWidget extends BaseActionViewItem {
 
 	/**
 	 * Get the repository label for the active session.
+	 * Uses the human-readable project name from storage if the repository URI
+	 * points to a Talemo project folder (last path segment is a project UUID).
+	 * Falls back to the URI basename for non-Talemo repositories.
 	 */
 	private _getRepositoryLabel(): string | undefined {
 		const activeSession = this.activeSessionService.getActiveSession();
@@ -310,7 +323,15 @@ export class SessionsTitleBarWidget extends BaseActionViewItem {
 			return undefined;
 		}
 
-		return basename(uri);
+		// The last segment of the path is the project UUID on desktop.
+		// Look it up in the persisted projectId → name map first.
+		const projectId = basename(uri);
+		const storedLabels = getStoredProjectLabels(this.storageService);
+		if (storedLabels[projectId]) {
+			return storedLabels[projectId];
+		}
+
+		return projectId;
 	}
 
 	/**

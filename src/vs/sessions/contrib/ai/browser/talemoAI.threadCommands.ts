@@ -22,18 +22,12 @@
 import { localize, localize2 } from '../../../../nls.js';
 import { Codicon } from '../../../../base/common/codicons.js';
 import { Action2, MenuId, registerAction2 } from '../../../../platform/actions/common/actions.js';
-import { IProductService } from '../../../../platform/product/common/productService.js';
 import { IQuickInputService, IQuickPickItem } from '../../../../platform/quickinput/common/quickInput.js';
-import { IStorageService } from '../../../../platform/storage/common/storage.js';
 import { ServicesAccessor } from '../../../../platform/instantiation/common/instantiation.js';
 import { ACTIVE_GROUP } from '../../../../workbench/services/editor/common/editorService.js';
-import { IAuthenticationService } from '../../../../workbench/services/authentication/common/authentication.js';
 import { ChatViewPaneTarget, IChatWidgetService, isIChatViewViewContext } from '../../../../workbench/contrib/chat/browser/chat.js';
-import {
-	AuthRequiredError,
-	ThreadSummary,
-	listThreads,
-} from '../../../browser/talemoApi.js';
+import { AuthRequiredError, ITalemoApiService } from '../../../../workbench/services/talemo/browser/talemoApiService.js';
+import { ThreadSummary, listThreads } from '../../../../workbench/services/talemo/browser/talemoThreads.js';
 import { getDraftResourceForChatSessionType } from '../../../../workbench/contrib/chat/browser/chatSessions/chatSessionDraftResource.js';
 import { getThreadIdFromSessionModel } from './talemoAI.sessionBinding.js';
 import { TALEMO_THREAD_SESSION_SCHEME } from './talemoAI.shared.js';
@@ -77,9 +71,7 @@ interface ThreadQuickPickItem extends IQuickPickItem {
 
 async function openThreadPicker(accessor: ServicesAccessor): Promise<void> {
 	const quickInputService = accessor.get(IQuickInputService);
-	const authService = accessor.get(IAuthenticationService);
-	const productService = accessor.get(IProductService);
-	const storageService = accessor.get(IStorageService);
+	const api = accessor.get(ITalemoApiService);
 	const widgetService = accessor.get(IChatWidgetService);
 
 	// Show loading placeholder while fetching the thread list.
@@ -91,7 +83,7 @@ async function openThreadPicker(accessor: ServicesAccessor): Promise<void> {
 	let threads: ThreadSummary[];
 	try {
 		// listThreads uses authedFetch — 401 triggers forceSignIn transparently.
-		threads = await listThreads(authService, storageService, productService);
+		threads = await listThreads(api);
 	} catch (err) {
 		pick.hide();
 		pick.dispose();

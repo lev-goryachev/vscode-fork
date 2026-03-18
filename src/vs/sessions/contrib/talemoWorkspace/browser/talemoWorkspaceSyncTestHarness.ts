@@ -6,6 +6,6 @@
  * graph clean while still allowing browser tests to load the real sync adapter.
  *--------------------------------------------------------------------------------------------*/
 
-export async function loadTalemoWorkspaceSyncForTests(): Promise<typeof import('../contrib/ai/browser/talemoWorkspaceSync.js')> {
-	return import('../contrib/ai/browser/talemoWorkspaceSync.js');
+export async function loadTalemoWorkspaceSyncForTests(): Promise<typeof import('./talemoWorkspaceSync.js')> {
+	return import('./talemoWorkspaceSync.js');
 }

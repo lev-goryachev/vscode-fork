@@ -15,8 +15,6 @@ import { URI } from '../../../../base/common/uri.js';
 import { localize } from '../../../../nls.js';
 import { IFileService } from '../../../../platform/files/common/files.js';
 import { ILogService } from '../../../../platform/log/common/log.js';
-import { IProductService } from '../../../../platform/product/common/productService.js';
-import { IStorageService } from '../../../../platform/storage/common/storage.js';
 import { ChatViewPaneTarget, IChatWidgetService, isIChatViewViewContext } from '../../../../workbench/contrib/chat/browser/chat.js';
 import { ChatModeKind } from '../../../../workbench/contrib/chat/common/constants.js';
 import { IChatProgress, IChatService } from '../../../../workbench/contrib/chat/common/chatService/chatService.js';
@@ -29,9 +27,9 @@ import {
 	ChatSessionStatus,
 } from '../../../../workbench/contrib/chat/common/chatSessionsService.js';
 import { ISerializableChatModelInputState } from '../../../../workbench/contrib/chat/common/model/chatModel.js';
-import { IAuthenticationService } from '../../../../workbench/services/authentication/common/authentication.js';
-import { MessageRecord, ThreadSummary, getThreadMessages, listThreads, markThreadRead } from '../../../browser/talemoApi.js';
-import { ITalemoRuntimeEventEnvelope, TalemoRealtimeClient } from '../../../browser/talemoRealtime.js';
+import { MessageRecord, ThreadSummary, getThreadMessages, listThreads, markThreadRead } from '../../../../workbench/services/talemo/browser/talemoThreads.js';
+import { ITalemoApiService } from '../../../../workbench/services/talemo/browser/talemoApiService.js';
+import { ITalemoRuntimeEventEnvelope, TalemoRealtimeClient } from '../../../../workbench/services/talemo/browser/talemoRealtime.js';
 import { getThreadIdFromSessionModel, TALEMO_SESSION_BINDING_KEY } from './talemoAI.sessionBinding.js';
 import { TALEMO_THREAD_SESSION_SCHEME } from './talemoAI.shared.js';
 import { ITalemoThreadSnapshot, TalemoThreadSnapshotStore, areSnapshotMessagesEqual } from './talemoThreadSnapshotStore.js';
@@ -40,23 +38,9 @@ export { TALEMO_THREAD_SESSION_SCHEME } from './talemoAI.shared.js';
 export const TALEMO_THREAD_PROVIDER_LABEL = 'Talemo';
 
 export interface ITalemoThreadSessionApi {
-	listThreads(
-		authService: IAuthenticationService,
-		storageService: IStorageService,
-		productService: IProductService,
-	): Promise<ThreadSummary[]>;
-	getThreadMessages(
-		authService: IAuthenticationService,
-		storageService: IStorageService,
-		productService: IProductService,
-		threadId: string,
-	): Promise<MessageRecord[]>;
-	markThreadRead(
-		authService: IAuthenticationService,
-		storageService: IStorageService,
-		productService: IProductService,
-		threadId: string,
-	): Promise<void>;
+	listThreads(api: ITalemoApiService): Promise<ThreadSummary[]>;
+	getThreadMessages(api: ITalemoApiService, threadId: string): Promise<MessageRecord[]>;
+	markThreadRead(api: ITalemoApiService, threadId: string): Promise<void>;
 }
 
 const defaultThreadSessionApi: ITalemoThreadSessionApi = {
@@ -236,11 +220,9 @@ export class TalemoThreadSessionsController extends Disposable implements IChatS
 	}
 
 	constructor(
-		@IAuthenticationService private readonly authService: IAuthenticationService,
+		private readonly api: ITalemoApiService,
 		private readonly fileService: IFileService,
 		private readonly logService: ILogService,
-		@IStorageService private readonly storageService: IStorageService,
-		@IProductService private readonly productService: IProductService,
 		@IChatService private readonly chatService: IChatService,
 		@IChatWidgetService private readonly chatWidgetService: IChatWidgetService,
 		private readonly realtimeClient: TalemoRealtimeClient,
@@ -253,10 +235,8 @@ export class TalemoThreadSessionsController extends Disposable implements IChatS
 			void this.ensureRealtimeBaseline();
 		}));
 
-		this._register(this.authService.onDidChangeSessions(e => {
-			if (e.providerId === 'talemo') {
-				void this.refresh(CancellationToken.None);
-			}
+		this._register(this.api.onDidAuthStateChange(() => {
+			void this.refresh(CancellationToken.None);
 		}));
 
 		this._register(this.realtimeClient.onDidRuntimeEvent(event => {
@@ -338,7 +318,7 @@ export class TalemoThreadSessionsController extends Disposable implements IChatS
 				);
 			}
 
-			const messages = await this.threadApi.getThreadMessages(this.authService, this.storageService, this.productService, threadId);
+			const messages = await this.threadApi.getThreadMessages(this.api, threadId);
 			await this.snapshotStore.saveCanonical(thread, messages);
 			return new TalemoThreadChatSession(
 				sessionResource,
@@ -376,7 +356,7 @@ export class TalemoThreadSessionsController extends Disposable implements IChatS
 			return cachedThread;
 		}
 
-		const listedThread = (await this.threadApi.listThreads(this.authService, this.storageService, this.productService))
+		const listedThread = (await this.threadApi.listThreads(this.api))
 			.find(candidate => candidate.thread_id === threadId);
 		if (listedThread) {
 			this.threadSummaries.set(threadId, listedThread);
@@ -399,7 +379,7 @@ export class TalemoThreadSessionsController extends Disposable implements IChatS
 
 		this.reconcileInFlight.add(threadId);
 		try {
-			const canonicalMessages = await this.threadApi.getThreadMessages(this.authService, this.storageService, this.productService, threadId);
+			const canonicalMessages = await this.threadApi.getThreadMessages(this.api, threadId);
 			const latestThread = this.threadSummaries.get(threadId) ?? thread;
 			await this.snapshotStore.saveCanonical(latestThread, canonicalMessages);
 			if (!snapshot.stale && areSnapshotMessagesEqual(snapshot.messages, canonicalMessages)) {
@@ -415,7 +395,7 @@ export class TalemoThreadSessionsController extends Disposable implements IChatS
 	}
 
 	private async loadThreads(): Promise<ThreadSummary[]> {
-		const threads = await this.threadApi.listThreads(this.authService, this.storageService, this.productService);
+		const threads = await this.threadApi.listThreads(this.api);
 		this.threadSummaries.clear();
 		for (const thread of threads) {
 			this.threadSummaries.set(thread.thread_id, thread);
@@ -467,7 +447,7 @@ export class TalemoThreadSessionsController extends Disposable implements IChatS
 
 			this.markReadInFlight.add(threadId);
 			try {
-				await this.threadApi.markThreadRead(this.authService, this.storageService, this.productService, threadId);
+				await this.threadApi.markThreadRead(this.api, threadId);
 				changed = this.applyThreadReadStateUpdatedPayload({
 					thread_id: threadId,
 					last_read_at: Math.max(thread.updated_at, Date.now()),

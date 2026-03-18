@@ -13,7 +13,7 @@ import { URI } from '../../../../base/common/uri.js';
 import { IFileService } from '../../../../platform/files/common/files.js';
 import { ILogService } from '../../../../platform/log/common/log.js';
 import { IChatService } from '../../../../workbench/contrib/chat/common/chatService/chatService.js';
-import { MessageRecord, ThreadSummary } from '../../../browser/talemoApi.js';
+import { MessageRecord, ThreadSummary } from '../../../../workbench/services/talemo/browser/talemoThreads.js';
 
 const TALEMO_THREAD_SNAPSHOT_VERSION = 1;
 const TALEMO_THREAD_SNAPSHOT_FOLDER = 'talemo-thread-snapshots';

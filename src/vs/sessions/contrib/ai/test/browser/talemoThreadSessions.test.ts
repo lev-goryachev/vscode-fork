@@ -128,11 +128,9 @@ suite('TalemoThreadSessionsController', () => {
 
 	function createController(): TalemoThreadSessionsController {
 		return disposables.add(new TalemoThreadSessionsController(
-			{ onDidChangeSessions: Event.None } as any,
+			{ onDidAuthStateChange: Event.None } as any,
 			fileService as any,
 			logService,
-			{} as any,
-			{} as any,
 			chatService as any,
 			widgetService as any,
 			realtimeClient as any,

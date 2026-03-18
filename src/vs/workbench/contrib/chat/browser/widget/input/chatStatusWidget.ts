@@ -11,7 +11,7 @@ import { defaultButtonStyles } from '../../../../../../platform/theme/browser/de
 import { ChatEntitlement, ChatEntitlementContextKeys, IChatEntitlementService } from '../../../../../services/chat/common/chatEntitlementService.js';
 import { ChatContextKeys } from '../../../common/actions/chatContextKeys.js';
 import { ChatInputPartWidgetsRegistry, IChatInputPartWidget } from './chatInputPartWidgets.js';
-import { TALEMO_NATIVE_SIGN_IN_COMMAND } from '../../../../../../sessions/browser/talemoApi.js';
+import { TALEMO_NATIVE_SIGN_IN_COMMAND } from '../../../../../services/talemo/browser/constants.js';
 import './media/chatStatusWidget.css';
 
 const $ = dom.$;

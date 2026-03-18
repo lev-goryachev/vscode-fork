@@ -101,8 +101,9 @@ class RemoteExtensionHostAgentServer extends Disposable implements IServerAPI {
 	}
 
 	public async handleRequest(req: http.IncomingMessage, res: http.ServerResponse): Promise<void> {
-		// Only serve GET requests
-		if (req.method !== 'GET') {
+		// Allow GET (page/resource loads) and POST (e.g. /secret-key for
+		// encrypted secret storage in web environments).
+		if (req.method !== 'GET' && req.method !== 'POST') {
 			return serveError(req, res, 405, `Unsupported method ${req.method}`);
 		}
 

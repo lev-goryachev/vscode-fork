@@ -1,16 +1,12 @@
 import { Disposable } from '../../../../base/common/lifecycle.js';
 import { MenuId, MenuRegistry } from '../../../../platform/actions/common/actions.js';
-import { CommandsRegistry, ICommandService } from '../../../../platform/commands/common/commands.js';
+import { CommandsRegistry } from '../../../../platform/commands/common/commands.js';
 import { ServicesAccessor } from '../../../../platform/instantiation/common/instantiation.js';
-import { IStorageService } from '../../../../platform/storage/common/storage.js';
 import { registerWorkbenchContribution2, WorkbenchPhase } from '../../../common/contributions.js';
 import { registerTalemoAuthProvider } from './talemoAuthProvider.js';
 import { IAuthenticationService } from '../../../services/authentication/common/authentication.js';
-import {
-	clearStoredTalemoAuth,
-	promptTalemoNativeSignIn,
-} from '../../../../sessions/browser/talemoApi.js';
-import { TalemoAuthSessionController } from '../../../../sessions/browser/talemoAuth/controller.js';
+import { ITalemoApiService } from '../../../services/talemo/browser/talemoApiService.js';
+import { TalemoAuthSessionController } from './controller.js';
 
 // -- Registration --------------------------------------------------------------
 
@@ -20,19 +16,18 @@ registerWorkbenchContribution2(
 	WorkbenchPhase.AfterRestored,
 );
 
-// -- Auth provider (reads token from IStorageService for Accounts UI) ----------
+// -- Auth provider (reads token from ISecretStorageService for Accounts UI) ----
 
 class TalemoAuthProviderContribution extends Disposable {
 	static readonly ID = 'workbench.contrib.talemoAuthProvider';
 
 	constructor(
 		@IAuthenticationService authService: IAuthenticationService,
-		@IStorageService storageService: IStorageService,
-		@ICommandService commandService: ICommandService,
+		@ITalemoApiService api: ITalemoApiService,
 	) {
 		super();
 		try {
-			const provider = registerTalemoAuthProvider(authService, storageService, commandService);
+			const provider = registerTalemoAuthProvider(authService, api);
 			this._register(provider);
 		} catch (error: unknown) {
 			console.error('[TalemoAuth] Provider contribution failed:', error);
@@ -40,8 +35,6 @@ class TalemoAuthProviderContribution extends Disposable {
 	}
 }
 
-// BlockStartup ensures the provider is registered before AccountsActivityAction
-// initializes, so getSessions('talemo') works from the first request.
 registerWorkbenchContribution2(
 	TalemoAuthProviderContribution.ID,
 	TalemoAuthProviderContribution,
@@ -51,8 +44,8 @@ registerWorkbenchContribution2(
 // -- Sign Out ------------------------------------------------------------------
 
 CommandsRegistry.registerCommand('talemo.auth.signOut', async (accessor: ServicesAccessor) => {
-	const storageService = accessor.get(IStorageService);
-	clearStoredTalemoAuth(storageService);
+	const api = accessor.get(ITalemoApiService);
+	await api.clearAuth();
 });
 
 MenuRegistry.appendMenuItem(MenuId.CommandPalette, {
@@ -62,8 +55,8 @@ MenuRegistry.appendMenuItem(MenuId.CommandPalette, {
 // -- Sign In (manual trigger via Command Palette) -----------------------------
 
 CommandsRegistry.registerCommand('talemo.auth.signIn', async (accessor: ServicesAccessor) => {
-	const commandService = accessor.get(ICommandService);
-	await promptTalemoNativeSignIn(commandService);
+	const api = accessor.get(ITalemoApiService);
+	await api.promptNativeSignIn();
 });
 
 MenuRegistry.appendMenuItem(MenuId.CommandPalette, {

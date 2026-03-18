@@ -399,7 +399,7 @@ import './contrib/workspace/browser/workspace.contribution.js';
 
 // Talemo Auth Gate
 import './contrib/talemoAuth/browser/talemoAuth.contribution.js';
-import '../sessions/browser/talemoWebStartup.contribution.js';
+import '../sessions/contrib/talemoWorkspace/browser/talemoWebStartup.contribution.js';
 
 // Workspaces
 import './contrib/workspaces/browser/workspaces.contribution.js';

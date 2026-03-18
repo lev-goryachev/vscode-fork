@@ -27,7 +27,7 @@ import { PANEL_BORDER } from '../../../../common/theme.js';
 import { DisposableStore, MutableDisposable } from '../../../../../base/common/lifecycle.js';
 import { IContextKey, IContextKeyService } from '../../../../../platform/contextkey/common/contextkey.js';
 import { CONTEXT_MODELS_EDITOR } from '../../common/constants.js';
-import { TALEMO_NATIVE_SIGN_IN_COMMAND } from '../../../../../sessions/browser/talemoApi.js';
+import { TALEMO_NATIVE_SIGN_IN_COMMAND } from '../../../../services/talemo/browser/constants.js';
 
 const $ = DOM.$;
 

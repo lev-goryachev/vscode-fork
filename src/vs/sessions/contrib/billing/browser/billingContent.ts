@@ -2,14 +2,10 @@ import * as DOM from '../../../../base/browser/dom.js';
 import { mainWindow } from '../../../../base/browser/window.js';
 import { Disposable } from '../../../../base/common/lifecycle.js';
 import { localize } from '../../../../nls.js';
-import { IProductService } from '../../../../platform/product/common/productService.js';
-import { IStorageService } from '../../../../platform/storage/common/storage.js';
-import { IAuthenticationService } from '../../../../workbench/services/authentication/common/authentication.js';
 import {
 	AuthRequiredError,
-	authedFetch,
-	forceSignIn,
-} from '../../../browser/talemoApi.js';
+	ITalemoApiService,
+} from '../../../../workbench/services/talemo/browser/talemoApiService.js';
 import {
 	BillingSection,
 	WalletStatus,
@@ -22,8 +18,7 @@ const $ = DOM.$;
 
 /**
  * Manages content rendering for each billing section.
- * Uses TalemoAuthenticationProvider (id: 'talemo') to get the Supabase JWT.
- * All HTTP calls go through authedFetch (talemoApi.ts) which handles 401 →
+ * All HTTP calls go through ITalemoApiService.authedFetch which handles 401 →
  * forceSignIn → retry transparently. AuthRequiredError renders a sign-in prompt
  * instead of exposing raw HTTP status codes.
  */
@@ -37,9 +32,7 @@ export class BillingContent extends Disposable {
 
 	constructor(
 		parent: HTMLElement,
-		@IProductService private readonly productService: IProductService,
-		@IStorageService private readonly storageService: IStorageService,
-		@IAuthenticationService private readonly authenticationService: IAuthenticationService,
+		@ITalemoApiService private readonly talemoApi: ITalemoApiService,
 	) {
 		super();
 		this.contentInner = DOM.append(parent, $('.billing-content-inner'));
@@ -79,9 +72,7 @@ export class BillingContent extends Disposable {
 	private async loadOverview(): Promise<void> {
 		this.renderLoading(this.overviewEl);
 		try {
-			const status = await authedFetch<WalletStatus>(
-				this.authenticationService, this.storageService, this.productService, '/billing/status',
-			);
+			const status = await this.talemoApi.authedFetch<WalletStatus>('/billing/status');
 			this.renderOverview(status);
 		} catch (err) {
 			if (err instanceof AuthRequiredError) {
@@ -166,9 +157,7 @@ export class BillingContent extends Disposable {
 	private async loadTopUp(): Promise<void> {
 		this.renderLoading(this.topUpEl);
 		try {
-			const packages = await authedFetch<CreditPackage[]>(
-				this.authenticationService, this.storageService, this.productService, '/billing/packages',
-			);
+			const packages = await this.talemoApi.authedFetch<CreditPackage[]>('/billing/packages');
 			this.renderTopUp(packages);
 		} catch (err) {
 			if (err instanceof AuthRequiredError) {
@@ -221,14 +210,11 @@ export class BillingContent extends Disposable {
 		btn.setAttribute('disabled', 'true');
 		btn.textContent = localize('billing.loading', "Loading...");
 		try {
-			const data = await authedFetch<{ checkout_url: string }>(
-				this.authenticationService, this.storageService, this.productService, '/billing/checkout',
-				{
-					method: 'POST',
-					headers: { 'Content-Type': 'application/json' },
-					body: JSON.stringify({ polar_product_id: pkg.polar_product_id }),
-				},
-			);
+			const data = await this.talemoApi.authedFetch<{ checkout_url: string }>('/billing/checkout', {
+				method: 'POST',
+				headers: { 'Content-Type': 'application/json' },
+				body: JSON.stringify({ polar_product_id: pkg.polar_product_id }),
+			});
 			void mainWindow.open(data.checkout_url, '_blank');
 		} catch (err) {
 			this.showInlineError(btn, err);
@@ -243,9 +229,7 @@ export class BillingContent extends Disposable {
 	private async loadTransactions(): Promise<void> {
 		this.renderLoading(this.transactionsEl);
 		try {
-			const data = await authedFetch<TransactionsResponse>(
-				this.authenticationService, this.storageService, this.productService, '/billing/transactions?limit=50',
-			);
+			const data = await this.talemoApi.authedFetch<TransactionsResponse>('/billing/transactions?limit=50');
 			this.renderTransactions(data.transactions);
 		} catch (err) {
 			if (err instanceof AuthRequiredError) {
@@ -304,8 +288,8 @@ export class BillingContent extends Disposable {
 	}
 
 	/**
-	 * Shown when authedFetch throws AuthRequiredError — authentication failed or
-	 * was cancelled. Offers a Sign In button without exposing raw HTTP status codes.
+	 * Shown when ITalemoApiService.authedFetch throws AuthRequiredError — auth failed
+	 * or was cancelled. Offers a Sign In button without exposing raw HTTP status codes.
 	 */
 	private renderSignInRequired(container: HTMLElement): void {
 		DOM.clearNode(container);
@@ -315,7 +299,7 @@ export class BillingContent extends Disposable {
 		btn.textContent = localize('billing.signIn', "Sign In");
 		this._register(DOM.addDisposableListener(btn, 'click', () => {
 			// Explicit user-initiated sign-in, then reload the section.
-			void forceSignIn(this.authenticationService, this.storageService)
+			void this.talemoApi.forceSignIn()
 				.then(() => this.loadSection(this.currentSection))
 				.catch(() => undefined);
 		}));

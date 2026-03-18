@@ -22,8 +22,6 @@ import { CancellationToken } from '../../../../base/common/cancellation.js';
 import { MarkdownString } from '../../../../base/common/htmlContent.js';
 import { DisposableStore } from '../../../../base/common/lifecycle.js';
 import { localize } from '../../../../nls.js';
-import { IProductService } from '../../../../platform/product/common/productService.js';
-import { IStorageService } from '../../../../platform/storage/common/storage.js';
 import { ACTIVE_GROUP } from '../../../../workbench/services/editor/common/editorService.js';
 import { ChatViewPaneTarget, IChatWidgetService, isIChatViewViewContext } from '../../../../workbench/contrib/chat/browser/chat.js';
 import { IChatProgress, IChatService } from '../../../../workbench/contrib/chat/common/chatService/chatService.js';
@@ -33,14 +31,8 @@ import {
 	IChatAgentRequest,
 	IChatAgentResult,
 } from '../../../../workbench/contrib/chat/common/participants/chatAgents.js';
-import { IAuthenticationService } from '../../../../workbench/services/authentication/common/authentication.js';
-import {
-	AuthRequiredError,
-	TALEMO_PROVIDER_ID,
-	forceSignIn,
-	refreshTalemoSession,
-} from '../../../browser/talemoApi.js';
-import { ITalemoRuntimeEventEnvelope, TalemoRealtimeClient } from '../../../browser/talemoRealtime.js';
+import { AuthRequiredError, ITalemoApiService } from '../../../../workbench/services/talemo/browser/talemoApiService.js';
+import { ITalemoRuntimeEventEnvelope, TalemoRealtimeClient } from '../../../../workbench/services/talemo/browser/talemoRealtime.js';
 import { DEFAULT_MODEL } from './talemoAI.shared.js';
 import {
 	getThreadIdFromSessionModel,
@@ -49,14 +41,10 @@ import {
 import { getThreadResource } from './talemoThreadSessions.js';
 import { LocalChatSessionUri } from '../../../../workbench/contrib/chat/common/model/chatUri.js';
 
-// ─── TalemoAgentImpl ──────────────────────────────────────────────────────────
-
 export class TalemoAgentImpl implements IChatAgentImplementation {
 
 	constructor(
-		private readonly authService: IAuthenticationService,
-		private readonly productService: IProductService,
-		private readonly storageService: IStorageService,
+		private readonly api: ITalemoApiService,
 		private readonly chatService: IChatService,
 		private readonly chatWidgetService: IChatWidgetService,
 		private readonly realtimeClient: TalemoRealtimeClient,
@@ -107,7 +95,7 @@ export class TalemoAgentImpl implements IChatAgentImplementation {
 	 * Returns true on successful re-auth, false on cancel or provider error.
 	 */
 	private async _recoverAuth(progress: (parts: IChatProgress[]) => void): Promise<'silent' | 'interactive' | 'failed'> {
-		const refreshResult = await refreshTalemoSession(this.storageService, this.productService);
+		const refreshResult = await this.api.refresh();
 		if (refreshResult === 'success') {
 			return 'silent';
 		}
@@ -117,8 +105,7 @@ export class TalemoAgentImpl implements IChatAgentImplementation {
 			content: { value: localize('talemo.ai.signingIn', '_Session expired — please sign in to continue..._') },
 		}]);
 		try {
-			// Delegates to the shared forceSignIn — shows login modal, rotates sessions.
-			await forceSignIn(this.authService, this.storageService);
+			await this.api.forceSignIn();
 			return 'interactive';
 		} catch {
 			return 'failed';
@@ -165,7 +152,6 @@ export class TalemoAgentImpl implements IChatAgentImplementation {
 		});
 	}
 
-	/** Runs thread resolution + chat request through the shared Socket.io runtime. */
 	private async _doRequest(
 		request: IChatAgentRequest,
 		progress: (parts: IChatProgress[]) => void,
@@ -174,7 +160,6 @@ export class TalemoAgentImpl implements IChatAgentImplementation {
 		const model = request.userSelectedModelId ?? DEFAULT_MODEL;
 		const boundThreadId = this._getSessionThreadId(request.sessionResource);
 
-		// ── Step 1: subscribe and start runtime chat turn ─────────────────────
 		const attempt = async (): Promise<{ runId: string; threadId: string }> => {
 			const projectId = await this.getActiveProjectId();
 			await this.realtimeClient.subscribe('tenant');
@@ -236,7 +221,6 @@ export class TalemoAgentImpl implements IChatAgentImplementation {
 			}
 		}
 
-		// ── Step 2: stream runtime events ──────────────────────────────────────
 		const result = await this._consumeRuntimeRun(runId, progress, token);
 		if (result === 'ok' && !boundThreadId) {
 			await this._promoteSessionToCanonicalThread(request.sessionResource, threadId);
@@ -250,11 +234,8 @@ export class TalemoAgentImpl implements IChatAgentImplementation {
 		_history: IChatAgentHistoryEntry[],
 		token: CancellationToken,
 	): Promise<IChatAgentResult> {
-		// Pre-flight: no session → trigger login with visible feedback immediately,
-		// before any network I/O, so the user knows why the panel is waiting.
-		const hasSessions = await this.authService
-			.getSessions(TALEMO_PROVIDER_ID)
-			.then(s => s.length > 0)
+		const hasSessions = await this.api.getAccessToken()
+			.then(t => !!t)
 			.catch(() => false);
 
 		if (!hasSessions) {
