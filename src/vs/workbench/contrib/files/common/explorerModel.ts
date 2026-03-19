@@ -30,9 +30,10 @@ export class ExplorerModel implements IDisposable {
 		fileService: IFileService,
 		configService: IConfigurationService,
 		filesConfigService: IFilesConfigurationService,
+		private readonly resolveFolderLabel: (name: string) => string = (n) => n,
 	) {
 		const setRoots = () => this._roots = this.contextService.getWorkspace().folders
-			.map(folder => new ExplorerItem(folder.uri, fileService, configService, filesConfigService, undefined, true, false, false, false, folder.name));
+			.map(folder => new ExplorerItem(folder.uri, fileService, configService, filesConfigService, undefined, true, false, false, false, this.resolveFolderLabel(folder.name)));
 		setRoots();
 
 		this._listener = this.contextService.onDidChangeWorkspaceFolders(() => {

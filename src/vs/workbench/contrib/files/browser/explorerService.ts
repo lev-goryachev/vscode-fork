@@ -21,6 +21,7 @@ import { IHostService } from '../../../services/host/browser/host.js';
 import { IExpression } from '../../../../base/common/glob.js';
 import { ResourceGlobMatcher } from '../../../common/resources.js';
 import { IFilesConfigurationService } from '../../../services/filesConfiguration/common/filesConfigurationService.js';
+import { IStorageService, StorageScope } from '../../../../platform/storage/common/storage.js';
 
 export const UNDO_REDO_SOURCE = new UndoRedoSource();
 
@@ -49,11 +50,27 @@ export class ExplorerService implements IExplorerService {
 		@IBulkEditService private readonly bulkEditService: IBulkEditService,
 		@IProgressService private readonly progressService: IProgressService,
 		@IHostService hostService: IHostService,
-		@IFilesConfigurationService private readonly filesConfigurationService: IFilesConfigurationService
+		@IFilesConfigurationService private readonly filesConfigurationService: IFilesConfigurationService,
+		@IStorageService private readonly storageService: IStorageService,
 	) {
 		this.config = this.configurationService.getValue('explorer');
 
-		this.model = new ExplorerModel(this.contextService, this.uriIdentityService, this.fileService, this.configurationService, this.filesConfigurationService);
+		// Resolve Talemo project labels for Explorer root folders.
+		// On desktop the workspace folder basename is the project UUID;
+		// the persisted label map provides the human-readable name.
+		const resolveFolderLabel = (name: string): string => {
+			try {
+				const labels = this.storageService.getObject<Record<string, string>>(
+					'talemo.projectLabels',
+					StorageScope.PROFILE,
+				);
+				return labels?.[name] ?? name;
+			} catch {
+				return name;
+			}
+		};
+
+		this.model = new ExplorerModel(this.contextService, this.uriIdentityService, this.fileService, this.configurationService, this.filesConfigurationService, resolveFolderLabel);
 		this.disposables.add(this.model);
 		this.disposables.add(this.fileService.onDidRunOperation(e => this.onDidRunOperation(e)));
 

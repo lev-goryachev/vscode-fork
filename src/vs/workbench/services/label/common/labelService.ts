@@ -143,7 +143,7 @@ export class LabelService extends Disposable implements ILabelService {
 		@IWorkspaceContextService private readonly contextService: IWorkspaceContextService,
 		@IPathService private readonly pathService: IPathService,
 		@IRemoteAgentService private readonly remoteAgentService: IRemoteAgentService,
-		@IStorageService storageService: IStorageService,
+		@IStorageService private readonly storageService: IStorageService,
 		@ILifecycleService lifecycleService: ILifecycleService,
 	) {
 		super();
@@ -368,6 +368,27 @@ export class LabelService extends Disposable implements ILabelService {
 		return this.appendWorkspaceSuffix(label, workspaceUri);
 	}
 
+	/**
+	 * Resolve a Talemo project display name from the persisted
+	 * projectId -> projectName map in storage.
+	 *
+	 * On desktop, workspace folders use file:// URIs whose basename is
+	 * the project UUID.  The persisted map (written by
+	 * mergeStoredProjectLabels in project commands) lets the label
+	 * service return the human-readable name without a network call.
+	 */
+	private resolveTalemoProjectLabel(rawName: string): string | undefined {
+		try {
+			const labels = this.storageService.getObject<Record<string, string>>(
+				'talemo.projectLabels',
+				StorageScope.PROFILE,
+			);
+			return labels?.[rawName];
+		} catch {
+			return undefined;
+		}
+	}
+
 	private doGetSingleFolderWorkspaceLabel(folderUri: URI, options?: { verbose: Verbosity }): string {
 		let label: string;
 		switch (options?.verbose) {
@@ -393,7 +414,7 @@ export class LabelService extends Disposable implements ILabelService {
 			// registered for the scheme, use it to produce a human-readable label
 			// (e.g. the project name stored via registerFormatter in a contribution).
 			if (rawName && rawName !== posix.sep) {
-				label = rawName;
+				label = this.resolveTalemoProjectLabel(rawName) ?? rawName;
 			} else {
 				const formatting = this.findFormatting(folderUri);
 				// Prefer workspaceRootLabel when set — it carries the human-readable

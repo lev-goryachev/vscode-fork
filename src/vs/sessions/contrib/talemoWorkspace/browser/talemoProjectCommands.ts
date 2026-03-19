@@ -97,7 +97,7 @@ async function ensureProjectFolder(
 	services: TalemoProjectCommandServices,
 	project: Awaited<ReturnType<typeof initRemoteProject>>,
 ): Promise<boolean> {
-	const { notificationService, fileService, hostService } = services;
+	const { notificationService, fileService, hostService, storageService } = services;
 	const talemoRoot = await ensureTalemoProjectsRoot(services);
 	if (!talemoRoot) {
 		return false;
@@ -106,6 +106,12 @@ async function ensureProjectFolder(
 	const projectRoot = getProvisionedProjectRoot(talemoRoot, project);
 	await fileService.createFolder(projectRoot);
 	await writeProjectBinding(fileService, projectRoot, project, project.tenant_id);
+
+	// Persist projectId -> name so title bar, recent entries, and startup
+	// restoration can resolve the human-readable name after window reload.
+	// Web path does this inside activateProjectForCurrentSurface; desktop
+	// must do it here because the window restarts on openWindow.
+	mergeStoredProjectLabels(storageService, { [project.project_id]: project.name });
 
 	notificationService.status(`Project "${project.name}" is now active.`);
 
