@@ -39,6 +39,7 @@ import {
 	persistThreadBindingForSession,
 } from './talemoAI.sessionBinding.js';
 import { getThreadResource } from './talemoThreadSessions.js';
+import { toExternalToolUpdate } from './talemoAI.toolEvents.js';
 import { LocalChatSessionUri } from '../../../../workbench/contrib/chat/common/model/chatUri.js';
 
 export class TalemoAgentImpl implements IChatAgentImplementation {
@@ -129,23 +130,37 @@ export class TalemoAgentImpl implements IChatAgentImplementation {
 					return;
 				}
 
-				switch (event.event_type) {
-					case 'chat.message.delta':
-						progress([{ kind: 'markdownContent', content: new MarkdownString(String(event.payload.delta ?? '')) }]);
-						return;
-					case 'chat.run.failed':
-						progress([{
-							kind: 'markdownContent',
-							content: new MarkdownString(`\n\n${String(event.payload.message ?? event.payload.code ?? 'Chat failed')}`),
-						}]);
-						finish('error');
-						return;
-					case 'chat.run.completed':
-						finish('ok');
-						return;
-					default:
-						return;
+			switch (event.event_type) {
+				case 'chat.message.delta':
+					progress([{ kind: 'markdownContent', content: new MarkdownString(String(event.payload.delta ?? '')) }]);
+					return;
+				case 'chat.run.failed':
+					progress([{
+						kind: 'markdownContent',
+						content: new MarkdownString(`\n\n${String(event.payload.message ?? event.payload.code ?? 'Chat failed')}`),
+					}]);
+					finish('error');
+					return;
+				case 'chat.run.completed':
+					finish('ok');
+					return;
+				case 'tool.invocation.started':
+				case 'tool.invocation.completed':
+				case 'tool.invocation.failed': {
+					const update = toExternalToolUpdate(event);
+					if (update) {
+						progress([update]);
+					}
+					return;
 				}
+				case 'tool.file.result':
+				case 'tool.invocation.progress':
+				case 'thread.message.committed':
+				case 'thread.summary.updated':
+					return;
+				default:
+					return;
+			}
 			}));
 
 			disposables.add(token.onCancellationRequested(() => finish('error')));
