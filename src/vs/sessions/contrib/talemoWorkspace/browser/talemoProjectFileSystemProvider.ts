@@ -25,7 +25,8 @@ import {
 	IWatchOptions,
 } from '../../../../platform/files/common/files.js';
 import { ITalemoApiService } from '../../../../workbench/services/talemo/browser/talemoApiService.js';
-import { ITalemoRuntimeEventEnvelope } from '../../../../workbench/services/talemo/browser/talemoRealtime.js';
+import { ITalemoRealtimeClient, ITalemoRuntimeEventEnvelope } from '../../../../workbench/services/talemo/browser/talemoRealtime.js';
+import { ITalemoWorkspaceRoomService } from '../../../../workbench/services/talemo/browser/talemoWorkspaceRoomService.js';
 import {
 	createWorkspaceDirectory,
 	deleteWorkspaceDirectory,
@@ -63,6 +64,32 @@ export function getTalemoProjectIdFromResource(resource: URI | undefined): strin
 	return resource.authority;
 }
 
+/**
+ * Returns true when the bootstrap manifest lists `path` as an existing directory.
+ * Used before remote directory reads for system subtrees so bogus paths fail fast
+ * without hitting the API (matches workspace system contract, F62/F69 hardening).
+ */
+export function talemoSystemManifestHasDirectory(
+	manifest: TalemoWorkspaceSystemManifest,
+	workspacePath: string,
+): boolean {
+	try {
+		if (!workspacePath) {
+			return true;
+		}
+		const inRoot = manifest.rootChildren.some(
+			child => child.path === workspacePath && child.kind === 'directory',
+		);
+		if (inRoot) {
+			return true;
+		}
+		const entry = manifest.directories.find(dir => dir.path === workspacePath);
+		return !!(entry && entry.exists);
+	} catch {
+		return false;
+	}
+}
+
 type TalemoResourceParts = { projectId: string; requestedPath: string; canonicalPath: string };
 
 export class TalemoProjectFileSystemProvider extends Disposable implements IFileSystemProviderWithFileReadWriteCapability {
@@ -77,13 +104,26 @@ export class TalemoProjectFileSystemProvider extends Disposable implements IFile
 	private readonly directoryCache = new Map<string, Awaited<ReturnType<typeof readWorkspaceDirectory>>>();
 	private readonly directoryPromises = new Map<string, Promise<Awaited<ReturnType<typeof readWorkspaceDirectory>>>>();
 	constructor(
-		private readonly api: ITalemoApiService,
+		@ITalemoApiService private readonly api: ITalemoApiService,
+		@ITalemoRealtimeClient private readonly realtimeClient: ITalemoRealtimeClient,
+		@ITalemoWorkspaceRoomService private readonly roomService: ITalemoWorkspaceRoomService,
 	) {
 		super();
+		this._register(this.realtimeClient.onDidRuntimeEvent(event => {
+			this.handleRuntimeEvent(event);
+		}));
 	}
 
-	watch(_resource: URI, _opts: IWatchOptions): IDisposable {
-		return Disposable.None;
+	watch(resource: URI, _opts: IWatchOptions): IDisposable {
+		try {
+			const projectId = getTalemoProjectIdFromResource(resource);
+			if (!projectId) {
+				return Disposable.None;
+			}
+			return this.roomService.acquireWorkspaceRoom(projectId);
+		} catch {
+			return Disposable.None;
+		}
 	}
 
 	async stat(resource: URI): Promise<IStat> {
@@ -244,6 +284,9 @@ export class TalemoProjectFileSystemProvider extends Disposable implements IFile
 
 	handleRuntimeEvent(event: ITalemoRuntimeEventEnvelope): void {
 		try {
+			if (!event.event_type.startsWith('file.')) {
+				return;
+			}
 			const projectId = event.workspace_id;
 			if (!projectId) {
 				return;
@@ -260,7 +303,15 @@ export class TalemoProjectFileSystemProvider extends Disposable implements IFile
 				}
 			}
 
-			this.invalidateSystemManifest(projectId);
+			const touchedPaths = this.collectFileEventWorkspacePaths(event.payload);
+			if (touchedPaths.length === 0) {
+				this.invalidateSystemManifest(projectId);
+			} else if (this.eventRequiresSystemManifestInvalidation(touchedPaths)) {
+				this.invalidateSystemManifest(projectId);
+			} else {
+				this.invalidateDirectoryCachesForWorkspacePaths(projectId, touchedPaths);
+			}
+
 			if (payloadPaths.length > 0) {
 				for (const path of payloadPaths) {
 					this.emitPathChanges(typeFromEvent(event.event_type), root, path);
@@ -270,6 +321,105 @@ export class TalemoProjectFileSystemProvider extends Disposable implements IFile
 			this.emitPathChanges(typeFromEvent(event.event_type), root, payloadPath);
 		} catch {
 			// Realtime invalidation should not break the shared runtime client.
+		}
+	}
+
+	private collectFileEventWorkspacePaths(payload: Record<string, unknown>): string[] {
+		try {
+			const out: string[] = [];
+			const direct = payload.path;
+			if (typeof direct === 'string' && direct.length > 0) {
+				out.push(direct);
+			}
+			const many = payload.paths;
+			if (Array.isArray(many)) {
+				for (const item of many) {
+					if (typeof item === 'string' && item.length > 0) {
+						out.push(item);
+					}
+				}
+			}
+			for (const key of ['source_path', 'destination_path'] as const) {
+				const v = payload[key];
+				if (typeof v === 'string' && v.length > 0) {
+					out.push(v);
+				}
+			}
+			const nested = payload.file as { path?: unknown } | undefined;
+			const nestedPath = nested?.path;
+			if (typeof nestedPath === 'string' && nestedPath.length > 0) {
+				out.push(nestedPath);
+			}
+			return out;
+		} catch {
+			return [];
+		}
+	}
+
+	private eventRequiresSystemManifestInvalidation(paths: readonly string[]): boolean {
+		try {
+			for (const p of paths) {
+				if (this.pathAffectsSystemManifest(p)) {
+					return true;
+				}
+			}
+			return false;
+		} catch {
+			return true;
+		}
+	}
+
+	/** System dirs and root-level nodes are cached inside the bootstrap manifest. */
+	private pathAffectsSystemManifest(workspacePath: string): boolean {
+		try {
+			if (!workspacePath) {
+				return true;
+			}
+			if (!workspacePath.includes('/')) {
+				return true;
+			}
+			return (
+				workspacePath === '.claude' || workspacePath.startsWith('.claude/')
+				|| workspacePath === '.talemo' || workspacePath.startsWith('.talemo/')
+				|| workspacePath === '.github' || workspacePath.startsWith('.github/')
+			);
+		} catch {
+			return true;
+		}
+	}
+
+	private parentDirectoryPrefixesForFile(workspacePath: string): string[] {
+		try {
+			const segments = workspacePath.split('/').filter(Boolean);
+			if (segments.length === 0) {
+				return [''];
+			}
+			const prefixes: string[] = [''];
+			let acc = '';
+			for (let i = 0; i < segments.length - 1; i++) {
+				acc = acc ? `${acc}/${segments[i]}` : segments[i]!;
+				prefixes.push(acc);
+			}
+			return prefixes;
+		} catch {
+			return [''];
+		}
+	}
+
+	private invalidateDirectoryCachesForWorkspacePaths(projectId: string, paths: readonly string[]): void {
+		try {
+			const keys = new Set<string>();
+			for (const p of paths) {
+				for (const prefix of this.parentDirectoryPrefixesForFile(p)) {
+					keys.add(`${projectId}:${prefix}`);
+				}
+			}
+			for (const key of keys) {
+				this.directoryCache.delete(key);
+				this.directoryPromises.delete(key);
+			}
+		} catch {
+			// Cache invalidation is best-effort for remote consistency.
 		}
 	}
 
@@ -290,6 +440,12 @@ export class TalemoProjectFileSystemProvider extends Disposable implements IFile
 					};
 				}
 				throw createFileSystemProviderError('file not found', FileSystemProviderErrorCode.FileNotFound);
+			}
+			if (this.isSystemPath(parentPath)) {
+				const manifest = await this.getSystemManifest(projectId);
+				if (!talemoSystemManifestHasDirectory(manifest, parentPath)) {
+					throw createFileSystemProviderError('file not found', FileSystemProviderErrorCode.FileNotFound);
+				}
 			}
 			const directory = await this.readRemoteDirectory(projectId, parentPath);
 			const match = directory.children.find(child => child.path === canonicalPath);

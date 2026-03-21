@@ -1,5 +1,6 @@
 import { Disposable } from '../../../../base/common/lifecycle.js';
 import { IFileService } from '../../../../platform/files/common/files.js';
+import { IInstantiationService } from '../../../../platform/instantiation/common/instantiation.js';
 import { ILabelService } from '../../../../platform/label/common/label.js';
 import { ILogService } from '../../../../platform/log/common/log.js';
 import { IStorageService } from '../../../../platform/storage/common/storage.js';
@@ -26,6 +27,7 @@ class TalemoWebStartupContribution extends Disposable implements IWorkbenchContr
 		@IStorageService private readonly storageService: IStorageService,
 		@ILabelService private readonly labelService: ILabelService,
 		@ILogService private readonly logService: ILogService,
+		@IInstantiationService private readonly instantiationService: IInstantiationService,
 	) {
 		super();
 
@@ -43,9 +45,9 @@ class TalemoWebStartupContribution extends Disposable implements IWorkbenchContr
 				return;
 			}
 
-			const provider = this._register(new TalemoProjectFileSystemProvider(
-				this.api,
-			));
+			const provider = this._register(
+				this.instantiationService.createInstance(TalemoProjectFileSystemProvider),
+			);
 			this._register(this.fileService.registerProvider(TALEMO_WORKSPACE_SCHEME, provider));
 		} catch (error) {
 			this.logService.error('Failed to register Talemo workspace file system provider.', error);

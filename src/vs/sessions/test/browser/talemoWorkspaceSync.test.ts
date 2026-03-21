@@ -11,7 +11,8 @@ import { IWorkspaceContextService } from '../../../platform/workspace/common/wor
 import { IWorkingCopyFileService } from '../../../workbench/services/workingCopy/common/workingCopyFileService.js';
 import { ITalemoApiService } from '../../../workbench/services/talemo/browser/talemoApiService.js';
 import { TalemoResolvedFile, TalemoWorkspaceFile } from '../../../workbench/services/talemo/browser/talemoFiles.js';
-import { TalemoRealtimeClient } from '../../../workbench/services/talemo/browser/talemoRealtime.js';
+import { ITalemoRealtimeClient } from '../../../workbench/services/talemo/browser/talemoRealtime.js';
+import { ITalemoWorkspaceRoomService } from '../../../workbench/services/talemo/browser/talemoWorkspaceRoomService.js';
 import { loadTalemoWorkspaceSyncForTests } from '../../contrib/talemoWorkspace/browser/talemoWorkspaceSyncTestHarness.js';
 
 suite('TalemoWorkspaceSyncService', () => {
@@ -130,9 +131,16 @@ suite('TalemoWorkspaceSyncService', () => {
 			new NullLogService(),
 			{
 				onDidRuntimeEvent: Event.None,
+				onDidDisconnect: Event.None,
+				onDidReconnect: Event.None,
+				connect: async () => undefined,
 				subscribe: async () => undefined,
 				unsubscribe: async () => undefined,
-			} as unknown as TalemoRealtimeClient,
+				startChatRun: async () => { throw new Error('not used'); },
+			} as unknown as ITalemoRealtimeClient,
+			{
+				acquireWorkspaceRoom: () => ({ dispose: () => undefined }),
+			} as unknown as ITalemoWorkspaceRoomService,
 			overrides.runtime,
 			{ autoStart: false },
 		)));

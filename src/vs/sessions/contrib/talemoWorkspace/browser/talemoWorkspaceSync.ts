@@ -11,9 +11,8 @@
 import { VSBuffer } from '../../../../base/common/buffer.js';
 import { Emitter, Event } from '../../../../base/common/event.js';
 import { isWeb } from '../../../../base/common/platform.js';
-import { Disposable } from '../../../../base/common/lifecycle.js';
+import { Disposable, IDisposable } from '../../../../base/common/lifecycle.js';
 import { basename, dirname, joinPath, relativePath } from '../../../../base/common/resources.js';
-import { ICommandService } from '../../../../platform/commands/common/commands.js';
 import { IResourceMergeEditorInput } from '../../../../workbench/common/editor.js';
 import { IEditorService } from '../../../../workbench/services/editor/common/editorService.js';
 import { URI } from '../../../../base/common/uri.js';
@@ -47,7 +46,8 @@ import {
 	TALEMO_IGNORE_FILE,
 } from './talemoProjectBinding.js';
 import { getTalemoProjectIdFromResource } from './talemoProjectFileSystemProvider.js';
-import { ITalemoRuntimeEventEnvelope, TalemoRealtimeClient } from '../../../../workbench/services/talemo/browser/talemoRealtime.js';
+import { ITalemoRealtimeClient, ITalemoRuntimeEventEnvelope } from '../../../../workbench/services/talemo/browser/talemoRealtime.js';
+import { ITalemoWorkspaceRoomService } from '../../../../workbench/services/talemo/browser/talemoWorkspaceRoomService.js';
 
 export type TalemoSyncStatus = 'idle' | 'syncing' | 'error';
 
@@ -90,6 +90,7 @@ export class TalemoWorkspaceSyncService extends Disposable {
 	private reconcilePromise: Promise<void> | undefined;
 	private operationQueue = Promise.resolve();
 	private subscribedProjectId: string | undefined;
+	private workspaceRoomLease: IDisposable | undefined;
 
 	private _syncOps = 0;
 	private _lastSyncAt: Date | undefined;
@@ -98,7 +99,6 @@ export class TalemoWorkspaceSyncService extends Disposable {
 	/** Fires whenever the sync status transitions between idle / syncing / error. */
 	readonly onDidChangeSyncState: Event<TalemoSyncState> = this._onDidChangeSyncState.event;
 
-	private commandService: ICommandService | undefined;
 	private editorService: IEditorService | undefined;
 
 	constructor(
@@ -109,13 +109,13 @@ export class TalemoWorkspaceSyncService extends Disposable {
 		private readonly workspaceContextService: IWorkspaceContextService,
 		private readonly notificationService: INotificationService,
 		private readonly logService: ILogService,
-		private readonly realtimeClient: TalemoRealtimeClient,
+		private readonly realtimeClient: ITalemoRealtimeClient,
+		private readonly roomService: ITalemoWorkspaceRoomService,
 		private readonly runtime: ITalemoWorkspaceSyncRuntime = defaultRuntime,
-		options?: { autoStart?: boolean; commandService?: ICommandService; editorService?: IEditorService },
+		options?: { autoStart?: boolean; editorService?: IEditorService },
 	) {
 		super();
 
-		this.commandService = options?.commandService;
 		this.editorService = options?.editorService;
 
 		if (isWeb) {
@@ -132,7 +132,7 @@ export class TalemoWorkspaceSyncService extends Disposable {
 		}
 
 		this._register(this.fileService.onDidFilesChange(event => this.onDidFilesChange(event)));
-		this._register(this.workingCopyFileService.onDidRunWorkingCopyFileOperation(event => this.onDidRunWorkingCopyFileOperation(event)));
+		this._register(this.workingCopyFileService.onDidRunWorkingCopyFileOperation((event: WorkingCopyFileEvent) => this.onDidRunWorkingCopyFileOperation(event)));
 		this._register(this.realtimeClient.onDidRuntimeEvent(event => this.onDidRuntimeEvent(event)));
 		this._register(this.api.onDidAuthStateChange(() => {
 			void this.reconcileWorkspace();
@@ -832,22 +832,26 @@ export class TalemoWorkspaceSyncService extends Disposable {
 	}
 
 	private async ensureProjectWorkspaceSubscribed(projectId: string): Promise<void> {
-		if (this.subscribedProjectId === projectId) {
-			return;
+		try {
+			if (this.subscribedProjectId === projectId) {
+				return;
+			}
+			this.workspaceRoomLease?.dispose();
+			this.workspaceRoomLease = this.roomService.acquireWorkspaceRoom(projectId);
+			this.subscribedProjectId = projectId;
+		} catch (error) {
+			this.logService.warn('[talemo-sync] ensureProjectWorkspaceSubscribed failed', String(error));
 		}
-		if (this.subscribedProjectId) {
-			await this.realtimeClient.unsubscribe('workspace', this.subscribedProjectId).catch(() => undefined);
-		}
-		await this.realtimeClient.subscribe('workspace', projectId);
-		this.subscribedProjectId = projectId;
 	}
 
 	private async unsubscribeProjectWorkspace(): Promise<void> {
-		if (!this.subscribedProjectId) {
-			return;
+		try {
+			this.workspaceRoomLease?.dispose();
+			this.workspaceRoomLease = undefined;
+			this.subscribedProjectId = undefined;
+		} catch (error) {
+			this.logService.warn('[talemo-sync] unsubscribeProjectWorkspace failed', String(error));
 		}
-		await this.realtimeClient.unsubscribe('workspace', this.subscribedProjectId).catch(() => undefined);
-		this.subscribedProjectId = undefined;
 	}
 
 	private async isActiveProjectEvent(event: ITalemoRuntimeEventEnvelope): Promise<boolean> {

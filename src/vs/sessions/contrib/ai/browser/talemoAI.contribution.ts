@@ -22,10 +22,10 @@ import { ExtensionIdentifier } from '../../../../platform/extensions/common/exte
 import { IFileService } from '../../../../platform/files/common/files.js';
 import { ILogService } from '../../../../platform/log/common/log.js';
 import { INotificationService, Severity } from '../../../../platform/notification/common/notification.js';
-import { IProductService } from '../../../../platform/product/common/productService.js';
 import { IStorageService } from '../../../../platform/storage/common/storage.js';
 import { IWorkspaceContextService } from '../../../../platform/workspace/common/workspace.js';
 import { ICommandService } from '../../../../platform/commands/common/commands.js';
+import { IInstantiationService } from '../../../../platform/instantiation/common/instantiation.js';
 
 import { IWorkbenchContribution, registerWorkbenchContribution2, WorkbenchPhase } from '../../../../workbench/common/contributions.js';
 import { IQuickInputService } from '../../../../platform/quickinput/common/quickInput.js';
@@ -40,7 +40,8 @@ import { IWorkingCopyFileService } from '../../../../workbench/services/workingC
 import { IHostService } from '../../../../workbench/services/host/browser/host.js';
 import { IEditorService } from '../../../../workbench/services/editor/common/editorService.js';
 import { ITalemoApiService } from '../../../../workbench/services/talemo/browser/talemoApiService.js';
-import { TalemoRealtimeClient } from '../../../../workbench/services/talemo/browser/talemoRealtime.js';
+import { ITalemoRealtimeClient } from '../../../../workbench/services/talemo/browser/talemoRealtime.js';
+import { ITalemoWorkspaceRoomService } from '../../../../workbench/services/talemo/browser/talemoWorkspaceRoomService.js';
 import {
 	getWorkspaceFileResource,
 	getWorkspaceRoot,
@@ -70,7 +71,6 @@ export class TalemoAIContribution extends Disposable implements IWorkbenchContri
 		@IChatSessionsService chatSessionsService: IChatSessionsService,
 		@IAuthenticationService authenticationService: IAuthenticationService,
 		@ITalemoApiService talemoApiService: ITalemoApiService,
-		@IProductService productService: IProductService,
 		@ILogService logService: ILogService,
 		@IStorageService storageService: IStorageService,
 		@IFileService fileService: IFileService,
@@ -82,30 +82,25 @@ export class TalemoAIContribution extends Disposable implements IWorkbenchContri
 		@IHostService hostService: IHostService,
 		@IStatusbarService statusbarService: IStatusbarService,
 		@IQuickInputService quickInputService: IQuickInputService,
+		@ITalemoRealtimeClient private readonly realtimeClient: ITalemoRealtimeClient,
+		@ITalemoWorkspaceRoomService private readonly talemoWorkspaceRoomService: ITalemoWorkspaceRoomService,
+		@IInstantiationService private readonly instantiationService: IInstantiationService,
 	) {
 		super();
 
 		registerTalemoProjectCommands();
-		let projectFileSystemProvider: TalemoProjectFileSystemProvider | undefined;
 		if (isWeb) {
-			// TalemoWebStartupContribution may have already registered the provider during
-			// BlockRestore (it runs at the same phase but earlier in import order).  We must
-			// grab the existing instance so we can still wire handleRuntimeEvent below —
-			// otherwise cloud-originated file.updated events never reach the web file system
-			// and the Explorer/editor never reflects remote changes.
+			// TalemoWebStartupContribution usually registers the FSP first; this fallback
+			// keeps web boot resilient if import order changes. Runtime events are wired
+			// inside TalemoProjectFileSystemProvider via the shared ITalemoRealtimeClient.
 			const existingProvider = fileService.getProvider(TALEMO_WORKSPACE_SCHEME);
-			if (existingProvider instanceof TalemoProjectFileSystemProvider) {
-				projectFileSystemProvider = existingProvider;
-			} else if (!existingProvider) {
-				projectFileSystemProvider = this._register(new TalemoProjectFileSystemProvider(talemoApiService));
+			if (!existingProvider) {
+				const projectFileSystemProvider = this._register(
+					this.instantiationService.createInstance(TalemoProjectFileSystemProvider),
+				);
 				this._register(fileService.registerProvider(TALEMO_WORKSPACE_SCHEME, projectFileSystemProvider));
 			}
 		}
-
-		const realtimeClient = this._register(new TalemoRealtimeClient(
-			authenticationService,
-			productService,
-		));
 
 		const workspaceSyncService = this._register(new TalemoWorkspaceSyncService(
 			talemoApiService,
@@ -115,11 +110,11 @@ export class TalemoAIContribution extends Disposable implements IWorkbenchContri
 			workspaceContextService,
 			notificationService,
 			logService,
-			realtimeClient,
+			this.realtimeClient,
+			this.talemoWorkspaceRoomService,
 			undefined,
-			// Pass commandService + editorService so conflict prompts can open the
-			// 3-way merge editor on desktop.
-			{ commandService, editorService },
+			// Pass editorService so conflict prompts can open the 3-way merge editor on desktop.
+			{ editorService },
 		));
 
 		// Show sync status in the bottom status bar on desktop.  The item is created
@@ -131,22 +126,14 @@ export class TalemoAIContribution extends Disposable implements IWorkbenchContri
 
 		const ensureRealtimeBaseline = async (): Promise<void> => {
 			try {
-				await realtimeClient.subscribe('tenant');
-				const projectId = await workspaceSyncService.getActiveProjectId();
-				if (projectId) {
-					await realtimeClient.subscribe('workspace', projectId);
-				}
+				await this.realtimeClient.connect();
+				await this.realtimeClient.subscribe('tenant');
 			} catch {
 				// Auth is established lazily by the shared realtime client.
 			}
 		};
 
 		void ensureRealtimeBaseline();
-		if (projectFileSystemProvider) {
-			this._register(realtimeClient.onDidRuntimeEvent(event => {
-				projectFileSystemProvider?.handleRuntimeEvent(event);
-			}));
-		}
 		this._register(authenticationService.onDidChangeSessions(e => {
 			if (e.providerId === 'talemo') {
 				void ensureRealtimeBaseline();
@@ -157,7 +144,7 @@ export class TalemoAIContribution extends Disposable implements IWorkbenchContri
 			talemoApiService,
 			chatService,
 			chatWidgetService,
-			realtimeClient,
+			this.realtimeClient,
 			() => workspaceSyncService.getActiveProjectId(),
 		);
 
@@ -265,7 +252,7 @@ export class TalemoAIContribution extends Disposable implements IWorkbenchContri
 			logService,
 			chatService,
 			chatWidgetService,
-			realtimeClient,
+			this.realtimeClient,
 		));
 		this._register(chatSessionsService.registerChatSessionItemController(TALEMO_THREAD_SESSION_SCHEME, threadSessionsController));
 		this._register(chatSessionsService.registerChatSessionContentProvider(TALEMO_THREAD_SESSION_SCHEME, threadSessionsController));

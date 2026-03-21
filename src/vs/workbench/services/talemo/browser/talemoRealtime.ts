@@ -9,6 +9,8 @@
 import { Emitter, Event } from '../../../../base/common/event.js';
 import { Disposable } from '../../../../base/common/lifecycle.js';
 import { importAMDNodeModule } from '../../../../amdX.js';
+import { InstantiationType, registerSingleton } from '../../../../platform/instantiation/common/extensions.js';
+import { createDecorator } from '../../../../platform/instantiation/common/instantiation.js';
 import { IProductService } from '../../../../platform/product/common/productService.js';
 import { IAuthenticationService } from '../../authentication/common/authentication.js';
 import { AuthRequiredError } from './talemoApiService.js';
@@ -29,6 +31,20 @@ export interface ITalemoRuntimeEventEnvelope {
 }
 
 export type TalemoRuntimeScope = 'tenant' | 'workspace' | 'thread';
+
+/** DI token for the shared Socket.io-backed Talemo runtime client (sessions + workspace). */
+export const ITalemoRealtimeClient = createDecorator<ITalemoRealtimeClient>('talemoRealtimeClient');
+
+export interface ITalemoRealtimeClient {
+	readonly _serviceBrand: undefined;
+	connect(): Promise<void>;
+	subscribe(scope: TalemoRuntimeScope, id?: string): Promise<void>;
+	unsubscribe(scope: TalemoRuntimeScope, id?: string): Promise<void>;
+	startChatRun(request: { message: string; thread_id?: string; model: string; project_id?: string }): Promise<{ runId: string; threadId: string }>;
+	readonly onDidRuntimeEvent: Event<ITalemoRuntimeEventEnvelope>;
+	readonly onDidDisconnect: Event<void>;
+	readonly onDidReconnect: Event<void>;
+}
 
 interface ITalemoSubscription {
 	scope: TalemoRuntimeScope;
@@ -61,7 +77,9 @@ type TalemoSocketFactory = ((url: string, options: Record<string, unknown>) => I
 	io?: (url: string, options: Record<string, unknown>) => ITalemoSocketLike;
 };
 
-export class TalemoRealtimeClient extends Disposable {
+export class TalemoRealtimeClient extends Disposable implements ITalemoRealtimeClient {
+
+	readonly _serviceBrand: undefined = undefined;
 
 	private socket: ITalemoSocketLike | undefined;
 	private socketModulePromise: Promise<TalemoSocketFactory> | undefined;
@@ -80,8 +98,8 @@ export class TalemoRealtimeClient extends Disposable {
 	readonly onDidReconnect: Event<void> = this._onDidReconnect.event;
 
 	constructor(
-		private readonly authService: IAuthenticationService,
-		private readonly productService: IProductService,
+		@IAuthenticationService private readonly authService: IAuthenticationService,
+		@IProductService private readonly productService: IProductService,
 	) {
 		super();
 	}
@@ -263,3 +281,5 @@ export class TalemoRealtimeClient extends Disposable {
 		throw new Error('Talemo tenant context is not available yet.');
 	}
 }
+
+registerSingleton(ITalemoRealtimeClient, TalemoRealtimeClient, InstantiationType.Delayed);

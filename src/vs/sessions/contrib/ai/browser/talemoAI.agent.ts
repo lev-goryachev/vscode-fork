@@ -32,7 +32,7 @@ import {
 	IChatAgentResult,
 } from '../../../../workbench/contrib/chat/common/participants/chatAgents.js';
 import { AuthRequiredError, ITalemoApiService } from '../../../../workbench/services/talemo/browser/talemoApiService.js';
-import { ITalemoRuntimeEventEnvelope, TalemoRealtimeClient } from '../../../../workbench/services/talemo/browser/talemoRealtime.js';
+import { ITalemoRealtimeClient, ITalemoRuntimeEventEnvelope } from '../../../../workbench/services/talemo/browser/talemoRealtime.js';
 import { DEFAULT_MODEL } from './talemoAI.shared.js';
 import {
 	getThreadIdFromSessionModel,
@@ -48,7 +48,7 @@ export class TalemoAgentImpl implements IChatAgentImplementation {
 		private readonly api: ITalemoApiService,
 		private readonly chatService: IChatService,
 		private readonly chatWidgetService: IChatWidgetService,
-		private readonly realtimeClient: TalemoRealtimeClient,
+		private readonly realtimeClient: ITalemoRealtimeClient,
 		private readonly getActiveProjectId: () => Promise<string | undefined>,
 	) { }
 

@@ -29,7 +29,7 @@ import {
 import { ISerializableChatModelInputState } from '../../../../workbench/contrib/chat/common/model/chatModel.js';
 import { MessageRecord, ThreadSummary, getThreadMessages, listThreads, markThreadRead } from '../../../../workbench/services/talemo/browser/talemoThreads.js';
 import { ITalemoApiService } from '../../../../workbench/services/talemo/browser/talemoApiService.js';
-import { ITalemoRuntimeEventEnvelope, TalemoRealtimeClient } from '../../../../workbench/services/talemo/browser/talemoRealtime.js';
+import { ITalemoRealtimeClient, ITalemoRuntimeEventEnvelope } from '../../../../workbench/services/talemo/browser/talemoRealtime.js';
 import { getThreadIdFromSessionModel, TALEMO_SESSION_BINDING_KEY } from './talemoAI.sessionBinding.js';
 import { TALEMO_THREAD_SESSION_SCHEME } from './talemoAI.shared.js';
 import { ITalemoThreadSnapshot, TalemoThreadSnapshotStore, areSnapshotMessagesEqual } from './talemoThreadSnapshotStore.js';
@@ -225,7 +225,7 @@ export class TalemoThreadSessionsController extends Disposable implements IChatS
 		private readonly logService: ILogService,
 		@IChatService private readonly chatService: IChatService,
 		@IChatWidgetService private readonly chatWidgetService: IChatWidgetService,
-		private readonly realtimeClient: TalemoRealtimeClient,
+		private readonly realtimeClient: ITalemoRealtimeClient,
 		private readonly threadApi: ITalemoThreadSessionApi = defaultThreadSessionApi,
 	) {
 		super();
