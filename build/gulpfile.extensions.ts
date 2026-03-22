@@ -3,6 +3,7 @@ import { EventEmitter } from 'events';
 EventEmitter.defaultMaxListeners = 100;
 
 import es from 'event-stream';
+import fs from 'fs';
 import fancyLog from 'fancy-log';
 import glob from 'glob';
 import gulp from 'gulp';
@@ -309,17 +310,33 @@ gulp.task(watchWebExtensionsTask);
 async function buildWebExtensions(isWatch: boolean): Promise<void> {
 	const extensionsPath = path.join(root, 'extensions');
 
-	// Find all esbuild.browser.mts files
-	const esbuildConfigLocations = await nodeUtil.promisify(glob)(
-		path.join(extensionsPath, '**', 'esbuild.browser.mts'),
-		{ ignore: ['**/node_modules'] }
+	// Find all esbuild.browser.mts files (source roots only — never under extension `out/`).
+	// Parallel watch-extensions cleans/compiles `out/` while watch-web runs; a bad glob hit
+	// would otherwise spawn `node .../out/utils/arrays.js/esbuild.browser.mts` and fail.
+	// Only extension roots ever ship esbuild.browser.mts; avoid `**` so we do not scan
+	// `extensions/*/server/out/...` while watch-extensions holds locks (Windows EPERM).
+	const rawEsbuildScripts = await nodeUtil.promisify(glob)(
+		path.join(extensionsPath, '*', 'esbuild.browser.mts'),
+		{ ignore: ['**/node_modules/**'] }
 	);
+	const esbuildConfigLocations = rawEsbuildScripts.filter((scriptPath) => {
+		const normalized = scriptPath.replace(/\\/g, '/');
+		if (normalized.includes('/out/')) {
+			fancyLog.warn(`Skipping spurious esbuild path under out/: ${scriptPath}`);
+			return false;
+		}
+		if (!fs.existsSync(scriptPath)) {
+			fancyLog.warn(`Skipping missing esbuild script: ${scriptPath}`);
+			return false;
+		}
+		return true;
+	});
 
 	// Find all webpack configs, excluding those that will be esbuilt
 	const esbuildExtensionDirs = new Set(esbuildConfigLocations.map(p => path.dirname(p)));
 	const webpackConfigLocations = (await nodeUtil.promisify(glob)(
 		path.join(extensionsPath, '**', 'extension-browser.webpack.config.js'),
-		{ ignore: ['**/node_modules'] }
+		{ ignore: ['**/node_modules/**', '**/out/**', '**/dist/**'] }
 	)).filter(configPath => !esbuildExtensionDirs.has(path.dirname(configPath)));
 
 	const promises: Promise<unknown>[] = [];

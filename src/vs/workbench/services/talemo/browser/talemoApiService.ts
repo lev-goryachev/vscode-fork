@@ -18,7 +18,7 @@ import { IProductService } from '../../../../platform/product/common/productServ
 import { IStorageService, StorageScope } from '../../../../platform/storage/common/storage.js';
 import { ISecretStorageService } from '../../../../platform/secrets/common/secrets.js';
 import { IAuthenticationService } from '../../authentication/common/authentication.js';
-import { getBackendUrl, resolveTalemoBackend } from './backend.js';
+import { getBackendUrl, resolveTalemoBackend, resolveTalemoPortalPublicUrl } from './backend.js';
 import {
 	AUTH_TOKEN_KEY,
 	AUTH_REFRESH_TOKEN_KEY,
@@ -48,6 +48,15 @@ export class AuthRequiredError extends Error {
 }
 
 export type TalemoRefreshResult = 'success' | 'missing_refresh_token' | 'unauthorized' | 'error';
+
+/** F65 main API GET /auth/shell-onboarding response (Bearer: Firebase id_token). */
+export type TalemoShellOnboardingPayload = {
+	readonly onboarding_state: string;
+	/** tenant_wallets.state when a tenant row exists; null if no tenant or no wallet row. */
+	readonly wallet_state: string | null;
+	readonly shell_runtime_allowed: boolean;
+	readonly portal_account_url: string;
+};
 
 // ─── Service interface ───────────────────────────────────────────────────────
 
@@ -89,6 +98,12 @@ export interface ITalemoApiService {
 	getBackendUrl(): string;
 	/** Full backend resolution result including the source label for diagnostics. */
 	resolveBackend(): { backendUrl: string; source: string };
+
+	/** User-portal public origin for onboarding deep links (F65). */
+	getPortalPublicUrl(): string;
+
+	/** F65: fetch onboarding machine state for the current bearer token. */
+	fetchShellOnboarding(): Promise<TalemoShellOnboardingPayload>;
 
 	/** Fires whenever the access token or refresh token changes in secret storage. */
 	readonly onDidAuthStateChange: Event<void>;
@@ -178,7 +193,7 @@ class TalemoApiService extends Disposable implements ITalemoApiService {
 	async login(email: string, password: string): Promise<void> {
 		try {
 			const backendUrl = this.getBackendUrl();
-			const response = await fetch(`${backendUrl}/auth/login`, {
+			const response = await fetch(`${backendUrl}/api/v1/auth/sign-in`, {
 				method: 'POST',
 				headers: {
 					'Content-Type': 'application/json',
@@ -193,7 +208,20 @@ class TalemoApiService extends Disposable implements ITalemoApiService {
 				throw new Error(`${response.status}: ${body.slice(0, 240)}`);
 			}
 
-			const payload = await response.json() as ITalemoAuthPayload;
+			const session = (await response.json()) as {
+				id_token: string;
+				refresh_token: string;
+				expires_in: number;
+				local_id?: string | null;
+				email?: string | null;
+			};
+			const expiresAtMs = Date.now() + Math.max(0, session.expires_in) * 1000;
+			const payload: ITalemoAuthPayload = {
+				access_token: session.id_token,
+				refresh_token: session.refresh_token,
+				access_token_expires_at_unix_ms: expiresAtMs,
+				user: { id: session.local_id ?? '', email: session.email ?? '' },
+			};
 			await storeTalemoAuthPayload(this.storageService, this.secretStorage, payload);
 		} catch (error) {
 			if (error instanceof Error) {
@@ -211,7 +239,7 @@ class TalemoApiService extends Disposable implements ITalemoApiService {
 
 		try {
 			const backendUrl = this.getBackendUrl();
-			const response = await fetch(`${backendUrl}/auth/refresh`, {
+			const response = await fetch(`${backendUrl}/api/v1/auth/refresh`, {
 				method: 'POST',
 				headers: {
 					'Content-Type': 'application/json',
@@ -228,7 +256,20 @@ class TalemoApiService extends Disposable implements ITalemoApiService {
 				return 'error';
 			}
 
-			const payload = await response.json() as ITalemoAuthPayload;
+			const session = (await response.json()) as {
+				id_token: string;
+				refresh_token: string;
+				expires_in: number;
+				local_id?: string | null;
+				email?: string | null;
+			};
+			const expiresAtMs = Date.now() + Math.max(0, session.expires_in) * 1000;
+			const payload: ITalemoAuthPayload = {
+				access_token: session.id_token,
+				refresh_token: session.refresh_token,
+				access_token_expires_at_unix_ms: expiresAtMs,
+				user: { id: session.local_id ?? '', email: session.email ?? '' },
+			};
 			await storeTalemoAuthPayload(this.storageService, this.secretStorage, payload);
 			return 'success';
 		} catch {
@@ -342,6 +383,47 @@ class TalemoApiService extends Disposable implements ITalemoApiService {
 
 	resolveBackend(): { backendUrl: string; source: string } {
 		return resolveTalemoBackend(this.productService);
+	}
+
+	getPortalPublicUrl(): string {
+		return resolveTalemoPortalPublicUrl(this.productService);
+	}
+
+	async fetchShellOnboarding(): Promise<TalemoShellOnboardingPayload> {
+		try {
+			const headers = await this.getAuthHeaders();
+			if (!headers['Authorization']) {
+				throw new Error('talemo_shell_onboarding_no_bearer');
+			}
+			const backendUrl = this.getBackendUrl();
+			const response = await fetch(`${backendUrl}/auth/shell-onboarding`, {
+				method: 'GET',
+				headers,
+				credentials: 'omit',
+			});
+			if (response.status === 401) {
+				throw new Error('talemo_shell_onboarding_unauthorized');
+			}
+			if (!response.ok) {
+				const body = await response.text().catch(() => '');
+				throw new Error(`talemo_shell_onboarding_http_${response.status}: ${body.slice(0, 200)}`);
+			}
+			const raw = await response.json() as Record<string, unknown>;
+			const w = raw['wallet_state'];
+			const walletNorm =
+				w === null || w === undefined ? null : String(w).trim().toLowerCase();
+			return {
+				onboarding_state: String(raw['onboarding_state'] ?? ''),
+				wallet_state: walletNorm === '' ? null : walletNorm,
+				shell_runtime_allowed: Boolean(raw['shell_runtime_allowed']),
+				portal_account_url: String(raw['portal_account_url'] ?? ''),
+			};
+		} catch (error) {
+			if (error instanceof Error) {
+				throw error;
+			}
+			throw new Error(String(error));
+		}
 	}
 
 	// ── Internal ─────────────────────────────────────────────────────────────
