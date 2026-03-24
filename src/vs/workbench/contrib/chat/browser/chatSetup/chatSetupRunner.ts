@@ -25,7 +25,9 @@ import { IChatWidgetService } from '../chat.js';
 import { ChatSetupController } from './chatSetupController.js';
 import { IChatSetupResult, ChatSetupAnonymous, InstallChatEvent, InstallChatClassification, ChatSetupStrategy, ChatSetupResultValue } from './chatSetup.js';
 import { IDefaultAccountService } from '../../../../../platform/defaultAccount/common/defaultAccount.js';
+import { URI } from '../../../../../base/common/uri.js';
 import { IHostService } from '../../../../services/host/browser/host.js';
+import { IOpenerService } from '../../../../../platform/opener/common/opener.js';
 import { ITalemoApiService } from '../../../../services/talemo/browser/talemoApiService.js';
 
 const defaultChatProvider = {
@@ -68,7 +70,7 @@ export class ChatSetup {
 		let instance = ChatSetup.instance;
 		if (!instance) {
 			instance = ChatSetup.instance = instantiationService.invokeFunction(accessor => {
-				return new ChatSetup(context, controller, accessor.get(ITelemetryService), accessor.get(IWorkbenchLayoutService), accessor.get(IKeybindingService), accessor.get(IChatEntitlementService) as ChatEntitlementService, accessor.get(ILogService), accessor.get(IChatWidgetService), accessor.get(IWorkspaceTrustRequestService), accessor.get(IMarkdownRendererService), accessor.get(IDefaultAccountService), accessor.get(IHostService), accessor.get(ITalemoApiService));
+				return new ChatSetup(context, controller, accessor.get(ITelemetryService), accessor.get(IWorkbenchLayoutService), accessor.get(IKeybindingService), accessor.get(IChatEntitlementService) as ChatEntitlementService, accessor.get(ILogService), accessor.get(IChatWidgetService), accessor.get(IWorkspaceTrustRequestService), accessor.get(IMarkdownRendererService), accessor.get(IDefaultAccountService), accessor.get(IHostService), accessor.get(IOpenerService), accessor.get(ITalemoApiService));
 			});
 		}
 
@@ -92,6 +94,7 @@ export class ChatSetup {
 		@IMarkdownRendererService private readonly markdownRendererService: IMarkdownRendererService,
 		@IDefaultAccountService private readonly defaultAccountService: IDefaultAccountService,
 		@IHostService private readonly hostService: IHostService,
+		private readonly openerService: IOpenerService,
 		private readonly talemoApi: ITalemoApiService,
 	) { }
 
@@ -359,6 +362,31 @@ export class ChatSetup {
 		disposables.add(addDisposableListener(emailInput, 'keydown', e => {
 			if (e.key === 'Enter') { passwordInput.focus(); }
 		}));
+
+		// ── Account portal deep links (F65): signup + password reset live on user-portal SPA ──
+		const portalBase = this.talemoApi.getPortalPublicUrl().trim().replace(/\/+$/, '');
+		if (portalBase.length > 0) {
+			const linksRow = form.appendChild($('.chat-setup-portal-links'));
+			const openPortalPath = (path: string) => {
+				void this.openerService.open(URI.parse(`${portalBase}${path}`), { openExternal: true });
+			};
+			const signupBtn = linksRow.appendChild($('button.chat-setup-portal-link')) as HTMLButtonElement;
+			signupBtn.type = 'button';
+			signupBtn.textContent = localize('talemoChatSetupCreateAccount', 'Create an account');
+			disposables.add(addDisposableListener(signupBtn, 'click', e => {
+				e.preventDefault();
+				openPortalPath('/signup');
+			}));
+			const sep = linksRow.appendChild($('span.chat-setup-portal-links-sep'));
+			sep.textContent = localize('talemoChatSetupPortalLinksSep', '|');
+			const forgotBtn = linksRow.appendChild($('button.chat-setup-portal-link')) as HTMLButtonElement;
+			forgotBtn.type = 'button';
+			forgotBtn.textContent = localize('talemoChatSetupForgotPassword', 'Forgot password?');
+			disposables.add(addDisposableListener(forgotBtn, 'click', e => {
+				e.preventDefault();
+				openPortalPath('/forgot-password');
+			}));
+		}
 
 		// ── Terms text (below Sign in button) ────────────────────────────────
 		let termsText: string;

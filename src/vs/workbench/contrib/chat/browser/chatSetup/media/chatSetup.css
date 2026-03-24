@@ -152,6 +152,39 @@
 		cursor: default;
 	}
 
+	/* Open user-portal in browser: register or reset password before shell sign-in */
+
+	.chat-setup-portal-links {
+		display: flex;
+		flex-wrap: wrap;
+		align-items: center;
+		justify-content: center;
+		gap: 8px;
+		margin: 12px 0 4px;
+		font-size: 12px;
+	}
+
+	.chat-setup-portal-links-sep {
+		color: var(--vscode-descriptionForeground);
+		user-select: none;
+	}
+
+	.chat-setup-portal-link {
+		margin: 0;
+		padding: 0;
+		border: none;
+		background: none;
+		font: inherit;
+		cursor: pointer;
+		color: var(--vscode-textLink-foreground);
+		text-decoration: underline;
+		text-underline-offset: 2px;
+	}
+
+	.chat-setup-portal-link:hover {
+		color: var(--vscode-textLink-activeForeground);
+	}
+
 	.chat-setup-version {
 		display: block;
 		margin-top: 14px;
