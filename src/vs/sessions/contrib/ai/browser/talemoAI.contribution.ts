@@ -113,7 +113,7 @@ export class TalemoAIContribution extends Disposable implements IWorkbenchContri
 			this.realtimeClient,
 			this.talemoWorkspaceRoomService,
 			undefined,
-			// Pass editorService so conflict prompts can open the 3-way merge editor on desktop.
+			// Pass editorService so conflict prompts can open the 3-way merge editor (desktop + web).
 			{ editorService },
 		));
 

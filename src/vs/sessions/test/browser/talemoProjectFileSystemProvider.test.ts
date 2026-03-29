@@ -6,13 +6,13 @@ import assert from 'assert';
 import { Emitter } from '../../../base/common/event.js';
 import { joinPath } from '../../../base/common/resources.js';
 import { ensureNoDisposablesAreLeakedInTestSuite } from '../../../base/test/common/utils.js';
-import { FileChangeType, IFileChange } from '../../../platform/files/common/files.js';
+import { FileChangeType, FileOperationError, FileOperationResult, IFileChange } from '../../../platform/files/common/files.js';
 import {
 	getTalemoWorkspaceRoot,
 	talemoSystemManifestHasDirectory,
 	TalemoProjectFileSystemProvider,
 } from '../../contrib/talemoWorkspace/browser/talemoProjectFileSystemProvider.js';
-import { TalemoWorkspaceSystemManifest } from '../../../workbench/services/talemo/browser/talemoFiles.js';
+import { TalemoWorkspaceFile, TalemoWorkspaceSystemManifest, TalemoWorkspaceTreeNode } from '../../../workbench/services/talemo/browser/talemoFiles.js';
 import { ITalemoApiService } from '../../../workbench/services/talemo/browser/talemoApiService.js';
 import { ITalemoRealtimeClient, ITalemoRuntimeEventEnvelope } from '../../../workbench/services/talemo/browser/talemoRealtime.js';
 import { ITalemoWorkspaceRoomService } from '../../../workbench/services/talemo/browser/talemoWorkspaceRoomService.js';
@@ -198,5 +198,96 @@ suite('TalemoProjectFileSystemProvider handleRuntimeEvent', () => {
 			'source should not be deleted in Explorer for duplicate',
 		);
 		assert.ok(changes.some(c => c.type === FileChangeType.ADDED && c.resource.toString() === destUri));
+	});
+});
+
+suite('TalemoProjectFileSystemProvider writeFile HTTP 409', () => {
+	const store = ensureNoDisposablesAreLeakedInTestSuite();
+
+	function minimalTreeNode(projectId: string, path: string, kind: 'file' | 'directory'): TalemoWorkspaceTreeNode {
+		return {
+			project_id: projectId,
+			kind,
+			path,
+			name: path.split('/').pop() ?? path,
+			parent_path: path.includes('/') ? path.slice(0, path.lastIndexOf('/')) : '',
+			size: kind === 'file' ? 0 : undefined,
+			mime_type: undefined,
+			updated_at: undefined,
+			version: undefined,
+			has_children: kind === 'directory',
+			is_empty: kind === 'directory' ? false : undefined,
+			capabilities: [],
+		};
+	}
+
+	function createConflictWriteMockApi(projectId: string, filePath: string): ITalemoApiService {
+		const minimalFile: TalemoWorkspaceFile = {
+			file_id: 'f-conflict',
+			project_id: projectId,
+			path: filePath,
+			name: filePath.split('/').pop() ?? filePath,
+			extension: 'json',
+			size: 0,
+			content_kind: 'text',
+			sync_state: 'synced',
+			conflict_state: 'none',
+			cloud_version: 'v-cloud',
+			capabilities: [],
+		};
+		const rootDirectory = minimalTreeNode(projectId, '', 'directory');
+		return {
+			authedFetch: async <T>(path: string, init?: RequestInit): Promise<T> => {
+				if (path.includes('system-manifest')) {
+					return {
+						root_directory: rootDirectory,
+						root_children: [],
+						directories: [],
+						files: [
+							{
+								path: filePath,
+								exists: true,
+								file: minimalFile,
+								content_base64: '',
+							},
+						],
+					} as T;
+				}
+				if (path.startsWith('/workspace/files/blob') && init?.method === 'PUT') {
+					throw new Error(
+						`HTTP 409: ${JSON.stringify({
+							detail: { code: 'version_mismatch', path: filePath, next_actions: ['accept_local'] },
+						})}`,
+					);
+				}
+				if (path.startsWith('/workspace/files/blob')) {
+					return {
+						file: { ...minimalFile, cloud_version: 'v-refreshed' },
+						content_base64: '',
+					} as T;
+				}
+				throw new Error(`unexpected authedFetch in test: ${path}`);
+			},
+		} as ITalemoApiService;
+	}
+
+	test('save conflict throws FileOperationError with FILE_MODIFIED_SINCE', async () => {
+		const projectId = 'proj-409';
+		const filePath = '.talemo/conflict-write-test.json';
+		const api = createConflictWriteMockApi(projectId, filePath);
+		const provider = store.add(new TalemoProjectFileSystemProvider(
+			api,
+			{ onDidRuntimeEvent: new Emitter<ITalemoRuntimeEventEnvelope>().event } as ITalemoRealtimeClient,
+			{} as ITalemoWorkspaceRoomService,
+		));
+		const resource = joinPath(getTalemoWorkspaceRoot(projectId), filePath);
+		let thrown: unknown;
+		try {
+			await provider.writeFile(resource, new Uint8Array([42]), { create: false, overwrite: true, unlock: false, atomic: false });
+		} catch (e) {
+			thrown = e;
+		}
+		assert.ok(thrown instanceof FileOperationError, 'expected FileOperationError');
+		assert.strictEqual((thrown as FileOperationError).fileOperationResult, FileOperationResult.FILE_MODIFIED_SINCE);
 	});
 });

@@ -3,7 +3,7 @@ import { toErrorMessage } from '../../../../../base/common/errorMessage.js';
 import { basename, isEqual } from '../../../../../base/common/resources.js';
 import { Action } from '../../../../../base/common/actions.js';
 import { URI } from '../../../../../base/common/uri.js';
-import { FileOperationError, FileOperationResult, IWriteFileOptions } from '../../../../../platform/files/common/files.js';
+import { FileOperationError, FileOperationResult, IFileService, IWriteFileOptions } from '../../../../../platform/files/common/files.js';
 import { ITextFileService, ISaveErrorHandler, ITextFileEditorModel, ITextFileSaveAsOptions, ITextFileSaveOptions } from '../../../../services/textfile/common/textfiles.js';
 import { ServicesAccessor, IInstantiationService } from '../../../../../platform/instantiation/common/instantiation.js';
 import { IDisposable, dispose, Disposable } from '../../../../../base/common/lifecycle.js';
@@ -26,6 +26,25 @@ import { Schemas } from '../../../../../base/common/network.js';
 import { IPreferencesService } from '../../../../services/preferences/common/preferences.js';
 import { IEditorIdentifier, SaveReason, SideBySideEditor } from '../../../../common/editor.js';
 import { hash } from '../../../../../base/common/hash.js';
+import {
+	getTalemoProjectIdFromResource,
+	getTalemoWorkspaceRelativePath,
+	TALEMO_WORKSPACE_SCHEME,
+} from '../../../../../sessions/contrib/talemoWorkspace/browser/talemoProjectFileSystemProvider.js';
+import {
+	openTalemoWorkspaceMergeEditor,
+	talemoWorkspaceMergeCanUseTmpStaging,
+} from '../../../../../sessions/contrib/talemoWorkspace/browser/talemoWorkspaceMergeEditorHelper.js';
+import { talemoGetCleanBase } from '../../../../../sessions/contrib/talemoWorkspace/browser/talemoCleanBaseCache.js';
+import { readWorkspaceFile } from '../../../../../workbench/services/talemo/browser/talemoFiles.js';
+import { ITalemoApiService } from '../../../../../workbench/services/talemo/browser/talemoApiService.js';
+import { snapshotToString } from '../../../../services/textfile/common/textfiles.js';
+import { VSBuffer } from '../../../../../base/common/buffer.js';
+import {
+	showTalemoWorkspaceConflictPrompt,
+	TALEMO_WORKSPACE_CONFLICT_KEEP_LOCAL_ACTION_ID,
+	TALEMO_WORKSPACE_CONFLICT_USE_CLOUD_ACTION_ID,
+} from '../../../../../sessions/contrib/talemoWorkspace/browser/talemoWorkspaceConflictPresenter.js';
 
 export const CONFLICT_RESOLUTION_CONTEXT = 'saveConflictResolutionContext';
 export const CONFLICT_RESOLUTION_SCHEME = 'conflictResolution';
@@ -33,6 +52,12 @@ export const CONFLICT_RESOLUTION_SCHEME = 'conflictResolution';
 const LEARN_MORE_DIRTY_WRITE_IGNORE_KEY = 'learnMoreDirtyWriteError';
 
 const conflictEditorHelp = localize('userGuide', "Use the actions in the editor tool bar to either undo your changes or overwrite the content of the file with your changes.");
+
+/** Re-export for telemetry / tests — stable ids shared with TalemoWorkspaceSyncService prompts. */
+export const TALEMO_WORKSPACE_SAVE_CONFLICT_KEEP_LOCAL_ACTION_ID = TALEMO_WORKSPACE_CONFLICT_KEEP_LOCAL_ACTION_ID;
+export const TALEMO_WORKSPACE_SAVE_CONFLICT_USE_CLOUD_ACTION_ID = TALEMO_WORKSPACE_CONFLICT_USE_CLOUD_ACTION_ID;
+
+export { getTalemoWorkspaceSaveConflictCopy } from '../../../../../sessions/contrib/talemoWorkspace/browser/talemoWorkspaceConflictPresenter.js';
 
 // A handler for text file save error happening with conflict resolution actions
 export class TextFileSaveErrorHandler extends Disposable implements ISaveErrorHandler, IWorkbenchContribution {
@@ -50,7 +75,9 @@ export class TextFileSaveErrorHandler extends Disposable implements ISaveErrorHa
 		@IEditorService private readonly editorService: IEditorService,
 		@ITextModelService textModelService: ITextModelService,
 		@IInstantiationService private readonly instantiationService: IInstantiationService,
-		@IStorageService private readonly storageService: IStorageService
+		@IStorageService private readonly storageService: IStorageService,
+		@IFileService private readonly fileService: IFileService,
+		@ITalemoApiService private readonly talemoApiService: ITalemoApiService,
 	) {
 		super();
 
@@ -121,12 +148,69 @@ export class TextFileSaveErrorHandler extends Disposable implements ISaveErrorHa
 
 			// Otherwise show the message that will lead the user into the save conflict editor.
 			else {
-				message = localize('staleSaveError', "Failed to save '{0}': The content of the file is newer. Please compare your version with the file contents or overwrite the content of the file with your changes.", basename(resource));
+				if (resource.scheme === TALEMO_WORKSPACE_SCHEME) {
+					const canOpenMergeEditor =
+						model.isResolved() &&
+						!!getTalemoWorkspaceRelativePath(resource) &&
+						talemoWorkspaceMergeCanUseTmpStaging(this.fileService) &&
+						!!talemoGetCleanBase(resource);
+					const handle = showTalemoWorkspaceConflictPrompt(this.notificationService, {
+						pathLabel: basename(resource),
+						canOpenMergeEditor,
+						onOpenMergeEditor:
+							canOpenMergeEditor
+								? async () => {
+									try {
+										const relPath = getTalemoWorkspaceRelativePath(resource);
+										const projectId = getTalemoProjectIdFromResource(resource);
+										if (!relPath || !projectId || model.isDisposed() || !model.isResolved()) {
+											throw new Error('Talemo merge editor: missing path, project, or resolved model');
+										}
+										const baseContent = talemoGetCleanBase(resource);
+										if (!baseContent) {
+											throw new Error('Talemo merge editor: no clean base snapshot for resource');
+										}
+										const remote = await readWorkspaceFile(this.talemoApiService, projectId, relPath);
+										const localContent = VSBuffer.fromString(snapshotToString(model.createSnapshot()));
+										await openTalemoWorkspaceMergeEditor(this.fileService, this.editorService, {
+											resultResource: resource,
+											baseContent,
+											localContent,
+											cloudContent: remote.content,
+										});
+									} catch (error) {
+										this.notificationService.notify({
+											severity: Severity.Error,
+											message: localize(
+												'talemoWorkspaceMergeOpenFailed',
+												"Could not open the merge editor for this conflict: {0}",
+												toErrorMessage(error, false),
+											),
+										});
+									}
+								}
+								: undefined,
+						onKeepLocal: async () => {
+							if (!model.isDisposed()) {
+								await model.save({ ...options, ignoreModifiedSince: true, reason: SaveReason.EXPLICIT });
+							}
+						},
+						onUseCloud: async () => {
+							if (!model.isDisposed()) {
+								await model.revert();
+							}
+						},
+					});
+					this.messages.set(model.resource, handle);
+					return;
+				} else {
+					message = localize('staleSaveError', "Failed to save '{0}': The content of the file is newer. Please compare your version with the file contents or overwrite the content of the file with your changes.", basename(resource));
 
-				primaryActions.push(this.instantiationService.createInstance(ResolveSaveConflictAction, model));
-				primaryActions.push(this.instantiationService.createInstance(SaveModelIgnoreModifiedSinceAction, model, options));
+					primaryActions.push(this.instantiationService.createInstance(ResolveSaveConflictAction, model));
+					primaryActions.push(this.instantiationService.createInstance(SaveModelIgnoreModifiedSinceAction, model, options));
 
-				secondaryActions.push(this.instantiationService.createInstance(ConfigureSaveConflictAction));
+					secondaryActions.push(this.instantiationService.createInstance(ConfigureSaveConflictAction));
+				}
 			}
 		}
 

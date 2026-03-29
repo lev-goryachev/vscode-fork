@@ -13,12 +13,11 @@ import { Emitter, Event } from '../../../../base/common/event.js';
 import { isWeb } from '../../../../base/common/platform.js';
 import { Disposable, IDisposable } from '../../../../base/common/lifecycle.js';
 import { basename, dirname, joinPath, relativePath } from '../../../../base/common/resources.js';
-import { IResourceMergeEditorInput } from '../../../../workbench/common/editor.js';
 import { IEditorService } from '../../../../workbench/services/editor/common/editorService.js';
 import { URI } from '../../../../base/common/uri.js';
 import { FileOperation, IFileService } from '../../../../platform/files/common/files.js';
 import { ILogService } from '../../../../platform/log/common/log.js';
-import { Severity, INotificationService } from '../../../../platform/notification/common/notification.js';
+import { INotificationService } from '../../../../platform/notification/common/notification.js';
 import { IStorageService, StorageScope } from '../../../../platform/storage/common/storage.js';
 import { IWorkspaceContextService } from '../../../../platform/workspace/common/workspace.js';
 import { ITalemoApiService } from '../../../../workbench/services/talemo/browser/talemoApiService.js';
@@ -46,8 +45,11 @@ import {
 	TALEMO_IGNORE_FILE,
 } from './talemoProjectBinding.js';
 import { getTalemoProjectIdFromResource } from './talemoProjectFileSystemProvider.js';
+import { talemoForgetCleanBase, talemoGetCleanBase, talemoRememberCleanBase } from './talemoCleanBaseCache.js';
 import { ITalemoRealtimeClient, ITalemoRuntimeEventEnvelope } from '../../../../workbench/services/talemo/browser/talemoRealtime.js';
 import { ITalemoWorkspaceRoomService } from '../../../../workbench/services/talemo/browser/talemoWorkspaceRoomService.js';
+import { showTalemoWorkspaceConflictPrompt } from './talemoWorkspaceConflictPresenter.js';
+import { openTalemoWorkspaceMergeEditor, talemoConflictStagingBasename } from './talemoWorkspaceMergeEditorHelper.js';
 
 export type TalemoSyncStatus = 'idle' | 'syncing' | 'error';
 
@@ -165,8 +167,8 @@ export class TalemoWorkspaceSyncService extends Disposable {
 				if (!(await this.isActiveProjectEvent(event))) {
 					return;
 				}
+				// Realtime conflict signals describe another client's save conflict; do not prompt here.
 				if (event.event_type === 'file.conflict.detected') {
-					await this.showConflictPrompt(event.payload as unknown as TalemoFileConflictDetail);
 					return;
 				}
 
@@ -204,6 +206,7 @@ export class TalemoWorkspaceSyncService extends Disposable {
 					this.localDirtyPaths.delete(rel);
 					this.conflictContentCache.delete(rel);
 				}
+				talemoForgetCleanBase(resource);
 				await this.syncDeletedFile(resource);
 			}
 		});
@@ -251,10 +254,10 @@ export class TalemoWorkspaceSyncService extends Disposable {
 				if (!projectId) {
 					this.logService.warn('[talemo-sync] reconcile abort: no projectId');
 					await this.unsubscribeProjectWorkspace();
-				this.cloudVersions.clear();
-				this.conflictPaths.clear();
-				void this.cleanupAllConflictSnapshots();
-				return;
+					this.cloudVersions.clear();
+					this.conflictPaths.clear();
+					void this.cleanupAllConflictSnapshots();
+					return;
 				}
 				await this.ensureProjectWorkspaceSubscribed(projectId);
 
@@ -290,6 +293,7 @@ export class TalemoWorkspaceSyncService extends Disposable {
 				if (localBytes.equals(remote.content)) {
 					this.cloudVersions.set(relative, cloudFile.cloud_version ?? '');
 					this.localDirtyPaths.delete(relative);
+					talemoRememberCleanBase(resource, localBytes);
 					this.logService.warn(`[talemo-sync] in sync, no action: ${relative}`);
 					continue;
 				}
@@ -386,7 +390,6 @@ export class TalemoWorkspaceSyncService extends Disposable {
 
 		if (this.localDirtyPaths.has(path) || this.conflictPaths.has(path)) {
 			this.conflictContentCache.set(path, cloudContent);
-			await this.showConflictPrompt({ path, cloud_version: payload.file?.cloud_version });
 			return;
 		}
 
@@ -439,6 +442,7 @@ export class TalemoWorkspaceSyncService extends Disposable {
 			if (saved.cloud_version) {
 				this.cloudVersions.set(relative, saved.cloud_version);
 			}
+			talemoRememberCleanBase(resource, file.value);
 			this.localDirtyPaths.delete(relative);
 			if (this.conflictPaths.has(relative)) {
 				this.conflictPaths.delete(relative);
@@ -532,20 +536,24 @@ export class TalemoWorkspaceSyncService extends Disposable {
 
 		this.conflictPaths.add(path);
 
-		const hasMergeEditorSupport = !isWeb && !!this.editorService && this.conflictContentCache.has(path);
-		const actions = [
-			...(hasMergeEditorSupport ? [{ label: 'Open Merge Editor', run: () => void this.openMergeEditor(path) }] : []),
-			{ label: 'Keep Local', run: () => void this.acceptLocal(path) },
-			{ label: 'Use Cloud', run: () => void this.acceptCloud(path) },
-		];
+		const localResource = this.toWorkspaceResource(path);
+		const hasBaseSnapshot = !!(localResource && talemoGetCleanBase(localResource));
+		const hasMergeEditorSupport =
+			!!this.editorService && this.conflictContentCache.has(path) && hasBaseSnapshot;
+		const resolutionMode = typeof candidate?.resolution_mode === 'string' ? candidate.resolution_mode : undefined;
 
-		const message = candidate?.resolution_mode === 'semantic'
-			? `Talemo detected a semantic workspace conflict for ${path}. Choose a side now or continue the merge in chat.`
-			: hasMergeEditorSupport
-				? `Workspace conflict in ${path}. Open Merge Editor to pick changes hunk-by-hunk, or choose a side.`
-				: `Workspace conflict in ${path}. Choose which version to keep.`;
-
-		this.notificationService.prompt(Severity.Warning, message, actions, { sticky: true });
+		try {
+			showTalemoWorkspaceConflictPrompt(this.notificationService, {
+				pathLabel: path,
+				resolutionMode,
+				canOpenMergeEditor: hasMergeEditorSupport,
+				onOpenMergeEditor: hasMergeEditorSupport ? () => void this.openMergeEditor(path) : undefined,
+				onKeepLocal: () => void this.acceptLocal(path),
+				onUseCloud: () => void this.acceptCloud(path),
+			});
+		} catch (error) {
+			this.logService.warn('[talemo-sync] showConflictPrompt failed', path, String(error));
+		}
 	}
 
 	private async openMergeEditor(path: string): Promise<void> {
@@ -562,35 +570,31 @@ export class TalemoWorkspaceSyncService extends Disposable {
 			return;
 		}
 
+		const localUri = this.toWorkspaceResource(path);
+		if (!localUri) {
+			return;
+		}
+
+		const baseContent = talemoGetCleanBase(localUri);
+		if (!baseContent) {
+			return;
+		}
+
 		try {
-			const conflictDir = joinPath(root, TALEMO_BINDING_DIR, 'conflicts');
-			const filename = basename(joinPath(root, path));
-
-			try {
-				await this.fileService.createFolder(conflictDir);
-			} catch { /* may already exist */ }
-
-			const cloudTempUri = joinPath(conflictDir, `${filename}.cloud`);
-			this.suppressLocalPath(`${TALEMO_BINDING_DIR}/conflicts/${filename}.cloud`, 1);
-			await this.fileService.createFile(cloudTempUri, cloudContent, { overwrite: true });
-
-			const localUri = this.toWorkspaceResource(path);
-			if (!localUri) {
-				return;
-			}
-
 			const localContent = await this.fileService.readFile(localUri);
-			const localTempUri = joinPath(conflictDir, `${filename}.local`);
-			this.suppressLocalPath(`${TALEMO_BINDING_DIR}/conflicts/${filename}.local`, 1);
-			await this.fileService.createFile(localTempUri, localContent.value, { overwrite: true });
-
-			const input: IResourceMergeEditorInput = {
-				input1: { resource: cloudTempUri, label: 'Cloud (incoming)' },
-				input2: { resource: localTempUri, label: 'Local (current)' },
-				base: { resource: localTempUri },
-				result: { resource: localUri },
-			};
-			await this.editorService.openEditor(input);
+			await openTalemoWorkspaceMergeEditor(this.fileService, this.editorService, {
+				resultResource: localUri,
+				baseContent,
+				localContent: localContent.value,
+				cloudContent,
+				workspaceRootForConflictStaging: root,
+				conflictBasename: talemoConflictStagingBasename(path),
+				onBeforeWorkspaceConflictStaging: (relativePaths) => {
+					for (const relativePath of relativePaths) {
+						this.suppressLocalPath(relativePath, 1);
+					}
+				},
+			});
 		} catch (err) {
 			this.logService.warn('[talemo-sync] openMergeEditor failed', path, String(err));
 		}
@@ -620,6 +624,7 @@ export class TalemoWorkspaceSyncService extends Disposable {
 			}
 			this.localDirtyPaths.delete(path);
 			this.conflictContentCache.delete(path);
+			talemoRememberCleanBase(resource, local.value);
 		} finally {
 			this.conflictPaths.delete(path);
 			void this.cleanupConflictSnapshots(path);
@@ -675,7 +680,7 @@ export class TalemoWorkspaceSyncService extends Disposable {
 		try {
 			const filename = basename(joinPath(root, path));
 			const conflictDir = joinPath(root, TALEMO_BINDING_DIR, 'conflicts');
-			for (const suffix of ['.cloud', '.local']) {
+			for (const suffix of ['.cloud', '.local', '.base']) {
 				const uri = joinPath(conflictDir, `${filename}${suffix}`);
 				try {
 					if (await this.fileService.exists(uri)) {
@@ -702,6 +707,7 @@ export class TalemoWorkspaceSyncService extends Disposable {
 			// The parent may already exist; the sync path only needs the directory to exist.
 		}
 		await this.fileService.createFile(resource, content, { overwrite: true });
+		talemoRememberCleanBase(resource, content);
 	}
 
 	private async deleteLocalFile(path: string): Promise<void> {

@@ -13,6 +13,8 @@ import { URI } from '../../../../base/common/uri.js';
 import {
 	createFileSystemProviderError,
 	FileChangeType,
+	FileOperationError,
+	FileOperationResult,
 	FileSystemProviderCapabilities,
 	FileSystemProviderErrorCode,
 	FileType,
@@ -42,6 +44,7 @@ import {
 	TalemoWorkspaceSystemManifest,
 	TalemoWorkspaceTreeNode,
 } from '../../../../workbench/services/talemo/browser/talemoFiles.js';
+import { talemoForgetCleanBase, talemoRememberCleanBase } from './talemoCleanBaseCache.js';
 
 export const TALEMO_WORKSPACE_SCHEME = 'talemo-workspace';
 
@@ -62,6 +65,26 @@ export function getTalemoProjectIdFromResource(resource: URI | undefined): strin
 		return undefined;
 	}
 	return resource.authority;
+}
+
+/**
+ * Workspace-relative path for Talemo workspace file APIs (`readWorkspaceFile`, etc.).
+ * Mirrors provider path normalization; alias rules are applied server-side when needed.
+ */
+export function getTalemoWorkspaceRelativePath(resource: URI): string | undefined {
+	try {
+		const projectId = getTalemoProjectIdFromResource(resource);
+		if (!projectId) {
+			return undefined;
+		}
+		const requestedPath = resource.path.replace(/^\/+/, '').replace(/\/+$/, '');
+		if (!requestedPath || requestedPath.includes(':')) {
+			return undefined;
+		}
+		return requestedPath;
+	} catch {
+		return undefined;
+	}
 }
 
 /**
@@ -182,12 +205,14 @@ export class TalemoProjectFileSystemProvider extends Disposable implements IFile
 				if (bootstrapFile.file?.cloud_version) {
 					this.versionCache.set(resource.toString(), bootstrapFile.file.cloud_version);
 				}
+				talemoRememberCleanBase(resource, bootstrapFile.content);
 				return bootstrapFile.content.buffer;
 			}
 			const remote = await readWorkspaceFile(this.api, projectId, canonicalPath);
 			if (remote.file.cloud_version) {
 				this.versionCache.set(resource.toString(), remote.file.cloud_version);
 			}
+			talemoRememberCleanBase(resource, remote.content);
 			return remote.content.buffer;
 		} catch (error) {
 			throw this.toProviderError(error, FileSystemProviderErrorCode.FileNotFound);
@@ -207,6 +232,7 @@ export class TalemoProjectFileSystemProvider extends Disposable implements IFile
 			if (saved.cloud_version) {
 				this.versionCache.set(resource.toString(), saved.cloud_version);
 			}
+			talemoRememberCleanBase(resource, VSBuffer.wrap(content));
 			this.invalidateSystemManifest(projectId);
 			this.emitChange(existed ? FileChangeType.UPDATED : FileChangeType.ADDED, resource);
 		} catch (error) {
@@ -222,10 +248,11 @@ export class TalemoProjectFileSystemProvider extends Disposable implements IFile
 						this.versionCache.set(resource.toString(), current.file.cloud_version);
 					}
 				} catch { /* version refresh is best-effort */ }
-				throw createFileSystemProviderError(
-					'Sync conflict: another device saved a newer version of this file. ' +
-					'Click Retry to overwrite the cloud with your changes, or Revert to discard your changes.',
-					FileSystemProviderErrorCode.NoPermissions,
+				// Map optimistic-lock failure to FILE_MODIFIED_SINCE so the workbench save-error handler
+				// shows save-conflict resolution (Talemo-specific actions in TextFileSaveErrorHandler).
+				throw new FileOperationError(
+					'Talemo workspace save conflict: cloud version does not match expected_version (HTTP 409).',
+					FileOperationResult.FILE_MODIFIED_SINCE,
 				);
 			}
 			throw this.toProviderError(error, FileSystemProviderErrorCode.NoPermissions);
@@ -253,6 +280,7 @@ export class TalemoProjectFileSystemProvider extends Disposable implements IFile
 				await deleteWorkspaceFile(this.api, projectId, canonicalPath);
 			}
 			this.versionCache.delete(resource.toString());
+			talemoForgetCleanBase(resource);
 			this.invalidateSystemManifest(projectId);
 			this.emitChange(FileChangeType.DELETED, resource);
 		} catch (error) {
@@ -274,6 +302,8 @@ export class TalemoProjectFileSystemProvider extends Disposable implements IFile
 				await moveWorkspaceFile(this.api, source.projectId, source.canonicalPath, destination.canonicalPath);
 			}
 			this.versionCache.delete(from.toString());
+			talemoForgetCleanBase(from);
+			talemoForgetCleanBase(to);
 			this.invalidateSystemManifest(source.projectId);
 			this.emitChange(FileChangeType.DELETED, from);
 			this.emitChange(FileChangeType.ADDED, to);
