@@ -312,6 +312,25 @@ export class TalemoProjectFileSystemProvider extends Disposable implements IFile
 				this.invalidateDirectoryCachesForWorkspacePaths(projectId, touchedPaths);
 			}
 
+			// Explorer expects path-level ADDED/DELETED, not a single UPDATED. Backend payloads use
+			// source_path + destination_path for rename/move/duplicate (no top-level path).
+			if (event.event_type === 'file.renamed' || event.event_type === 'file.moved') {
+				const sourcePath = typeof event.payload.source_path === 'string' ? event.payload.source_path : undefined;
+				const destinationPath = typeof event.payload.destination_path === 'string' ? event.payload.destination_path : undefined;
+				if (sourcePath && destinationPath) {
+					this.emitPathChanges(FileChangeType.DELETED, root, sourcePath);
+					this.emitPathChanges(FileChangeType.ADDED, root, destinationPath);
+					return;
+				}
+			}
+			if (event.event_type === 'file.duplicated') {
+				const destinationPath = typeof event.payload.destination_path === 'string' ? event.payload.destination_path : undefined;
+				if (destinationPath) {
+					this.emitPathChanges(FileChangeType.ADDED, root, destinationPath);
+					return;
+				}
+			}
+
 			if (payloadPaths.length > 0) {
 				for (const path of payloadPaths) {
 					this.emitPathChanges(typeFromEvent(event.event_type), root, path);

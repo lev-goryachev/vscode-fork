@@ -3,8 +3,19 @@
  *--------------------------------------------------------------------------------------------*/
 
 import assert from 'assert';
-import { talemoSystemManifestHasDirectory } from '../../contrib/talemoWorkspace/browser/talemoProjectFileSystemProvider.js';
+import { Emitter } from '../../../base/common/event.js';
+import { joinPath } from '../../../base/common/resources.js';
+import { ensureNoDisposablesAreLeakedInTestSuite } from '../../../base/test/common/utils.js';
+import { FileChangeType, IFileChange } from '../../../platform/files/common/files.js';
+import {
+	getTalemoWorkspaceRoot,
+	talemoSystemManifestHasDirectory,
+	TalemoProjectFileSystemProvider,
+} from '../../contrib/talemoWorkspace/browser/talemoProjectFileSystemProvider.js';
 import { TalemoWorkspaceSystemManifest } from '../../../workbench/services/talemo/browser/talemoFiles.js';
+import { ITalemoApiService } from '../../../workbench/services/talemo/browser/talemoApiService.js';
+import { ITalemoRealtimeClient, ITalemoRuntimeEventEnvelope } from '../../../workbench/services/talemo/browser/talemoRealtime.js';
+import { ITalemoWorkspaceRoomService } from '../../../workbench/services/talemo/browser/talemoWorkspaceRoomService.js';
 
 suite('talemoSystemManifestHasDirectory', () => {
 	function baseManifest(overrides: Partial<TalemoWorkspaceSystemManifest> = {}): TalemoWorkspaceSystemManifest {
@@ -92,5 +103,100 @@ suite('talemoSystemManifestHasDirectory', () => {
 		});
 		assert.strictEqual(talemoSystemManifestHasDirectory(m, '.claude'), false);
 		assert.strictEqual(talemoSystemManifestHasDirectory(m, '.github'), false);
+	});
+});
+
+suite('TalemoProjectFileSystemProvider handleRuntimeEvent', () => {
+	const store = ensureNoDisposablesAreLeakedInTestSuite();
+
+	function runtimeEnvelope(
+		eventType: string,
+		workspaceId: string,
+		payload: Record<string, unknown>,
+	): ITalemoRuntimeEventEnvelope {
+		return {
+			event_id: 'evt-1',
+			event_type: eventType,
+			payload_version: 1,
+			trace_id: 'trace-1',
+			tenant_id: 'tenant-1',
+			workspace_id: workspaceId,
+			emitted_at: '2020-01-01T00:00:00.000Z',
+			payload,
+		};
+	}
+
+	function createProviderWithRuntime(): {
+		provider: TalemoProjectFileSystemProvider;
+		fireRuntime: (e: ITalemoRuntimeEventEnvelope) => void;
+	} {
+		const runtimeEmitter = store.add(new Emitter<ITalemoRuntimeEventEnvelope>());
+		const provider = store.add(new TalemoProjectFileSystemProvider(
+			{} as ITalemoApiService,
+			{ onDidRuntimeEvent: runtimeEmitter.event } as ITalemoRealtimeClient,
+			{} as ITalemoWorkspaceRoomService,
+		));
+		return { provider, fireRuntime: e => runtimeEmitter.fire(e) };
+	}
+
+	function collectChanges(provider: TalemoProjectFileSystemProvider): IFileChange[] {
+		const batches: IFileChange[] = [];
+		store.add(provider.onDidChangeFile(e => batches.push(...e)));
+		return batches;
+	}
+
+	test('file.moved surfaces as DELETE at source_path and ADD at destination_path', () => {
+		const { provider, fireRuntime } = createProviderWithRuntime();
+		const changes = collectChanges(provider);
+		const projectId = 'proj-move';
+		fireRuntime(runtimeEnvelope('file.moved', projectId, {
+			source_path: 'folder/a.txt',
+			destination_path: 'folder/b.txt',
+			file: { path: 'folder/b.txt' },
+		}));
+		const root = getTalemoWorkspaceRoot(projectId);
+		const sourceUri = joinPath(root, 'folder/a.txt').toString();
+		const destUri = joinPath(root, 'folder/b.txt').toString();
+		const deletedAtSource = changes.some(c => c.type === FileChangeType.DELETED && c.resource.toString() === sourceUri);
+		const addedAtDest = changes.some(c => c.type === FileChangeType.ADDED && c.resource.toString() === destUri);
+		assert.strictEqual(deletedAtSource, true, 'expected DELETED for old path');
+		assert.strictEqual(addedAtDest, true, 'expected ADDED for new path');
+		const firstDelete = changes.findIndex(c => c.type === FileChangeType.DELETED && c.resource.toString() === sourceUri);
+		const firstAdd = changes.findIndex(c => c.type === FileChangeType.ADDED && c.resource.toString() === destUri);
+		assert.ok(firstDelete >= 0 && firstAdd >= 0 && firstDelete < firstAdd, 'DELETE should precede ADD for Explorer consistency');
+	});
+
+	test('file.renamed surfaces as DELETE at source_path and ADD at destination_path', () => {
+		const { provider, fireRuntime } = createProviderWithRuntime();
+		const changes = collectChanges(provider);
+		const projectId = 'proj-rename';
+		fireRuntime(runtimeEnvelope('file.renamed', projectId, {
+			source_path: 'x/old.md',
+			destination_path: 'x/new.md',
+			file: { path: 'x/new.md' },
+		}));
+		const root = getTalemoWorkspaceRoot(projectId);
+		assert.ok(changes.some(c => c.type === FileChangeType.DELETED && c.resource.toString() === joinPath(root, 'x/old.md').toString()));
+		assert.ok(changes.some(c => c.type === FileChangeType.ADDED && c.resource.toString() === joinPath(root, 'x/new.md').toString()));
+	});
+
+	test('file.duplicated surfaces as ADD at destination_path only (no DELETE at source)', () => {
+		const { provider, fireRuntime } = createProviderWithRuntime();
+		const changes = collectChanges(provider);
+		const projectId = 'proj-dup';
+		fireRuntime(runtimeEnvelope('file.duplicated', projectId, {
+			source_path: 'src/original.ts',
+			destination_path: 'src/copy.ts',
+			file: { path: 'src/copy.ts' },
+		}));
+		const root = getTalemoWorkspaceRoot(projectId);
+		const sourceUri = joinPath(root, 'src/original.ts').toString();
+		const destUri = joinPath(root, 'src/copy.ts').toString();
+		assert.strictEqual(
+			changes.some(c => c.type === FileChangeType.DELETED && c.resource.toString() === sourceUri),
+			false,
+			'source should not be deleted in Explorer for duplicate',
+		);
+		assert.ok(changes.some(c => c.type === FileChangeType.ADDED && c.resource.toString() === destUri));
 	});
 });
