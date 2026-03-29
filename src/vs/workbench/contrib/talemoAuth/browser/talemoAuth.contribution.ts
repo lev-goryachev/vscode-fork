@@ -4,6 +4,7 @@ import { CommandsRegistry } from '../../../../platform/commands/common/commands.
 import { ServicesAccessor } from '../../../../platform/instantiation/common/instantiation.js';
 import { registerWorkbenchContribution2, WorkbenchPhase } from '../../../common/contributions.js';
 import './talemoOnboardingGate.contribution.js';
+import './talemoAuthLocalStateCleanup.contribution.js';
 import { registerTalemoAuthProvider } from './talemoAuthProvider.js';
 import { IAuthenticationService } from '../../../services/authentication/common/authentication.js';
 import { ITalemoApiService } from '../../../services/talemo/browser/talemoApiService.js';

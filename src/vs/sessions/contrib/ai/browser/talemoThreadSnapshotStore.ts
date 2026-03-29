@@ -241,6 +241,21 @@ export class TalemoThreadSnapshotStore {
 			this.logService.warn('TalemoThreadSnapshotStore: failed to delete snapshot', error);
 		}
 	}
+
+	/**
+	 * Drops every cached thread snapshot under the chat storage folder.
+	 * Used when the Talemo account identity changes so stale transcripts never leak across users.
+	 */
+	async clearAllSnapshots(): Promise<void> {
+		try {
+			if (!(await this.fileService.exists(this.snapshotsRoot))) {
+				return;
+			}
+			await this.fileService.del(this.snapshotsRoot, { recursive: true, useTrash: false });
+		} catch (error) {
+			this.logService.warn('TalemoThreadSnapshotStore: failed to clear snapshot cache', error);
+		}
+	}
 }
 
 export function areSnapshotMessagesEqual(left: readonly ITalemoThreadSnapshotMessage[], right: readonly MessageRecord[]): boolean {
