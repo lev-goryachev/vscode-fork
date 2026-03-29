@@ -9,7 +9,7 @@ import { NotebookSetting } from '../../notebook/common/notebookCommon.js';
 import { CONTEXT_ACCESSIBILITY_MODE_ENABLED } from '../../../../platform/accessibility/common/accessibility.js';
 import { URI } from '../../../../base/common/uri.js';
 import product from '../../../../platform/product/common/product.js';
-import { TALEMO_ATTACH_PROJECT_COMMAND_ID } from '../../../../sessions/contrib/talemoWorkspace/browser/talemoProjectCommandsIds.js';
+import { TALEMO_ATTACH_PROJECT_COMMAND_ID, TALEMO_INIT_PROJECT_COMMAND_ID } from '../../../../sessions/contrib/talemoWorkspace/browser/talemoProjectCommandsIds.js';
 
 interface IGettingStartedContentProvider {
 	(): string;
@@ -153,7 +153,7 @@ export const startEntries: GettingStartedStartEntryContent = [
 		when: '!chatSetupHidden',
 		content: {
 			type: 'startEntry',
-			command: 'command:welcome.newWorkspaceChat',
+			command: `command:${TALEMO_INIT_PROJECT_COMMAND_ID}`,
 		}
 	},
 ];
@@ -289,7 +289,7 @@ export const walkthroughs: GettingStartedWalkthroughContent = [
 				{
 					id: 'pickAFolderTask-WebWeb',
 					title: localize('gettingStarted.setup.OpenProject.title', "Open or create your project"),
-					description: localize('gettingStarted.setup.OpenProjectWeb.description.interpolated', "You're all set to start working. Open an existing project or create a new one with Talemo.\n{0}\n{1}", Button(localize('openProject', "Open Project"), `command:${TALEMO_ATTACH_PROJECT_COMMAND_ID}`), Button(localize('createProject', "Create Project"), 'command:welcome.newWorkspaceChat')),
+					description: localize('gettingStarted.setup.OpenProjectWeb.description.interpolated', "You're all set to start working. Open an existing project or create a new one with Talemo.\n{0}\n{1}", Button(localize('openProject', "Open Project"), `command:${TALEMO_ATTACH_PROJECT_COMMAND_ID}`), Button(localize('createProject', "Create Project"), `command:${TALEMO_INIT_PROJECT_COMMAND_ID}`)),
 					when: 'workspaceFolderCount == 0',
 					media: {
 						type: 'svg', altText: 'Explorer view showing buttons for opening and creating a project.', path: 'openFolder.svg'

@@ -185,10 +185,6 @@ import './contrib/mcp/electron-browser/mcp.contribution.js';
 // Policy Export
 import './contrib/policyExport/electron-browser/policyExport.contribution.js';
 
-// Talemo: Billing & Credits settings page
-// eslint-disable-next-line local/code-import-patterns
-import '../sessions/contrib/billing/browser/billing.contribution.js';
-
 // Talemo: Desktop project label resolution (reads .talemo/project.json
 // and persists projectId -> name for LabelService and Explorer).
 import './contrib/talemoWorkspace/browser/talemoDesktopProjectLabel.contribution.js';
