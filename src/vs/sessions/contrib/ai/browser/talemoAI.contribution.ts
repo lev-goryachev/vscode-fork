@@ -239,7 +239,7 @@ export class TalemoAIContribution extends Disposable implements IWorkbenchContri
 				locations: [ChatAgentLocation.Chat, ChatAgentLocation.Terminal, ChatAgentLocation.EditorInline, ChatAgentLocation.Notebook],
 				modes: [ChatModeKind.Ask, ChatModeKind.Edit, ChatModeKind.Agent],
 				extensionId: new ExtensionIdentifier('talemo.talemo-ai'),
-				extensionVersion: '0.4.0',
+				extensionVersion: '0.4.2',
 				extensionPublisherId: 'talemo',
 				extensionDisplayName: 'Talemo AI',
 			},
