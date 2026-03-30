@@ -4200,7 +4200,7 @@
         "view": "scm",
         "contents": "%view.workbench.scm.closedRepositories%",
         "when": "config.git.enabled && !git.missing && git.state == initialized && git.closedRepositoryCount > 1"
-      },
+      }
     ]
   },
   "dependencies": {
