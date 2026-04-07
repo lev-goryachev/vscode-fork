@@ -130,6 +130,10 @@ import './services/inlineCompletions/common/inlineCompletionsUnification.js';
 import './services/chat/common/chatEntitlementService.js';
 import './services/log/common/defaultLogLevels.js';
 
+// F72 Talemo Messenger: register ITalemoMessengerService before workbench builds ServiceCollection.
+// UI registration is feature-gated and may load via dynamic import after instantiation is frozen.
+import './services/talemo/browser/talemoMessengerService.js';
+
 import { InstantiationType, registerSingleton } from '../platform/instantiation/common/extensions.js';
 import { GlobalExtensionEnablementService } from '../platform/extensionManagement/common/extensionEnablementService.js';
 import { IAllowedExtensionsService, IGlobalExtensionEnablementService } from '../platform/extensionManagement/common/extensionManagement.js';
@@ -399,6 +403,8 @@ import './contrib/workspace/browser/workspace.contribution.js';
 
 // Talemo Auth Gate
 import './contrib/talemoAuth/browser/talemoAuth.contribution.js';
+import './contrib/talemoMessenger/browser/talemoMessenger.contribution.js';
+import './contrib/talemoMessenger/browser/talemoMessengerAiTools.contribution.js';
 import '../sessions/contrib/talemoWorkspace/browser/talemoWebStartup.contribution.js';
 
 // Workspaces

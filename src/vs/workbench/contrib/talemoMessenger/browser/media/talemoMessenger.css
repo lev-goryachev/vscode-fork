@@ -1,0 +1,256 @@
+/*---------------------------------------------------------------------------------------------
+ * F72 Talemo Messenger sidebar + editor surfaces (main workbench).
+ *--------------------------------------------------------------------------------------------*/
+
+.talemoMessengerView-body {
+	display: flex;
+	flex-direction: column;
+	gap: 8px;
+	padding: 8px 12px;
+	box-sizing: border-box;
+	height: 100%;
+	min-height: 0;
+	overflow: hidden;
+}
+
+.talemoMessengerView-toolbarSlot {
+	flex-shrink: 0;
+}
+
+/* Outer node from DomScrollableElement; inner content scrolls with workbench mouse wheel. */
+.talemoMessengerView-scroll {
+	flex: 1;
+	min-height: 0;
+	height: 100%;
+	width: 100%;
+	overflow: hidden;
+}
+
+/* Bounded viewport height so clientHeight < scrollHeight when the list overflows. */
+.talemoMessengerView-scrollInner {
+	height: 100%;
+	min-height: 0;
+	display: flex;
+	flex-direction: column;
+	gap: 8px;
+	box-sizing: border-box;
+	padding-right: 2px;
+	overflow: hidden;
+}
+
+.talemoMessengerView-section-title {
+	font-size: 11px;
+	font-weight: 600;
+	opacity: 0.85;
+	text-transform: uppercase;
+}
+
+.talemoMessengerView-row {
+	display: flex;
+	flex-wrap: wrap;
+	gap: 6px;
+}
+
+/* Telegram connect modal (workbench Dialog body) */
+.monaco-dialog-box.talemoMessenger-tg-connect-dialog {
+	max-width: 420px;
+}
+
+.talemoMessenger-tg-connect-body {
+	display: flex;
+	flex-direction: column;
+	gap: 10px;
+	min-height: 120px;
+}
+
+.talemoMessenger-tg-connect-hint {
+	font-size: 12px;
+	line-height: 1.35;
+	opacity: 0.9;
+}
+
+.talemoMessenger-tg-connect-expiry {
+	font-size: 11px;
+	opacity: 0.75;
+}
+
+.talemoMessenger-tg-connect-qr-img {
+	width: 200px;
+	height: 200px;
+	max-width: 100%;
+	image-rendering: pixelated;
+	align-self: flex-start;
+}
+
+.talemoMessenger-tg-connect-password-input {
+	width: 100%;
+	box-sizing: border-box;
+	padding: 6px 8px;
+}
+
+.talemoMessenger-tg-connect-actions {
+	margin-top: 4px;
+}
+
+.talemoMessenger-tg-connect-success {
+	margin: 0 0 6px 0;
+	font-size: 14px;
+	font-weight: 600;
+	color: var(--vscode-testing-iconPassed, var(--vscode-gitDecoration-addedResourceForeground));
+}
+
+.talemoMessengerView-account,
+.talemoMessengerView-chat {
+	cursor: pointer;
+	padding: 4px 6px;
+	border-radius: 3px;
+}
+
+.talemoMessengerView-account.selected,
+.talemoMessengerView-chat.selected {
+	outline: 1px solid var(--vscode-focusBorder);
+}
+
+.talemoMessengerChatEditor,
+.talemoMessengerSettingsEditor {
+	height: 100%;
+}
+
+.talemoMessengerChatEditor {
+	display: flex;
+	flex-direction: column;
+	min-height: 0;
+}
+
+.talemoMessengerChatEditor-messagesWrap {
+	flex: 1;
+	min-height: 0;
+	display: flex;
+	flex-direction: column;
+	overflow: hidden;
+}
+
+.talemoMessengerChatEditor-scroll {
+	flex: 1;
+	min-height: 0;
+	height: 100%;
+	width: 100%;
+	overflow: hidden;
+}
+
+.talemoMessengerChatEditor-composer {
+	display: none;
+	flex-direction: column;
+	gap: 8px;
+	padding: 8px 12px;
+	border-top: 1px solid var(--vscode-widget-border);
+	box-sizing: border-box;
+	flex-shrink: 0;
+}
+
+.talemoMessengerChatEditor-replyBar {
+	display: none;
+	align-items: center;
+	justify-content: space-between;
+	gap: 8px;
+	font-size: 12px;
+	opacity: 0.9;
+}
+
+.talemoMessenger-msg-attachment {
+	font-size: 12px;
+	opacity: 0.9;
+	margin-top: 4px;
+}
+
+.talemoMessengerChatEditor-attach {
+	align-self: flex-start;
+}
+
+.talemoMessenger-msg-actions {
+	display: flex;
+	flex-wrap: wrap;
+	gap: 6px;
+	margin-top: 6px;
+}
+
+.talemoMessenger-msg-actions button {
+	padding: 2px 8px;
+	font-size: 11px;
+}
+
+.talemoMessengerChatEditor-input {
+	width: 100%;
+	box-sizing: border-box;
+	resize: vertical;
+	min-height: 48px;
+	max-height: 160px;
+	font-family: var(--vscode-font-family);
+	font-size: var(--vscode-font-size);
+	color: var(--vscode-foreground);
+	background: var(--vscode-input-background);
+	border: 1px solid var(--vscode-input-border, var(--vscode-widget-border));
+	padding: 6px 8px;
+}
+
+.talemoMessengerChatEditor-send {
+	align-self: flex-end;
+	padding: 6px 14px;
+}
+
+/* Inner scroll node: fill viewport so DomScrollableElement sees overflow; padding stays inside the box. */
+.talemoMessengerChatEditor-messages {
+	height: 100%;
+	min-height: 0;
+	overflow: hidden;
+	padding: 12px;
+	box-sizing: border-box;
+}
+
+.talemoMessenger-msg {
+	margin-bottom: 12px;
+	border-bottom: 1px solid var(--vscode-widget-border);
+	padding-bottom: 8px;
+}
+
+.talemoMessenger-msg-meta {
+	font-size: 11px;
+	opacity: 0.75;
+	margin-bottom: 4px;
+}
+
+.talemoMessenger-msg-body {
+	white-space: pre-wrap;
+}
+
+.talemoMessengerSettingsEditor-body {
+	padding: 12px;
+	box-sizing: border-box;
+}
+
+.talemoMessenger-field {
+	display: flex;
+	flex-direction: column;
+	gap: 4px;
+	margin-bottom: 12px;
+}
+
+.talemoMessenger-matrix-row {
+	display: flex;
+	align-items: center;
+	justify-content: space-between;
+	gap: 12px;
+	margin-bottom: 6px;
+}
+
+.talemoMessenger-settings-status {
+	margin-top: 8px;
+	font-size: 12px;
+}
+
+.empty,
+.loading,
+.error {
+	opacity: 0.85;
+	font-size: 13px;
+}

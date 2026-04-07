@@ -555,7 +555,7 @@ export class WebClientServer {
 			`frame-src 'self' https://*.vscode-cdn.net data:;`,
 			'worker-src \'self\' data: blob:;',
 			'style-src \'self\' \'unsafe-inline\';',
-			`connect-src 'self' ws: wss: https: ${resolveTalemoBackendUrl(this._productService)} ${!this._environmentService.isBuilt ? 'http://localhost:*' : ''}`.trimEnd() + ';',
+			`connect-src 'self' ws: wss: https: ${resolveTalemoBackendUrl(this._productService)} ${!this._environmentService.isBuilt ? 'http://localhost:* http://127.0.0.1:*' : ''}`.trimEnd() + ';',
 			'font-src \'self\' blob:;',
 			'manifest-src \'self\';'
 		].join(' ');

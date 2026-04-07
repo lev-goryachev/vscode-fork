@@ -12,9 +12,7 @@ import { importAMDNodeModule } from '../../../../amdX.js';
 import { InstantiationType, registerSingleton } from '../../../../platform/instantiation/common/extensions.js';
 import { createDecorator } from '../../../../platform/instantiation/common/instantiation.js';
 import { IProductService } from '../../../../platform/product/common/productService.js';
-import { IAuthenticationService } from '../../authentication/common/authentication.js';
-import { AuthRequiredError } from './talemoApiService.js';
-import { TALEMO_PROVIDER_ID } from './constants.js';
+import { AuthRequiredError, ITalemoApiService } from './talemoApiService.js';
 import { getBackendUrl } from './backend.js';
 
 export interface ITalemoRuntimeEventEnvelope {
@@ -98,7 +96,7 @@ export class TalemoRealtimeClient extends Disposable implements ITalemoRealtimeC
 	readonly onDidReconnect: Event<void> = this._onDidReconnect.event;
 
 	constructor(
-		@IAuthenticationService private readonly authService: IAuthenticationService,
+		@ITalemoApiService private readonly api: ITalemoApiService,
 		@IProductService private readonly productService: IProductService,
 	) {
 		super();
@@ -152,6 +150,10 @@ export class TalemoRealtimeClient extends Disposable implements ITalemoRealtimeC
 
 	private async doConnect(): Promise<void> {
 		const socket = await this.getOrCreateSocket();
+		// True only if the socket was already connected when this invocation started.
+		// After awaiting a connect handshake below, we set this to false so a real
+		// reconnect still runs restore (auth + subscriptions).
+		let wasAlreadyConnected = socket.connected;
 		if (!socket.connected) {
 			await new Promise<void>((resolve, reject) => {
 				const cleanup = () => {
@@ -170,6 +172,13 @@ export class TalemoRealtimeClient extends Disposable implements ITalemoRealtimeC
 				socket.on('connect_error', onError);
 				socket.connect();
 			});
+			wasAlreadyConnected = false;
+		}
+
+		// Idempotent connect(): a second caller must not re-emit auth:restore on an
+		// already-authenticated live socket (empty session lookup would break UI).
+		if (wasAlreadyConnected && this.hasCompletedInitialRestore) {
+			return;
 		}
 
 		await this.restoreAuthAndSubscriptions();
@@ -266,8 +275,11 @@ export class TalemoRealtimeClient extends Disposable implements ITalemoRealtimeC
 	}
 
 	private async getAccessToken(): Promise<string | undefined> {
-		const sessions = await this.authService.getSessions(TALEMO_PROVIDER_ID).catch(() => []);
-		return sessions[0]?.accessToken;
+		try {
+			return await this.api.getAccessToken();
+		} catch {
+			return undefined;
+		}
 	}
 
 	private async resolveTenantId(): Promise<string> {

@@ -10,3 +10,6 @@ export const TALEMO_SURFACE_HEADER = 'X-Talemo-Surface';
 export const TALEMO_SURFACE_VALUE = 'desktop';
 
 export const REAUTH_TIMEOUT_MS = 180_000;
+
+/** Profile storage key for active Talemo project binding (aligned with sessions workspace feature). */
+export const TALEMO_ACTIVE_PROJECT_STORAGE_KEY = 'talemo.activeProject';

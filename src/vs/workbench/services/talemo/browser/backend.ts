@@ -1,6 +1,9 @@
 import { env as processEnv } from '../../../../base/common/process.js';
 import { IProductService } from '../../../../platform/product/common/productService.js';
 
+/** Local dev default: IPv4 loopback so fetch does not use ::1 when the OS ranks IPv6 `localhost` first and the backend binds IPv4 only (common on Windows). */
+const LOCAL_DEV_BACKEND_URL = 'http://127.0.0.1:8000';
+
 export type TalemoProductLike = Pick<IProductService, 'quality'> & {
 	talemoBackendUrl?: string;
 	talemoPortalUrl?: string;
@@ -68,7 +71,7 @@ export function resolveTalemoBackend(productService: TalemoProductLike): { backe
 
 	const quality = productService.quality;
 	if (!quality || quality === 'oss') {
-		return { backendUrl: 'http://localhost:8000', source: 'devDefault' };
+		return { backendUrl: LOCAL_DEV_BACKEND_URL, source: 'devDefault' };
 	}
 
 	const productBackendUrl = normalizeBackendUrl((productService as unknown as { talemoBackendUrl?: string }).talemoBackendUrl);
@@ -76,7 +79,7 @@ export function resolveTalemoBackend(productService: TalemoProductLike): { backe
 		return { backendUrl: productBackendUrl, source: 'productService' };
 	}
 
-	return { backendUrl: 'http://localhost:8000', source: 'fallbackLocalhost' };
+	return { backendUrl: LOCAL_DEV_BACKEND_URL, source: 'fallbackLocalhost' };
 }
 
 export function getBackendUrl(productService: TalemoProductLike): string {
