@@ -2,6 +2,7 @@
  * F72 Talemo Messenger sidebar + editor surfaces (main workbench).
  *--------------------------------------------------------------------------------------------*/
 
+/* Shared body under native ViewPane headers (Accounts / Chats). */
 .talemoMessengerView-body {
 	display: flex;
 	flex-direction: column;
@@ -13,8 +14,14 @@
 	overflow: hidden;
 }
 
-.talemoMessengerView-toolbarSlot {
-	flex-shrink: 0;
+.talemoMessengerAccounts-body {
+	/* Account chips only; no inner scroll — pane body fills below ViewPane header. */
+	justify-content: flex-start;
+}
+
+.talemoMessengerChats-body {
+	/* Scrollable chat list lives inside DomScrollableElement. */
+	padding-top: 4px;
 }
 
 /* Outer node from DomScrollableElement; inner content scrolls with workbench mouse wheel. */
@@ -36,13 +43,6 @@
 	box-sizing: border-box;
 	padding-right: 2px;
 	overflow: hidden;
-}
-
-.talemoMessengerView-section-title {
-	font-size: 11px;
-	font-weight: 600;
-	opacity: 0.85;
-	text-transform: uppercase;
 }
 
 .talemoMessengerView-row {

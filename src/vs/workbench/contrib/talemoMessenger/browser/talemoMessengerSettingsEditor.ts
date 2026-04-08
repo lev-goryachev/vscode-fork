@@ -30,6 +30,10 @@ import {
 import { IDialogService } from '../../../../platform/dialogs/common/dialogs.js';
 import Severity from '../../../../base/common/severity.js';
 import { TalemoMessengerSettingsEditorInput, TalemoMessengerSettingsEditorPaneId } from './talemoMessengerSettingsEditorInput.js';
+import {
+	formatMessengerSettingsEditorTitle,
+	formatMessengerSettingsEditorTitleFromParts,
+} from '../../../services/talemo/browser/talemoMessengerModels.js';
 import { IEditorOptions } from '../../../../platform/editor/common/editor.js';
 import { defaultButtonStyles } from '../../../../platform/theme/browser/defaultStyles.js';
 import { Dimension } from '../../../../base/browser/dom.js';
@@ -85,7 +89,8 @@ export class TalemoMessengerSettingsEditor extends EditorPane {
 		await super.setInput(input, options, context, token);
 		const t = this.messenger.settingsTarget;
 		if (t) {
-			input.setTitle(nls.localize('talemoMessengerSettingsTitle', 'Messenger: {0}', t.accountKey));
+			const row = this.messenger.accounts.find((a) => a.provider === t.provider && a.account_key === t.accountKey);
+			input.setTitle(row ? formatMessengerSettingsEditorTitle(row) : formatMessengerSettingsEditorTitleFromParts(t.provider, t.accountKey, undefined));
 		}
 		await this.reload();
 	}

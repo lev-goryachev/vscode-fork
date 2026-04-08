@@ -245,3 +245,47 @@ export function formatMessengerAccountChipLabel(account: ConnectedAccountRow, al
 	}
 	return `${account.provider}:${account.account_key}`;
 }
+
+/**
+ * Maps API provider slug to a short human label (underscore-separated segments become Title Case words).
+ * Examples: telegram -> Telegram, whatsapp_business -> Whatsapp Business.
+ */
+export function formatMessengerProviderLabel(provider: string): string {
+	try {
+		const p = (provider || '').trim();
+		if (!p) {
+			return 'Unknown';
+		}
+		return p
+			.split('_')
+			.filter((s) => s.length > 0)
+			.map((seg) => seg.charAt(0).toUpperCase() + seg.slice(1).toLowerCase())
+			.join(' ');
+	} catch {
+		return provider || 'Unknown';
+	}
+}
+
+/**
+ * Builds the settings editor tab title: `Messenger settings: {display} ({providerLabel})`.
+ * Uses display_name when present; otherwise `provider:account_key` (same fallback idea as account chips).
+ */
+export function formatMessengerSettingsEditorTitleFromParts(
+	provider: string,
+	accountKey: string,
+	displayName: string | undefined,
+): string {
+	try {
+		const trimmed = displayName?.trim();
+		const display = trimmed ? trimmed : `${provider}:${accountKey}`;
+		const providerLabel = formatMessengerProviderLabel(provider);
+		return `Messenger settings: ${display} (${providerLabel})`;
+	} catch {
+		return `Messenger settings: ${provider}:${accountKey}`;
+	}
+}
+
+/** Same as {@link formatMessengerSettingsEditorTitleFromParts} using a connected account row. */
+export function formatMessengerSettingsEditorTitle(account: ConnectedAccountRow): string {
+	return formatMessengerSettingsEditorTitleFromParts(account.provider, account.account_key, account.display_name);
+}

@@ -17,7 +17,9 @@ import { EditorPaneDescriptor, IEditorPaneRegistry } from '../../../browser/edit
 import { EditorExtensions, IEditorFactoryRegistry, IEditorSerializer } from '../../../common/editor.js';
 import { EditorInput } from '../../../common/editor/editorInput.js';
 import { IEditorResolverService, RegisteredEditorPriority } from '../../../services/editor/common/editorResolverService.js';
-import { TalemoMessengerView, TALEMO_MESSENGER_VIEW_ID } from './talemoMessengerView.js';
+import { TalemoMessengerAccountsView, TALEMO_MESSENGER_ACCOUNTS_VIEW_ID } from './talemoMessengerAccountsView.js';
+import { TalemoMessengerChatsView, TALEMO_MESSENGER_CHATS_VIEW_ID } from './talemoMessengerChatsView.js';
+import './talemoMessengerActions.js';
 import { TalemoMessengerChatEditor } from './talemoMessengerChatEditor.js';
 import { TalemoMessengerSettingsEditor } from './talemoMessengerSettingsEditor.js';
 import {
@@ -49,8 +51,8 @@ export function registerTalemoMessengerWorkbenchParts(): void {
 	const viewContainer = Registry.as<IViewContainersRegistry>(ViewContainerExtensions.ViewContainersRegistry).registerViewContainer(
 		{
 			id: VIEW_CONTAINER_ID,
-			title: localize2('talemoMessengerContainerTitle', 'Talemo Messenger'),
-			ctorDescriptor: new SyncDescriptor(ViewPaneContainer, [VIEW_CONTAINER_ID, { mergeViewWithContainerWhenSingleView: true }]),
+			title: localize2('talemoMessengerContainerTitle', 'Messenger'),
+			ctorDescriptor: new SyncDescriptor(ViewPaneContainer, [VIEW_CONTAINER_ID, { mergeViewWithContainerWhenSingleView: false }]),
 			hideIfEmpty: false,
 			icon: talemoMessengerIcon,
 			order: 5,
@@ -58,16 +60,27 @@ export function registerTalemoMessengerWorkbenchParts(): void {
 		ViewContainerLocation.Sidebar,
 	);
 
-	const viewDescriptor: IViewDescriptor = {
-		id: TALEMO_MESSENGER_VIEW_ID,
+	const accountsDescriptor: IViewDescriptor = {
+		id: TALEMO_MESSENGER_ACCOUNTS_VIEW_ID,
 		containerIcon: talemoMessengerIcon,
-		name: localize2('talemoMessengerViewName', 'Messenger'),
-		ctorDescriptor: new SyncDescriptor(TalemoMessengerView),
+		name: localize2('talemoMessengerAccountsViewName', 'Accounts'),
+		ctorDescriptor: new SyncDescriptor(TalemoMessengerAccountsView),
 		canToggleVisibility: false,
 		canMoveView: true,
+		weight: 35,
 	};
 
-	Registry.as<IViewsRegistry>(ViewContainerExtensions.ViewsRegistry).registerViews([viewDescriptor], viewContainer);
+	const chatsDescriptor: IViewDescriptor = {
+		id: TALEMO_MESSENGER_CHATS_VIEW_ID,
+		containerIcon: talemoMessengerIcon,
+		name: localize2('talemoMessengerChatsViewName', 'Chats'),
+		ctorDescriptor: new SyncDescriptor(TalemoMessengerChatsView),
+		canToggleVisibility: false,
+		canMoveView: true,
+		weight: 65,
+	};
+
+	Registry.as<IViewsRegistry>(ViewContainerExtensions.ViewsRegistry).registerViews([accountsDescriptor, chatsDescriptor], viewContainer);
 
 	Registry.as<IEditorPaneRegistry>(EditorExtensions.EditorPane).registerEditorPane(
 		EditorPaneDescriptor.create(TalemoMessengerChatEditor, TalemoMessengerChatEditorPaneId, localize('talemoMessengerChatEditor', 'Talemo Messenger Chat')),

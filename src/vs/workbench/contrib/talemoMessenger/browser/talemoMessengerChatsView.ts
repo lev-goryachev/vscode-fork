@@ -1,5 +1,5 @@
 /*---------------------------------------------------------------------------------------------
- * Messenger sidebar: accounts, chats, and toolbar actions.
+ * Messenger sidebar: Chats view pane (scrollable chat list, loading/error, auto-scroll on init).
  *--------------------------------------------------------------------------------------------*/
 
 import './media/talemoMessenger.css';
@@ -20,19 +20,15 @@ import { IHoverService } from '../../../../platform/hover/browser/hover.js';
 import { ITalemoMessengerService } from '../../../services/talemo/browser/talemoMessengerServiceTypes.js';
 import { IEditorService } from '../../../services/editor/common/editorService.js';
 import { TalemoMessengerChatEditorInput } from './talemoMessengerChatEditorInput.js';
-import { TalemoMessengerSettingsEditorInput } from './talemoMessengerSettingsEditorInput.js';
-import { openTalemoMessengerTelegramConnectDialog } from './talemoMessengerTelegramConnectDialog.js';
-import { formatMessengerAccountChipLabel, type MirrorChatRow } from '../../../services/talemo/browser/talemoMessengerModels.js';
+import { type MirrorChatRow } from '../../../services/talemo/browser/talemoMessengerModels.js';
 
-export const TALEMO_MESSENGER_VIEW_ID = 'talemoMessenger.sidebar';
+export const TALEMO_MESSENGER_CHATS_VIEW_ID = 'talemoMessenger.sidebar.chats';
 
-export class TalemoMessengerView extends ViewPane {
+export class TalemoMessengerChatsView extends ViewPane {
 	private bodyContainer?: HTMLElement;
-	private toolbarSlot?: HTMLElement;
 	private scrollInner?: HTMLElement;
 	private sidebarScroll?: DomScrollableElement;
 	private didAutoScrollChatListOnInit = false;
-	/** Incremented on each render; stale async completions bail out to avoid overlapping renders duplicating the sidebar. */
 	private renderSeq = 0;
 
 	constructor(
@@ -50,15 +46,13 @@ export class TalemoMessengerView extends ViewPane {
 		@IEditorService private readonly editorService: IEditorService,
 	) {
 		super(options, keybindingService, contextMenuService, configurationService, contextKeyService, viewDescriptorService, instantiationService, openerService, themeService, hoverService);
-		this._register(this.messenger.onDidChangeState(() => this.renderView()));
+		this._register(this.messenger.onDidChangeState(() => this.renderChats()));
 	}
 
 	protected override renderBody(container: HTMLElement): void {
 		super.renderBody(container);
-		// ViewPane may call renderBody more than once; reuse a single body root to avoid stacked duplicates.
 		if (!this.bodyContainer || !container.contains(this.bodyContainer)) {
-			this.bodyContainer = $('.talemoMessengerView-body');
-			this.toolbarSlot = $('.talemoMessengerView-toolbarSlot');
+			this.bodyContainer = $('.talemoMessengerView-body.talemoMessengerChats-body');
 			this.scrollInner = $('.talemoMessengerView-scrollInner');
 			this.sidebarScroll = this._register(new DomScrollableElement(this.scrollInner, {
 				className: 'talemoMessengerView-scroll',
@@ -66,11 +60,10 @@ export class TalemoMessengerView extends ViewPane {
 				vertical: ScrollbarVisibility.Auto,
 				horizontal: ScrollbarVisibility.Hidden,
 			}));
-			append(this.bodyContainer, this.toolbarSlot);
 			append(this.bodyContainer, this.sidebarScroll.getDomNode());
 			append(container, this.bodyContainer);
 		}
-		void this.messenger.refreshAccountsAndChats().then(() => this.renderView());
+		this.renderChats();
 	}
 
 	protected override layoutBody(height: number, width: number): void {
@@ -82,51 +75,16 @@ export class TalemoMessengerView extends ViewPane {
 		this.sidebarScroll?.scanDomNode();
 	}
 
-	private renderView(): void {
+	private renderChats(): void {
 		void (async () => {
 			try {
-				if (!this.bodyContainer || !this.toolbarSlot || !this.scrollInner) {
+				if (!this.bodyContainer || !this.scrollInner) {
 					return;
 				}
 				const seq = ++this.renderSeq;
-				clearNode(this.toolbarSlot);
 				clearNode(this.scrollInner);
-				const toolbar = $('.talemoMessengerView-row');
-				append(toolbar, this.makeToolbarButton(nls.localize('talemoMessengerRefresh', 'Refresh'), () => this.messenger.refreshAccountsAndChats()));
-				append(toolbar, this.makeToolbarButton(nls.localize('talemoMessengerOpenSettings', 'Settings'), () => this.openSettings()));
-				append(
-					toolbar,
-					this.makeToolbarButton(nls.localize('talemoMessengerConnectTelegram', 'Connect Telegram'), () =>
-						openTalemoMessengerTelegramConnectDialog(this.instantiationService),
-					),
-				);
-				append(this.toolbarSlot, toolbar);
-
-				if (seq !== this.renderSeq) {
-					return;
-				}
 
 				const scroll = this.scrollInner;
-
-				append(scroll, $('.talemoMessengerView-section-title', undefined, nls.localize('talemoMessengerAccounts', 'Accounts')));
-				const accRow = $('.talemoMessengerView-row');
-				const accounts = this.messenger.accounts;
-				for (const a of accounts) {
-					const chip = $('.talemoMessengerView-account');
-					const sel = this.messenger.selectedAccount;
-					const isSel = sel?.provider === a.provider && sel.accountKey === a.account_key;
-					if (isSel) {
-						chip.classList.add('selected');
-					}
-					chip.textContent = formatMessengerAccountChipLabel(a, accounts);
-					chip.onclick = () => {
-						void this.messenger.selectAccount(a.provider, a.account_key);
-					};
-					append(accRow, chip);
-				}
-				append(scroll, accRow);
-
-				append(scroll, $('.talemoMessengerView-section-title', undefined, nls.localize('talemoMessengerChats', 'Chats')));
 				const chatList = $('.talemoMessengerView-chat-list');
 				for (const c of this.messenger.chats) {
 					const row = $('.talemoMessengerView-chat');
@@ -157,26 +115,13 @@ export class TalemoMessengerView extends ViewPane {
 					this.sidebarScroll?.scanDomNode();
 					this.didAutoScrollChatListOnInit = true;
 				}
+				if (seq !== this.renderSeq) {
+					return;
+				}
 			} catch (e) {
-				console.error('[talemo-messenger-view] render failed', e);
+				console.error('[talemo-messenger-chats-view] render failed', e);
 			}
 		})();
-	}
-
-	private makeToolbarButton(label: string, run: () => void): HTMLElement {
-		const el = document.createElement('a');
-		el.tabIndex = 0;
-		el.setAttribute('role', 'button');
-		el.className = 'monaco-button monaco-text-button';
-		el.textContent = label;
-		el.onclick = () => {
-			try {
-				run();
-			} catch (e) {
-				console.error('[talemo-messenger-view] toolbar action failed', e);
-			}
-		};
-		return el;
 	}
 
 	private async openChat(chat: MirrorChatRow): Promise<void> {
@@ -187,24 +132,7 @@ export class TalemoMessengerView extends ViewPane {
 			await this.messenger.openChat(chat);
 			input.setChatTitle(this.messenger.selectedChat?.title ?? chat.title);
 		} catch (e) {
-			console.error('[talemo-messenger-view] openChat failed', e);
-		}
-	}
-
-	private async openSettings(): Promise<void> {
-		try {
-			const acc = this.messenger.selectedAccount;
-			if (!acc) {
-				return;
-			}
-			this.messenger.prepareSettingsEditor(acc.provider, acc.accountKey);
-			const input = this.instantiationService.createInstance(TalemoMessengerSettingsEditorInput);
-			const row = this.messenger.accounts.find((a) => a.provider === acc.provider && a.account_key === acc.accountKey);
-			const label = row?.display_name?.trim();
-			input.setTitle(label ? `${label} (${acc.provider})` : `${acc.provider}:${acc.accountKey}`);
-			await this.editorService.openEditor(input, { pinned: true });
-		} catch (e) {
-			console.error('[talemo-messenger-view] openSettings failed', e);
+			console.error('[talemo-messenger-chats-view] openChat failed', e);
 		}
 	}
 }
